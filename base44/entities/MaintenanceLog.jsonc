@@ -1,0 +1,35 @@
+{
+  "name": "MaintenanceLog",
+  "type": "object",
+  "properties": {
+    "machine_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "service",
+        "repair",
+        "inspection"
+      ],
+      "default": "service"
+    },
+    "description": {
+      "type": "string"
+    },
+    "cost": {
+      "type": "number"
+    },
+    "hours_reading": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "machine_id",
+    "date"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "name": "InputItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "seed",
+        "fertilizer",
+        "pesticide",
+        "herbicide",
+        "fuel",
+        "packaging",
+        "other"
+      ],
+      "default": "other"
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "kg",
+        "l",
+        "bag",
+        "pack",
+        "unit"
+      ],
+      "default": "kg"
+    },
+    "stock": {
+      "type": "number",
+      "default": 0
+    },
+    "min_stock": {
+      "type": "number",
+      "default": 0
+    },
+    "unit_cost": {
+      "type": "number"
+    },
+    "storage_id": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

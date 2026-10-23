@@ -1,0 +1,38 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "labour",
+        "inputs",
+        "machinery",
+        "transport",
+        "utilities",
+        "other"
+      ],
+      "default": "other"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "description": {
+      "type": "string"
+    },
+    "block_id": {
+      "type": "string"
+    },
+    "machine_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "date",
+    "amount"
+  ]
+}

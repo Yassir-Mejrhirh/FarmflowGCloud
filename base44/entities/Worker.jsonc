@@ -1,0 +1,39 @@
+{
+  "name": "Worker",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "field_worker",
+        "operator",
+        "supervisor",
+        "seasonal"
+      ],
+      "default": "field_worker"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "daily_rate": {
+      "type": "number"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

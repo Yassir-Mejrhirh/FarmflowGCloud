@@ -1,0 +1,48 @@
+{
+  "name": "Machine",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "tractor",
+        "harvester",
+        "sprayer",
+        "truck",
+        "implement",
+        "other"
+      ],
+      "default": "tractor"
+    },
+    "model": {
+      "type": "string"
+    },
+    "plate": {
+      "type": "string"
+    },
+    "hourly_rate": {
+      "type": "number"
+    },
+    "hours": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "operational",
+        "maintenance",
+        "retired"
+      ],
+      "default": "operational"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

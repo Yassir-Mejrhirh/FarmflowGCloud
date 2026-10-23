@@ -1,0 +1,70 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "planting",
+        "irrigation",
+        "fertilising",
+        "spraying",
+        "harvest",
+        "maintenance",
+        "transport",
+        "other"
+      ],
+      "default": "other"
+    },
+    "block_id": {
+      "type": "string"
+    },
+    "crop_id": {
+      "type": "string"
+    },
+    "assignee_id": {
+      "type": "string"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "todo",
+        "in_progress",
+        "done"
+      ],
+      "default": "todo"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium"
+    },
+    "estimated_cost": {
+      "type": "number"
+    },
+    "actual_cost": {
+      "type": "number"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

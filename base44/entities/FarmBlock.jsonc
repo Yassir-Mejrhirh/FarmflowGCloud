@@ -1,0 +1,61 @@
+{
+  "name": "FarmBlock",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Block name"
+    },
+    "code": {
+      "type": "string",
+      "description": "Short reference code"
+    },
+    "area_ha": {
+      "type": "number",
+      "description": "Area in hectares, calculated from boundary"
+    },
+    "boundary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "crop_id": {
+      "type": "string"
+    },
+    "variety_id": {
+      "type": "string"
+    },
+    "planting_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "preparing",
+        "harvest",
+        "fallow"
+      ],
+      "default": "active"
+    },
+    "soil_type": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

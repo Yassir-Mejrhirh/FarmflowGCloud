@@ -1,0 +1,30 @@
+{
+  "name": "Crop",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "cereal",
+        "vegetable",
+        "fruit_tree",
+        "legume",
+        "fodder",
+        "other"
+      ],
+      "default": "other"
+    },
+    "cycle_days": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

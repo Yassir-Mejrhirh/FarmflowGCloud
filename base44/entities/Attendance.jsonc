@@ -1,0 +1,31 @@
+{
+  "name": "Attendance",
+  "type": "object",
+  "properties": {
+    "worker_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "days": {
+      "type": "number",
+      "default": 1
+    },
+    "amount": {
+      "type": "number"
+    },
+    "paid": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "worker_id",
+    "date"
+  ]
+}

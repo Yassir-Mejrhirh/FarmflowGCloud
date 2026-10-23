@@ -1,0 +1,21 @@
+{
+  "name": "Variety",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "crop_id": {
+      "type": "string"
+    },
+    "maturity_days": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

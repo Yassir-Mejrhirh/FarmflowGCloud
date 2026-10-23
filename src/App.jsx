@@ -7,6 +7,15 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 // Add page imports here
+import Layout from '@/components/Layout';
+import Dashboard from '@/pages/Dashboard';
+import Blocks from '@/pages/Blocks';
+import Crops from '@/pages/Crops';
+import Tasks from '@/pages/Tasks';
+import Workers from '@/pages/Workers';
+import Machinery from '@/pages/Machinery';
+import Inventory from '@/pages/Inventory';
+import Costs from '@/pages/Costs';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -34,7 +43,16 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/blocks" element={<Blocks />} />
+        <Route path="/crops" element={<Crops />} />
+        <Route path="/tasks" element={<Tasks />} />
+        <Route path="/workers" element={<Workers />} />
+        <Route path="/machinery" element={<Machinery />} />
+        <Route path="/inventory" element={<Inventory />} />
+        <Route path="/costs" element={<Costs />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

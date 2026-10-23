@@ -1,0 +1,31 @@
+{
+  "name": "Storage",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "warehouse",
+        "cold_room",
+        "silo",
+        "shed"
+      ],
+      "default": "warehouse"
+    },
+    "location": {
+      "type": "string"
+    },
+    "capacity_note": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
