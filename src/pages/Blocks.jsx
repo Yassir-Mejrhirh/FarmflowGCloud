@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Ruler, MapPin, Scale, Globe } from 'lucide-react';
+import { Plus, Ruler, MapPin, Scale, Globe, Upload } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
@@ -12,7 +13,7 @@ import HarvestLog from '@/components/blocks/HarvestLog';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
 import { fmtNum, fmtDate } from '@/lib/format';
-import { downloadBlockKml, blockKmlFilename } from '@/lib/kml';
+import { downloadBlockKml, blockKmlFilename, parseKmlBlocks } from '@/lib/kml';
 import { cn } from '@/lib/utils';
 
 const STATUS_LABEL = { active: 'Growing', preparing: 'Preparing', harvest: 'Harvesting', fallow: 'Fallow' };
@@ -29,6 +30,9 @@ export default function Blocks() {
   const [harvests, setHarvests] = useState([]);
   const [harvestDialogOpen, setHarvestDialogOpen] = useState(false);
   const [harvestBlock, setHarvestBlock] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef(null);
+  const { toast } = useToast();
 
   const load = async () => {
     const [blockRows, cropRows, varietyRows, harvestRows] = await Promise.all([
@@ -81,6 +85,27 @@ export default function Blocks() {
     setHarvestDialogOpen(true);
   };
 
+  const handleImportKml = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    try {
+      const parsed = parseKmlBlocks(await file.text());
+      if (!parsed.length) {
+        toast({ title: 'No field boundaries found', description: 'The KML file did not contain any polygons.', variant: 'destructive' });
+        return;
+      }
+      await base44.entities.FarmBlock.bulkCreate(parsed.map((block) => ({ ...block, status: 'preparing' })));
+      await load();
+      toast({ title: `Imported ${parsed.length} block${parsed.length > 1 ? 's' : ''}`, description: 'Boundaries were measured and saved from the KML file.' });
+    } catch (error) {
+      toast({ title: 'Could not import KML', description: error.message || 'The file could not be read.', variant: 'destructive' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -89,9 +114,19 @@ export default function Blocks() {
         description="Every field drawn on satellite imagery, with its crop, variety and measured area."
         action={
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => importInputRef.current?.click()} disabled={importing} className="rounded-xl">
+              <Upload className="mr-1.5 h-4 w-4" /> {importing ? 'Importing…' : 'Import KML'}
+            </Button>
             <Button variant="outline" onClick={() => downloadBlockKml(blocks)} className="rounded-xl">
               <Globe className="mr-1.5 h-4 w-4" /> Google Earth
             </Button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".kml,.xml,application/vnd.google-earth.kml+xml"
+              className="hidden"
+              onChange={handleImportKml}
+            />
             <Button variant="outline" onClick={() => openHarvest(null)} className="rounded-xl">
               <Scale className="mr-1.5 h-4 w-4" /> Log harvest
             </Button>

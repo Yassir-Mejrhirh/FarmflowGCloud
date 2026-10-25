@@ -1,4 +1,5 @@
 import { BLOCK_STATUS_COLORS } from '@/components/blocks/BlockMap';
+import { polygonAreaHa } from '@/lib/geo';
 
 // KML colors are aabbggrr; our palette is #rrggbb.
 const kmlColor = (hex, alpha = 'ff') => {
@@ -80,3 +81,36 @@ export const downloadBlockKml = (blocks, filename = 'terra-blocks.kml') => {
 export const blockKmlFilename = (block) => (
   `terra-${(block.code || block.name || 'block').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.kml`
 );
+
+/** Parses a KML file's text into block-shaped records: [{ name, boundary, area_ha }]. */
+export const parseKmlBlocks = (text) => {
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  if (doc.getElementsByTagName('parsererror').length) {
+    throw new Error('This file is not a valid KML document.');
+  }
+
+  const blocks = [];
+  Array.from(doc.getElementsByTagName('Placemark')).forEach((placemark, index) => {
+    const polygon = placemark.getElementsByTagName('Polygon')[0];
+    if (!polygon) return;
+    const ring = polygon.getElementsByTagName('outerBoundaryIs')[0] || polygon;
+    const coordText = ring.getElementsByTagName('coordinates')[0]?.textContent || '';
+    const boundary = coordText
+      .trim()
+      .split(/\s+/)
+      .map((tuple) => {
+        const [lng, lat] = tuple.split(',').map(Number);
+        return { lat, lng };
+      })
+      .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+    if (boundary.length > 1
+      && boundary[0].lat === boundary[boundary.length - 1].lat
+      && boundary[0].lng === boundary[boundary.length - 1].lng) {
+      boundary.pop();
+    }
+    if (boundary.length < 3) return;
+    const name = placemark.getElementsByTagName('name')[0]?.textContent?.trim() || `Imported block ${index + 1}`;
+    blocks.push({ name, boundary, area_ha: Number(polygonAreaHa(boundary).toFixed(3)) });
+  });
+  return blocks;
+};
