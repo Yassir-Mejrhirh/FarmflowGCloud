@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Ruler, MapPin, Scale } from 'lucide-react';
+import { Plus, Ruler, MapPin, Scale, Globe } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
@@ -12,6 +12,7 @@ import HarvestLog from '@/components/blocks/HarvestLog';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
 import { fmtNum, fmtDate } from '@/lib/format';
+import { downloadBlockKml, blockKmlFilename } from '@/lib/kml';
 import { cn } from '@/lib/utils';
 
 const STATUS_LABEL = { active: 'Growing', preparing: 'Preparing', harvest: 'Harvesting', fallow: 'Fallow' };
@@ -88,6 +89,9 @@ export default function Blocks() {
         description="Every field drawn on satellite imagery, with its crop, variety and measured area."
         action={
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => downloadBlockKml(blocks)} className="rounded-xl">
+              <Globe className="mr-1.5 h-4 w-4" /> Google Earth
+            </Button>
             <Button variant="outline" onClick={() => openHarvest(null)} className="rounded-xl">
               <Scale className="mr-1.5 h-4 w-4" /> Log harvest
             </Button>
@@ -175,6 +179,13 @@ export default function Blocks() {
                       {block.boundary?.length || 0} boundary points
                     </span>
                     <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => downloadBlockKml([block], blockKmlFilename(block))}
+                        className="text-[11px] font-medium text-sage hover:underline"
+                      >
+                        Google Earth
+                      </button>
                       <button
                         type="button"
                         onClick={() => openHarvest(block)}
