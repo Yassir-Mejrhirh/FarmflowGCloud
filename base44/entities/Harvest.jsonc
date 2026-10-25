@@ -1,0 +1,24 @@
+{
+  "name": "Harvest",
+  "type": "object",
+  "properties": {
+    "block_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "quantity_kg": {
+      "type": "number",
+      "description": "Total yield weight collected, in kg"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "block_id",
+    "date"
+  ]
+}
