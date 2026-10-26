@@ -156,7 +156,8 @@ export default function Tasks() {
                     <span>{t(`tt.${task.type}`)}</span>
                     {blockMap[task.block_id] && <span>· {blockMap[task.block_id].name}</span>}
                     {workerMap[task.assignee_id] && <span>· {workerMap[task.assignee_id].name}</span>}
-                    {task.due_date && <span>· {fmtDate(task.due_date)}</span>}
+                    {done && task.completed_date && <span>· {fmtDate(task.completed_date)}</span>}
+                    {!done && task.due_date && <span>· {fmtDate(task.due_date)}</span>}
                   </p>
                 </button>
 
@@ -206,9 +207,8 @@ function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
       type: task?.type || 'other',
       block_id: task?.block_id || '',
       assignee_id: task?.assignee_id || '',
-      due_date: task?.due_date || '',
+      completed_date: task?.completed_date || todayISO(),
       priority: task?.priority || 'medium',
-      status: task?.status || 'todo',
       estimated_cost: task?.estimated_cost ?? '',
       actual_cost: task?.actual_cost ?? '',
       notes: task?.notes || '',
@@ -225,14 +225,12 @@ function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
       block_id: form.block_id,
       assignee_id: form.assignee_id,
       priority: form.priority,
-      status: form.status,
+      status: 'done',
+      completed_date: form.completed_date || todayISO(),
       estimated_cost: Number(form.estimated_cost) || 0,
       actual_cost: Number(form.actual_cost) || 0,
       notes: form.notes || '',
     };
-    if (form.due_date) payload.due_date = form.due_date;
-    if (form.status === 'done' && !task?.completed_date) payload.completed_date = todayISO();
-    if (form.status !== 'done') payload.completed_date = '';
 
     if (task?.id) await base44.entities.Task.update(task.id, payload);
     else await base44.entities.Task.create(payload);
@@ -293,19 +291,8 @@ function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
             options={workers.map((worker) => ({ value: worker.id, label: worker.name }))}
           />
         </Field>
-        <Field label={t('taskDialog.dueDate')}>
-          <Input type="date" value={form.due_date || ''} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
-        </Field>
-        <Field label={t('common.status')}>
-          <SelectField
-            value={form.status}
-            onChange={(value) => setForm({ ...form, status: value })}
-            options={[
-              { value: 'todo', label: t('st.todo') },
-              { value: 'in_progress', label: t('st.in_progress') },
-              { value: 'done', label: t('st.done') },
-            ]}
-          />
+        <Field label={t('taskDialog.completionDate')}>
+          <Input type="date" value={form.completed_date || ''} onChange={(e) => setForm({ ...form, completed_date: e.target.value })} />
         </Field>
         <Field label={t('taskDialog.estimatedCost')}>
           <Input
