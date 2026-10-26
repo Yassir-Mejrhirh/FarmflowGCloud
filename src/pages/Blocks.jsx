@@ -14,12 +14,14 @@ import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
 import { fmtNum, fmtDate } from '@/lib/format';
 import { downloadBlockKml, blockKmlFilename, parseKmlBlocks } from '@/lib/kml';
+import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
-const STATUS_LABEL = { active: 'Growing', preparing: 'Preparing', harvest: 'Harvesting', fallow: 'Fallow' };
+const STATUS_KEYS = ['active', 'preparing', 'harvest', 'fallow'];
 const STATUS_TONE = { active: 'moss', preparing: 'amber', harvest: 'clay', fallow: 'stone' };
 
 export default function Blocks() {
+  const { t } = useI18n();
   const [blocks, setBlocks] = useState([]);
   const [crops, setCrops] = useState([]);
   const [varieties, setVarieties] = useState([]);
@@ -93,14 +95,14 @@ export default function Blocks() {
     try {
       const parsed = parseKmlBlocks(await file.text());
       if (!parsed.length) {
-        toast({ title: 'No field boundaries found', description: 'The KML file did not contain any polygons.', variant: 'destructive' });
+        toast({ title: t('blocks.toastNoBoundaries'), description: t('blocks.toastNoBoundariesDesc'), variant: 'destructive' });
         return;
       }
       await base44.entities.FarmBlock.bulkCreate(parsed.map((block) => ({ ...block, status: 'preparing' })));
       await load();
-      toast({ title: `Imported ${parsed.length} block${parsed.length > 1 ? 's' : ''}`, description: 'Boundaries were measured and saved from the KML file.' });
+      toast({ title: t('blocks.toastImported', { n: parsed.length }), description: t('blocks.toastImportedDesc') });
     } catch (error) {
-      toast({ title: 'Could not import KML', description: error.message || 'The file could not be read.', variant: 'destructive' });
+      toast({ title: t('blocks.toastImportFailed'), description: error.message || t('blocks.toastImportFailedDesc'), variant: 'destructive' });
     } finally {
       setImporting(false);
     }
@@ -109,13 +111,13 @@ export default function Blocks() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Georeferencing"
-        title="Blocks"
-        description="Every field drawn on satellite imagery, with its crop, variety and measured area."
+        eyebrow={t('blocks.eyebrow')}
+        title={t('blocks.title')}
+        description={t('blocks.description')}
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => importInputRef.current?.click()} disabled={importing} className="rounded-xl">
-              <Upload className="mr-1.5 h-4 w-4" /> {importing ? 'Importing…' : 'Import KML'}
+              <Upload className="mr-1.5 h-4 w-4" /> {importing ? t('blocks.importing') : t('blocks.importKml')}
             </Button>
             <Button variant="outline" onClick={() => downloadBlockKml(blocks)} className="rounded-xl">
               <Globe className="mr-1.5 h-4 w-4" /> Google Earth
@@ -128,20 +130,20 @@ export default function Blocks() {
               onChange={handleImportKml}
             />
             <Button variant="outline" onClick={() => openHarvest(null)} className="rounded-xl">
-              <Scale className="mr-1.5 h-4 w-4" /> Log harvest
+              <Scale className="mr-1.5 h-4 w-4" /> {t('blocks.logHarvest')}
             </Button>
             <Button onClick={openNew} className="rounded-xl">
-              <Plus className="mr-1.5 h-4 w-4" /> New block
+              <Plus className="mr-1.5 h-4 w-4" /> {t('blocks.newBlock')}
             </Button>
           </div>
         }
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryTile icon={MapPin} label="Blocks" value={blocks.length} />
-        <SummaryTile icon={Ruler} label="Mapped area" value={`${fmtNum(totalArea, 2)} ha`} />
-        <SummaryTile icon={Scale} label="Total harvested" value={`${fmtNum(totalHarvested, 0)} kg`} tone="sage" />
-        <SummaryTile icon={MapPin} label="Needs boundary" value={unmapped} tone="clay" />
+        <SummaryTile icon={MapPin} label={t('blocks.tilesBlocks')} value={blocks.length} />
+        <SummaryTile icon={Ruler} label={t('blocks.mappedArea')} value={`${fmtNum(totalArea, 2)} ha`} />
+        <SummaryTile icon={Scale} label={t('blocks.totalHarvested')} value={`${fmtNum(totalHarvested, 0)} kg`} tone="sage" />
+        <SummaryTile icon={MapPin} label={t('blocks.needsBoundary')} value={unmapped} tone="clay" />
       </div>
 
       {loading ? (
@@ -149,19 +151,19 @@ export default function Blocks() {
       ) : blocks.length === 0 ? (
         <EmptyState
           icon={MapPin}
-          title="No blocks yet"
-          description="Draw your first field boundary on the satellite map to start tracking area, crops and costs."
-          action={<Button onClick={openNew}>Plot a block</Button>}
+          title={t('blocks.noBlocksTitle')}
+          description={t('blocks.noBlocksDesc')}
+          action={<Button onClick={openNew}>{t('blocks.plotBlock')}</Button>}
         />
       ) : (
         <div className="grid gap-5 xl:grid-cols-[1.55fr_1fr]">
           <div className="rounded-2xl border border-border/70 bg-card p-2">
             <BlockMap blocks={blocks} selectedId={selectedId} onSelect={setSelectedId} />
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-3">
-              {Object.entries(STATUS_LABEL).map(([key, label]) => (
+              {STATUS_KEYS.map((key) => (
                 <span key={key} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: BLOCK_STATUS_COLORS[key] }} />
-                  {label}
+                  {t(`st.${key}`)}
                 </span>
               ))}
             </div>
@@ -181,37 +183,37 @@ export default function Blocks() {
                     active ? 'border-primary/40 shadow-[0_18px_40px_-38px_rgba(20,45,35,0.9)]' : 'border-border/70',
                   )}
                 >
-                  <button type="button" onClick={() => setSelectedId(block.id)} className="w-full text-left">
+                  <button type="button" onClick={() => setSelectedId(block.id)} className="w-full text-start">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-display text-base leading-tight">{block.name}</p>
                         <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                          {block.code || 'No code'}
+                          {block.code || t('blocks.noCode')}
                         </p>
                       </div>
                       <StatusPill tone={STATUS_TONE[block.status] || 'stone'}>
-                        {STATUS_LABEL[block.status] || block.status}
+                        {t(`st.${block.status}`)}
                       </StatusPill>
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span className="tabular-nums">{fmtNum(block.area_ha, 2)} ha</span>
                       <span className="truncate">
-                        {crop ? `${crop.name}${variety ? ` · ${variety.name}` : ''}` : 'No crop assigned'}
+                        {crop ? `${crop.name}${variety ? ` · ${variety.name}` : ''}` : t('common.noCropAssigned')}
                       </span>
                     </div>
                     {harvestStats && (
                       <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-sage">
-                        <span className="font-medium tabular-nums">{fmtNum(harvestStats.total, 0)} kg harvested</span>
+                        <span className="font-medium tabular-nums">{fmtNum(harvestStats.total, 0)} {t('blocks.kgHarvested')}</span>
                         <span className="tabular-nums">
                           {fmtNum(Number(block.area_ha) > 0 ? harvestStats.total / Number(block.area_ha) : 0, 0)} kg/ha
                         </span>
-                        <span>last {fmtDate(harvestStats.last)}</span>
+                        <span>{t('blocks.lastHarvest', { date: fmtDate(harvestStats.last) })}</span>
                       </p>
                     )}
                   </button>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-[11px] text-muted-foreground">
-                      {block.boundary?.length || 0} boundary points
+                      {t('blocks.boundaryPoints', { n: block.boundary?.length || 0 })}
                     </span>
                     <div className="flex items-center gap-3">
                       <button
@@ -226,14 +228,14 @@ export default function Blocks() {
                         onClick={() => openHarvest(block)}
                         className="text-[11px] font-medium text-sage hover:underline"
                       >
-                        Log harvest
+                        {t('blocks.logHarvest')}
                       </button>
                       <button
                         type="button"
                         onClick={() => openEdit(block)}
                         className="text-[11px] font-medium text-primary hover:underline"
                       >
-                        Edit block
+                        {t('blocks.editBlock')}
                       </button>
                     </div>
                   </div>

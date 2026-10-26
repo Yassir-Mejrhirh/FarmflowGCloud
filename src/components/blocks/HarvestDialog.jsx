@@ -6,8 +6,10 @@ import SelectField from '@/components/SelectField';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { todayISO } from '@/lib/format';
+import { useI18n } from '@/lib/I18nContext';
 
 export default function HarvestDialog({ open, onOpenChange, block, blocks, onSaved }) {
+  const { t } = useI18n();
   const [form, setForm] = useState({ block_id: '', date: todayISO(), quantity_kg: '', notes: '' });
   const [saving, setSaving] = useState(false);
 
@@ -37,25 +39,25 @@ export default function HarvestDialog({ open, onOpenChange, block, blocks, onSav
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Log harvest"
-      description="Record a harvest date and the total weight collected from a block."
+      title={t('harvest.title')}
+      description={t('harvest.desc')}
       onSubmit={handleSubmit}
       saving={saving}
-      submitLabel="Save harvest"
+      submitLabel={t('harvest.save')}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Block">
+        <Field label={t('common.block')}>
           <SelectField
             value={form.block_id}
             onChange={(value) => update('block_id', value)}
             options={blocks.map((b) => ({ value: b.id, label: b.name }))}
-            placeholder="Select block"
+            placeholder={t('harvest.selectBlock')}
           />
         </Field>
-        <Field label="Harvest date">
+        <Field label={t('harvest.date')}>
           <Input type="date" value={form.date} onChange={(e) => update('date', e.target.value)} required />
         </Field>
-        <Field label="Yield weight (kg)" hint="Total collected for this harvest.">
+        <Field label={t('harvest.yield')} hint={t('harvest.yieldHint')}>
           <Input
             type="number"
             min="0"
@@ -66,8 +68,8 @@ export default function HarvestDialog({ open, onOpenChange, block, blocks, onSav
             required
           />
         </Field>
-        <Field label="Notes">
-          <Input value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Rows 4–6, grade A" />
+        <Field label={t('common.notes')}>
+          <Input value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder={t('harvest.notesPlaceholder')} />
         </Field>
       </div>
     </FormDialog>

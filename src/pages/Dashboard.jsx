@@ -9,13 +9,14 @@ import StatCard from '@/components/StatCard';
 import StatusPill from '@/components/StatusPill';
 import { fetchList, byId, sumBy } from '@/lib/data';
 import { getMonthlyCosts } from '@/lib/costs';
-import { currentMonthKey, fmtDate, fmtMoney, fmtNum, todayISO } from '@/lib/format';
+import { currentMonthKey, fmtDate, fmtLongDate, fmtMoney, fmtNum, todayISO } from '@/lib/format';
+import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
-const STATUS_LABEL = { active: 'Growing', preparing: 'Preparing', harvest: 'Harvest', fallow: 'Fallow' };
 const STATUS_TONE = { active: 'moss', preparing: 'amber', harvest: 'clay', fallow: 'stone' };
 
 export default function Dashboard() {
+  const { t } = useI18n();
   const [blocks, setBlocks] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [items, setItems] = useState([]);
@@ -57,7 +58,7 @@ export default function Dashboard() {
   const blockMap = useMemo(() => byId(blocks), [blocks]);
 
   const today = todayISO();
-  const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateLabel = fmtLongDate();
   const mappedArea = sumBy(blocks, 'area_ha');
   const openTasks = tasks.filter((task) => task.status !== 'done');
   const overdue = openTasks.filter((task) => task.due_date && task.due_date < today).length;
@@ -73,9 +74,8 @@ export default function Dashboard() {
   };
 
   const dueLabel = (task) => {
-    if (!task.due_date) return 'No date';
-    if (task.due_date === today) return 'Today';
-    if (task.due_date < today) return fmtDate(task.due_date);
+    if (!task.due_date) return t('dash.noDate');
+    if (task.due_date === today) return t('dash.today');
     return fmtDate(task.due_date);
   };
 
@@ -85,14 +85,14 @@ export default function Dashboard() {
     <div className="space-y-10">
       <PageHeader
         eyebrow={dateLabel}
-        title="Farm overview"
-        description="A calm view of what the land, the crew and the machines need today."
+        title={t('dash.title')}
+        description={t('dash.description')}
         action={
           <Link
             to="/tasks"
             className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            <Plus className="h-4 w-4" /> New task
+            <Plus className="h-4 w-4" /> {t('dash.newTask')}
           </Link>
         }
       />
@@ -100,30 +100,30 @@ export default function Dashboard() {
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={MapPin}
-          label="Mapped area"
+          label={t('dash.mappedArea')}
           value={`${fmtNum(mappedArea, 2)} ha`}
-          hint={`${blocks.length} blocks georeferenced`}
+          hint={t('dash.blocksGeoref', { n: blocks.length })}
           tone="moss"
         />
         <StatCard
           icon={ListChecks}
-          label="Open tasks"
+          label={t('dash.openTasks')}
           value={openTasks.length}
-          hint={overdue ? `${overdue} overdue right now` : 'Nothing overdue'}
+          hint={overdue ? t('dash.overdueNow', { n: overdue }) : t('dash.nothingOverdue')}
           tone="clay"
         />
         <StatCard
           icon={Users}
-          label="Crew today"
+          label={t('dash.crewToday')}
           value={crewToday}
-          hint={`${activeWorkers} active on the roster`}
+          hint={t('dash.activeRoster', { n: activeWorkers })}
           tone="sand"
         />
         <StatCard
           icon={Coins}
-          label="Spend this month"
+          label={t('dash.spendMonth')}
           value={fmtMoney(spend)}
-          hint="Wages, inputs and machinery"
+          hint={t('dash.spendHint')}
           tone="sand"
         />
       </section>
@@ -132,15 +132,15 @@ export default function Dashboard() {
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
           <div className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
             <div>
-              <h2 className="font-display text-lg tracking-tight">Today&apos;s work</h2>
-              <p className="text-xs text-muted-foreground">{openTasks.length} open across the farm</p>
+              <h2 className="font-display text-lg tracking-tight">{t('dash.todaysWork')}</h2>
+              <p className="text-xs text-muted-foreground">{t('dash.openAcross', { n: openTasks.length })}</p>
             </div>
             <Link to="/tasks" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              All tasks <ArrowUpRight className="h-3.5 w-3.5" />
+              {t('dash.allTasks')} <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </div>
           {upcoming.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-muted-foreground">Nothing open. The farm is all caught up.</p>
+            <p className="px-5 py-10 text-center text-sm text-muted-foreground">{t('dash.nothingOpen')}</p>
           ) : (
             <ul className="divide-y divide-border/60 px-2 py-1">
               {upcoming.map((task) => {
@@ -150,7 +150,7 @@ export default function Dashboard() {
                     <button
                       type="button"
                       onClick={() => toggleDone(task)}
-                      aria-label="Mark as done"
+                      aria-label={t('dash.markDone')}
                       className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-border bg-card transition-colors hover:border-primary/50"
                     >
                       {task.status === 'done' && <Check className="h-3 w-3" strokeWidth={3} />}
@@ -158,12 +158,12 @@ export default function Dashboard() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{task.title}</p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {blockMap[task.block_id]?.name || 'Farm-wide'}
+                        {blockMap[task.block_id]?.name || t('dash.farmWide')}
                         {workerMap[task.assignee_id] ? ` · ${workerMap[task.assignee_id].name}` : ''}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {late ? <StatusPill tone="clay">Overdue</StatusPill> : null}
+                      {late ? <StatusPill tone="clay">{t('dash.overdue')}</StatusPill> : null}
                       <span className="text-xs tabular-nums text-muted-foreground">{dueLabel(task)}</span>
                     </div>
                   </li>
@@ -177,10 +177,10 @@ export default function Dashboard() {
           <div className="rounded-2xl border border-border/70 bg-card p-5">
             <div className="flex items-center gap-2">
               <PackageSearch className="h-4 w-4 text-clay" strokeWidth={1.8} />
-              <h2 className="font-display text-lg tracking-tight">Running low</h2>
+              <h2 className="font-display text-lg tracking-tight">{t('dash.runningLow')}</h2>
             </div>
             {lowStock.length === 0 ? (
-              <p className="mt-4 text-sm text-muted-foreground">All inputs are above their minimum.</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('dash.allAboveMin')}</p>
             ) : (
               <ul className="mt-4 space-y-4">
                 {lowStock.slice(0, 3).map((item) => {
@@ -199,7 +199,7 @@ export default function Dashboard() {
                         <div className="h-full rounded-full bg-clay" style={{ width: `${Math.max(level, 4)}%` }} />
                       </div>
                       <p className="mt-1 text-[11px] text-muted-foreground">
-                        Minimum {fmtNum(item.min_stock, 0)} {item.unit}
+                        {t('dash.minimum')} {fmtNum(item.min_stock, 0)} {item.unit}
                       </p>
                     </li>
                   );
@@ -207,7 +207,7 @@ export default function Dashboard() {
               </ul>
             )}
             <Link to="/inventory" className="mt-5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              Open inventory <ChevronRight className="h-3.5 w-3.5" />
+              {t('dash.openInventory')} <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
@@ -215,15 +215,15 @@ export default function Dashboard() {
             to="/blocks"
             className="group block rounded-2xl bg-primary p-5 text-primary-foreground transition-transform duration-300 hover:-translate-y-0.5"
           >
-            <p className="text-[11px] uppercase tracking-[0.18em] text-primary-foreground/60">Georeferencing</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-primary-foreground/60">{t('dash.georef')}</p>
             <p className="mt-2 font-display text-xl leading-snug">
-              {blocks.length} blocks drawn on satellite imagery
+              {t('dash.blocksDrawn', { n: blocks.length })}
             </p>
             <p className="mt-1.5 text-xs leading-relaxed text-primary-foreground/70">
-              Trace a boundary, name the crop, and the area is calculated for you.
+              {t('dash.traceHint')}
             </p>
             <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium">
-              Plot a new block
+              {t('dash.plotNewBlock')}
               <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </span>
           </Link>
@@ -233,18 +233,18 @@ export default function Dashboard() {
       <section>
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl tracking-tight">Blocks in season</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Area measured from each drawn boundary</p>
+            <h2 className="font-display text-2xl tracking-tight">{t('dash.blocksInSeason')}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{t('dash.areaMeasured')}</p>
           </div>
           <Link to="/blocks" className="text-xs font-medium text-primary hover:underline">
-            Manage blocks
+            {t('dash.manageBlocks')}
           </Link>
         </div>
         {blocks.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10 text-center">
-            <p className="text-sm text-muted-foreground">No blocks yet — plot your first field to get started.</p>
+            <p className="text-sm text-muted-foreground">{t('dash.noBlocksYet')}</p>
             <Link to="/blocks" className="mt-3 inline-block text-xs font-medium text-primary hover:underline">
-              Open blocks
+              {t('dash.openBlocks')}
             </Link>
           </div>
         ) : (
@@ -259,17 +259,17 @@ export default function Dashboard() {
                   <div className="min-w-0">
                     <p className="truncate font-display text-base leading-tight">{block.name}</p>
                     <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {block.code || 'Block'}
+                      {block.code || t('dash.block')}
                     </p>
                   </div>
                   <StatusPill tone={STATUS_TONE[block.status] || 'stone'}>
-                    {STATUS_LABEL[block.status] || 'Block'}
+                    {t(`st.${block.status}`) || t('dash.block')}
                   </StatusPill>
                 </div>
                 <p className="mt-5 truncate text-sm text-muted-foreground">
                   {cropMap[block.crop_id]
                     ? `${cropMap[block.crop_id].name}${varietyMap[block.variety_id] ? ` · ${varietyMap[block.variety_id].name}` : ''}`
-                    : 'No crop assigned'}
+                    : t('common.noCropAssigned')}
                 </p>
                 <p className="mt-2 font-display text-2xl leading-none tabular-nums">
                   {fmtNum(block.area_ha, 2)} <span className="text-sm font-normal text-muted-foreground">ha</span>

@@ -3,32 +3,36 @@ import {
   LayoutDashboard, Map, Sprout, ListChecks, Users, Tractor, Boxes, Wallet, Leaf,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const GROUPS = [
-  {
-    label: 'Farm',
-    items: [
-      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-      { to: '/blocks', label: 'Blocks', icon: Map },
-      { to: '/crops', label: 'Crops & varieties', icon: Sprout },
-    ],
-  },
-  {
-    label: 'Operations',
-    items: [
-      { to: '/tasks', label: 'Tasks', icon: ListChecks },
-      { to: '/workers', label: 'Workers', icon: Users },
-      { to: '/machinery', label: 'Machinery', icon: Tractor },
-      { to: '/inventory', label: 'Inventory', icon: Boxes },
-    ],
-  },
-  {
-    label: 'Finance',
-    items: [{ to: '/costs', label: 'Costs', icon: Wallet }],
-  },
-];
+import { useI18n } from '@/lib/I18nContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function Sidebar({ onNavigate }) {
+  const { t } = useI18n();
+
+  const groups = [
+    {
+      label: t('nav.farm'),
+      items: [
+        { to: '/', label: t('nav.overview'), icon: LayoutDashboard, end: true },
+        { to: '/blocks', label: t('nav.blocks'), icon: Map },
+        { to: '/crops', label: t('nav.crops'), icon: Sprout },
+      ],
+    },
+    {
+      label: t('nav.operations'),
+      items: [
+        { to: '/tasks', label: t('nav.tasks'), icon: ListChecks },
+        { to: '/workers', label: t('nav.workers'), icon: Users },
+        { to: '/machinery', label: t('nav.machinery'), icon: Tractor },
+        { to: '/inventory', label: t('nav.inventory'), icon: Boxes },
+      ],
+    },
+    {
+      label: t('nav.finance'),
+      items: [{ to: '/costs', label: t('nav.costs'), icon: Wallet }],
+    },
+  ];
+
   return (
     <div className="flex h-full w-full flex-col">
       <div className="flex items-center gap-3 px-5 pb-7 pt-6">
@@ -37,12 +41,12 @@ export default function Sidebar({ onNavigate }) {
         </span>
         <div className="leading-none">
           <p className="font-display text-lg tracking-tight">Terra</p>
-          <p className="mt-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Farm suite</p>
+          <p className="mt-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{t('sidebar.tagline')}</p>
         </div>
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.label}>
             <p className="mb-2 px-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70">
               {group.label}
@@ -73,9 +77,10 @@ export default function Sidebar({ onNavigate }) {
         ))}
       </nav>
 
-      <div className="border-t border-border/70 px-5 py-4">
+      <div className="space-y-3 border-t border-border/70 px-5 py-4">
+        <LanguageSwitcher />
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Season 2026 · Blocks, crew and costs in one place.
+          {t('sidebar.footer')}
         </p>
       </div>
     </div>

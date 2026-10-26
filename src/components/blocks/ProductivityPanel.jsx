@@ -3,9 +3,11 @@ import { Scale, Sprout } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { fmtNum } from '@/lib/format';
+import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
 export default function ProductivityPanel({ blocks, harvests, cropMap, onLogHarvest }) {
+  const { t } = useI18n();
   const stats = useMemo(() => {
     const byBlock = {};
     harvests.forEach((harvest) => {
@@ -49,11 +51,11 @@ export default function ProductivityPanel({ blocks, harvests, cropMap, onLogHarv
     <div className="rounded-2xl border border-border/70 bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Productivity</p>
-          <p className="font-display text-base leading-tight">Yield by block</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{t('prod.label')}</p>
+          <p className="font-display text-base leading-tight">{t('prod.title')}</p>
         </div>
         <Button variant="outline" size="sm" className="rounded-lg" onClick={onLogHarvest}>
-          Log harvest
+          {t('blocks.logHarvest')}
         </Button>
       </div>
 
@@ -61,8 +63,8 @@ export default function ProductivityPanel({ blocks, harvests, cropMap, onLogHarv
         <div className="pt-4">
           <EmptyState
             icon={Sprout}
-            title="No harvests logged yet"
-            description="Record harvest dates and weights to compare yield per hectare across your blocks."
+            title={t('prod.empty')}
+            description={t('prod.emptyDesc')}
           />
         </div>
       ) : (
@@ -70,7 +72,7 @@ export default function ProductivityPanel({ blocks, harvests, cropMap, onLogHarv
           <p className="mt-4 flex items-center gap-2 text-2xl font-light tabular-nums">
             <Scale className="h-5 w-5 text-sage" strokeWidth={1.75} />
             {fmtNum(totalHarvested, 0)} kg
-            <span className="text-xs text-muted-foreground">harvested in total</span>
+            <span className="text-xs text-muted-foreground">{t('prod.totalSuffix')}</span>
           </p>
 
           <div className="mt-5 space-y-3">
@@ -89,7 +91,7 @@ export default function ProductivityPanel({ blocks, harvests, cropMap, onLogHarv
                   />
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  {fmtNum(row.total, 0)} kg total · {row.count} harvest{row.count > 1 ? 's' : ''} · {row.crop}
+                  {t('prod.rowSummary', { total: fmtNum(row.total, 0), count: row.count, crop: row.crop })}
                 </p>
               </div>
             ))}
@@ -97,7 +99,7 @@ export default function ProductivityPanel({ blocks, harvests, cropMap, onLogHarv
 
           {perCrop.length > 0 && (
             <div className="mt-5 border-t border-border/70 pt-4">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">By crop</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{t('prod.byCrop')}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {perCrop.map(([crop, total]) => (
                   <span

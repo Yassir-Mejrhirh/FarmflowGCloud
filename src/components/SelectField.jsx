@@ -1,13 +1,15 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useI18n } from '@/lib/I18nContext';
 
-export default function SelectField({ value, onChange, placeholder = 'Select…', options = [], noneLabel, className }) {
+export default function SelectField({ value, onChange, placeholder, options = [], noneLabel, className }) {
+  const { t } = useI18n();
   const optionList = (options || []).filter((option) => option && option.value);
   const current = value ? String(value) : noneLabel ? 'none' : undefined;
 
   return (
     <Select value={current} onValueChange={(next) => onChange(next === 'none' ? '' : next)}>
       <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={placeholder || t('common.select')} />
       </SelectTrigger>
       <SelectContent>
         {noneLabel && <SelectItem value="none">{noneLabel}</SelectItem>}

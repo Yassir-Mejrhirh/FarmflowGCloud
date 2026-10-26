@@ -7,12 +7,16 @@ import BoundaryDrawer from '@/components/blocks/BoundaryDrawer';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { polygonAreaHa } from '@/lib/geo';
+import { useI18n } from '@/lib/I18nContext';
 
 const EMPTY = {
   name: '', code: '', crop_id: '', variety_id: '', planting_date: '', status: 'active', soil_type: '', notes: '', boundary: [],
 };
 
+const STATUSES = ['active', 'preparing', 'harvest', 'fallow'];
+
 export default function BlockDialog({ open, onOpenChange, block, crops, varieties, onSaved }) {
+  const { t } = useI18n();
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
@@ -80,68 +84,63 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={block ? 'Edit block' : 'New block'}
-      description="Trace the field boundary on satellite imagery — the area is measured automatically."
+      title={block ? t('blockDialog.editTitle') : t('blockDialog.newTitle')}
+      description={t('blockDialog.desc')}
       onSubmit={handleSubmit}
       saving={saving}
-      submitLabel={block ? 'Save block' : 'Create block'}
+      submitLabel={block ? t('blockDialog.save') : t('blockDialog.create')}
       wide
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Block name">
-          <Input value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="North Olive Terrace" required />
+        <Field label={t('blockDialog.blockName')}>
+          <Input value={form.name} onChange={(e) => update('name', e.target.value)} placeholder={t('blockDialog.namePlaceholder')} required />
         </Field>
-        <Field label="Code">
+        <Field label={t('blockDialog.code')}>
           <Input value={form.code} onChange={(e) => update('code', e.target.value)} placeholder="OL-01" />
         </Field>
-        <Field label="Crop">
+        <Field label={t('common.crop')}>
           <SelectField
             value={form.crop_id}
             onChange={(value) => setForm((prev) => ({ ...prev, crop_id: value, variety_id: '' }))}
-            noneLabel="No crop yet"
+            noneLabel={t('blockDialog.noCropYet')}
             options={crops.map((crop) => ({ value: crop.id, label: crop.name }))}
           />
         </Field>
-        <Field label="Variety">
+        <Field label={t('blockDialog.variety')}>
           <SelectField
             value={form.variety_id}
             onChange={(value) => update('variety_id', value)}
-            noneLabel="No variety"
+            noneLabel={t('blockDialog.noVariety')}
             options={varietyOptions}
-            placeholder={form.crop_id ? 'Select variety' : 'Pick a crop first'}
+            placeholder={form.crop_id ? t('blockDialog.selectVariety') : t('blockDialog.pickCropFirst')}
           />
         </Field>
-        <Field label="Planting date">
+        <Field label={t('blockDialog.plantingDate')}>
           <Input type="date" value={form.planting_date} onChange={(e) => update('planting_date', e.target.value)} />
         </Field>
-        <Field label="Status">
+        <Field label={t('common.status')}>
           <SelectField
             value={form.status}
             onChange={(value) => update('status', value)}
-            options={[
-              { value: 'active', label: 'Growing' },
-              { value: 'preparing', label: 'Preparing' },
-              { value: 'harvest', label: 'Harvesting' },
-              { value: 'fallow', label: 'Fallow' },
-            ]}
+            options={STATUSES.map((value) => ({ value, label: t(`st.${value}`) }))}
           />
         </Field>
-        <Field label="Soil type">
-          <Input value={form.soil_type} onChange={(e) => update('soil_type', e.target.value)} placeholder="Sandy loam" />
+        <Field label={t('blockDialog.soilType')}>
+          <Input value={form.soil_type} onChange={(e) => update('soil_type', e.target.value)} placeholder={t('blockDialog.soilPlaceholder')} />
         </Field>
-        <Field label="Measured area">
+        <Field label={t('blockDialog.measuredArea')}>
           <div className="flex h-10 items-center rounded-md border border-input bg-secondary/60 px-3 text-sm font-medium tabular-nums">
             {area.toFixed(2)} ha
           </div>
         </Field>
       </div>
 
-      <Field label="Boundary" hint="Place at least three corners to close the field outline.">
+      <Field label={t('blockDialog.boundary')} hint={t('blockDialog.boundaryHint')}>
         <BoundaryDrawer points={form.boundary} onChange={(points) => update('boundary', points)} />
       </Field>
 
-      <Field label="Notes">
-        <Textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} rows={2} placeholder="Irrigation, access, anything worth remembering" />
+      <Field label={t('common.notes')}>
+        <Textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} rows={2} placeholder={t('blockDialog.notesPlaceholder')} />
       </Field>
 
       {block?.id && (
@@ -150,7 +149,7 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
           onClick={handleDelete}
           className="text-xs font-medium text-destructive hover:underline"
         >
-          Delete this block
+          {t('blockDialog.delete')}
         </button>
       )}
     </FormDialog>

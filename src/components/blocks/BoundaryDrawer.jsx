@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { SATELLITE_URL } from '@/components/blocks/BlockMap';
 import { DEFAULT_CENTER, polygonAreaHa, toLatLngs } from '@/lib/geo';
 import { fmtNum } from '@/lib/format';
+import { useI18n } from '@/lib/I18nContext';
 
 function MapResizer() {
   const map = useMap();
@@ -43,6 +44,7 @@ function DrawLayer({ points, onAdd }) {
 }
 
 export default function BoundaryDrawer({ points = [], onChange }) {
+  const { t } = useI18n();
   const area = polygonAreaHa(points);
   const center = points.length ? [points[0].lat, points[0].lng] : DEFAULT_CENTER;
 
@@ -57,7 +59,7 @@ export default function BoundaryDrawer({ points = [], onChange }) {
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] text-muted-foreground">
-          Tap the map to place boundary corners · {points.length} points ·{' '}
+          {t('bd.tapHint')} · {points.length} {t('bd.points')} ·{' '}
           <span className="font-medium text-foreground">{fmtNum(area, 2)} ha</span>
         </p>
         <div className="flex gap-2">
@@ -69,7 +71,7 @@ export default function BoundaryDrawer({ points = [], onChange }) {
             onClick={() => onChange(points.slice(0, -1))}
             disabled={!points.length}
           >
-            Undo point
+            {t('bd.undo')}
           </Button>
           <Button
             type="button"
@@ -79,7 +81,7 @@ export default function BoundaryDrawer({ points = [], onChange }) {
             onClick={() => onChange([])}
             disabled={!points.length}
           >
-            Clear
+            {t('bd.clear')}
           </Button>
         </div>
       </div>

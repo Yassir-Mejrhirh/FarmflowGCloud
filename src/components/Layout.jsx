@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Menu, Leaf } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 
@@ -10,11 +11,11 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-border/70 bg-sidebar lg:block">
+      <aside className="fixed inset-y-0 start-0 z-40 hidden w-64 border-e border-border/70 bg-sidebar lg:block">
         <Sidebar />
       </aside>
 
-      <div className="lg:pl-64">
+      <div className="lg:ps-64">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/70 bg-background/80 px-4 backdrop-blur-md lg:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -26,10 +27,11 @@ export default function Layout() {
               <Sidebar onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-1 items-center gap-2">
             <Leaf className="h-4 w-4 text-primary" strokeWidth={2} />
             <span className="font-display text-base tracking-tight">Terra</span>
           </div>
+          <LanguageSwitcher />
         </header>
 
         <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-8 sm:px-8 lg:pt-12">

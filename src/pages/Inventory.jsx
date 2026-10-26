@@ -13,34 +13,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList, byId } from '@/lib/data';
 import { fmtDate, fmtMoney, fmtNum, todayISO } from '@/lib/format';
+import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
-const CATEGORIES = [
-  { value: 'seed', label: 'Seed' },
-  { value: 'fertilizer', label: 'Fertiliser' },
-  { value: 'pesticide', label: 'Pesticide' },
-  { value: 'herbicide', label: 'Herbicide' },
-  { value: 'fuel', label: 'Fuel' },
-  { value: 'packaging', label: 'Packaging' },
-  { value: 'other', label: 'Other' },
-];
-const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
-const UNITS = [
-  { value: 'kg', label: 'kg' },
-  { value: 'l', label: 'litres' },
-  { value: 'bag', label: 'bags' },
-  { value: 'pack', label: 'packs' },
-  { value: 'unit', label: 'units' },
-];
-const STORAGE_KINDS = [
-  { value: 'warehouse', label: 'Warehouse' },
-  { value: 'cold_room', label: 'Cold room' },
-  { value: 'silo', label: 'Silo' },
-  { value: 'shed', label: 'Shed' },
-];
-const STORAGE_LABEL = Object.fromEntries(STORAGE_KINDS.map((s) => [s.value, s.label]));
+const CATEGORIES = ['seed', 'fertilizer', 'pesticide', 'herbicide', 'fuel', 'packaging', 'other'];
+const UNITS = ['kg', 'l', 'bag', 'pack', 'unit'];
+const STORAGE_KINDS = ['warehouse', 'cold_room', 'silo', 'shed'];
 
 export default function Inventory() {
+  const { t } = useI18n();
   const [tab, setTab] = useState('inputs');
   const [items, setItems] = useState([]);
   const [storages, setStorages] = useState([]);
@@ -106,9 +87,9 @@ export default function Inventory() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Stores & inputs"
-        title="Inventory"
-        description="What is in the store, what is running out, and every movement in and out."
+        eyebrow={t('inv.eyebrow')}
+        title={t('inv.title')}
+        description={t('inv.description')}
         action={
           <Button
             className="rounded-xl"
@@ -122,24 +103,24 @@ export default function Inventory() {
               }
             }}
           >
-            <Plus className="mr-1.5 h-4 w-4" /> {tab === 'storages' ? 'New storage' : 'New input'}
+            <Plus className="mr-1.5 h-4 w-4" /> {tab === 'storages' ? t('inv.newStorage') : t('inv.newInput')}
           </Button>
         }
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <MiniStat label="Inputs tracked" value={items.length} />
-        <MiniStat label="Low stock" value={lowStock.length} tone={lowStock.length ? 'clay' : 'sand'} />
-        <MiniStat label="Stock value" value={fmtMoney(stockValue)} />
+        <MiniStat label={t('inv.inputsTracked')} value={items.length} />
+        <MiniStat label={t('inv.lowStock')} value={lowStock.length} tone={lowStock.length ? 'clay' : 'sand'} />
+        <MiniStat label={t('inv.stockValue')} value={fmtMoney(stockValue)} />
       </div>
 
       <Segmented
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'inputs', label: `Inputs (${items.length})` },
-          { value: 'storages', label: `Storages (${storages.length})` },
-          { value: 'movements', label: `Movements (${movements.length})` },
+          { value: 'inputs', label: `${t('inv.tabInputs')} (${items.length})` },
+          { value: 'storages', label: `${t('inv.tabStorages')} (${storages.length})` },
+          { value: 'movements', label: `${t('inv.tabMovements')} (${movements.length})` },
         ]}
       />
 
@@ -149,9 +130,9 @@ export default function Inventory() {
         items.length === 0 ? (
           <EmptyState
             icon={Boxes}
-            title="No inputs yet"
-            description="Track seed, fertiliser, fuel and packaging with stock levels and minimum thresholds."
-            action={<Button onClick={() => setItemDialog(true)}>Add an input</Button>}
+            title={t('inv.emptyInputsTitle')}
+            description={t('inv.emptyInputsDesc')}
+            action={<Button onClick={() => setItemDialog(true)}>{t('inv.addInput')}</Button>}
           />
         ) : (
           <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
@@ -162,26 +143,26 @@ export default function Inventory() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-medium">{item.name}</p>
-                      {low && <StatusPill tone="clay">Low</StatusPill>}
+                      {low && <StatusPill tone="clay">{t('common.low')}</StatusPill>}
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {CATEGORY_LABEL[item.category] || 'Input'}
+                      {t(`icat.${item.category}`)}
                       {storageMap[item.storage_id] ? ` · ${storageMap[item.storage_id].name}` : ''}
                       {item.unit_cost ? ` · ${fmtMoney(item.unit_cost)} / ${item.unit}` : ''}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-end">
                     <p className={cn('text-sm tabular-nums', low && 'text-clay')}>
                       {fmtNum(item.stock, 1)} {item.unit}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">min {fmtNum(item.min_stock, 0)}</p>
+                    <p className="text-[11px] text-muted-foreground">{t('inv.minPrefix')} {fmtNum(item.min_stock, 0)}</p>
                   </div>
                   <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
                     <Button variant="outline" size="sm" className="h-7 rounded-lg px-2 text-[11px]" onClick={() => openMove(item, 'in')}>
-                      Stock in
+                      {t('inv.stockIn')}
                     </Button>
                     <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px]" onClick={() => openMove(item, 'out')}>
-                      Stock out
+                      {t('inv.stockOut')}
                     </Button>
                     <button
                       type="button"
@@ -191,7 +172,7 @@ export default function Inventory() {
                       }}
                       className="px-1.5 text-[11px] font-medium text-muted-foreground hover:underline"
                     >
-                      Edit
+                      {t('common.edit')}
                     </button>
                   </div>
                 </li>
@@ -203,9 +184,9 @@ export default function Inventory() {
         storages.length === 0 ? (
           <EmptyState
             icon={Warehouse}
-            title="No storages yet"
-            description="Add your warehouse, cold room or silo so inputs know where they live."
-            action={<Button onClick={() => setStorageDialog(true)}>Add a storage</Button>}
+            title={t('inv.emptyStoragesTitle')}
+            description={t('inv.emptyStoragesDesc')}
+            action={<Button onClick={() => setStorageDialog(true)}>{t('inv.addStorage')}</Button>}
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -219,14 +200,14 @@ export default function Inventory() {
                     setEditingStorage(storage);
                     setStorageDialog(true);
                   }}
-                  className="rounded-2xl border border-border/70 bg-card p-5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_45px_-38px_rgba(20,45,35,0.9)]"
+                  className="rounded-2xl border border-border/70 bg-card p-5 text-start transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_45px_-38px_rgba(20,45,35,0.9)]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-display text-lg leading-tight">{storage.name}</p>
-                    <StatusPill tone="sand">{STORAGE_LABEL[storage.kind] || 'Store'}</StatusPill>
+                    <StatusPill tone="sand">{t(`sk.${storage.kind}`)}</StatusPill>
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">{storage.location || 'No location set'}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">{count} inputs stored here</p>
+                  <p className="mt-3 text-xs text-muted-foreground">{storage.location || t('inv.noLocation')}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{t('inv.inputsStored', { n: count })}</p>
                 </button>
               );
             })}
@@ -235,8 +216,8 @@ export default function Inventory() {
       ) : movements.length === 0 ? (
         <EmptyState
           icon={Boxes}
-          title="No movements yet"
-          description="Record stock coming in from suppliers or going out to the fields."
+          title={t('inv.emptyMovementsTitle')}
+          description={t('inv.emptyMovementsDesc')}
         />
       ) : (
         <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
@@ -254,15 +235,15 @@ export default function Inventory() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {itemMap[movement.item_id]?.name || 'Unknown input'}
+                    {itemMap[movement.item_id]?.name || t('inv.unknownInput')}
                   </p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {fmtDate(movement.date)} · {inward ? 'In' : 'Out'}
+                    {fmtDate(movement.date)} · {inward ? t('inv.in') : t('inv.out')}
                     {blockMap[movement.block_id] ? ` · ${blockMap[movement.block_id].name}` : ''}
                     {movement.notes ? ` · ${movement.notes}` : ''}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <p className="text-sm tabular-nums">
                     {inward ? '+' : '−'}
                     {fmtNum(movement.quantity, 1)} {itemMap[movement.item_id]?.unit || ''}
@@ -274,7 +255,7 @@ export default function Inventory() {
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-destructive"
                   onClick={() => removeMovement(movement)}
-                  aria-label="Delete movement"
+                  aria-label={t('common.deleteMovement')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -319,6 +300,7 @@ function MiniStat({ label, value, tone = 'sand' }) {
 }
 
 function ItemDialog({ open, onOpenChange, item, storages, onSaved }) {
+  const { t } = useI18n();
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -370,45 +352,53 @@ function ItemDialog({ open, onOpenChange, item, storages, onSaved }) {
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={item ? 'Edit input' : 'New input'}
+      title={item ? t('itemDialog.editTitle') : t('itemDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitLabel={item ? 'Save input' : 'Add input'}
+      submitLabel={item ? t('itemDialog.save') : t('itemDialog.add')}
     >
-      <Field label="Name">
+      <Field label={t('common.name')}>
         <Input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="NPK 15-15-15" required />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Category">
-          <SelectField value={form.category} onChange={(value) => setForm({ ...form, category: value })} options={CATEGORIES} />
+        <Field label={t('common.category')}>
+          <SelectField
+            value={form.category}
+            onChange={(value) => setForm({ ...form, category: value })}
+            options={CATEGORIES.map((value) => ({ value, label: t(`icat.${value}`) }))}
+          />
         </Field>
-        <Field label="Unit">
-          <SelectField value={form.unit} onChange={(value) => setForm({ ...form, unit: value })} options={UNITS} />
+        <Field label={t('itemDialog.unit')}>
+          <SelectField
+            value={form.unit}
+            onChange={(value) => setForm({ ...form, unit: value })}
+            options={UNITS.map((value) => ({ value, label: t(`u.${value}`) }))}
+          />
         </Field>
-        <Field label="Stock on hand">
+        <Field label={t('itemDialog.stockOnHand')}>
           <Input type="number" value={form.stock ?? ''} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
         </Field>
-        <Field label="Minimum stock">
+        <Field label={t('itemDialog.minStock')}>
           <Input type="number" value={form.min_stock ?? ''} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
         </Field>
-        <Field label="Cost per unit">
+        <Field label={t('itemDialog.costUnit')}>
           <Input type="number" value={form.unit_cost ?? ''} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
         </Field>
-        <Field label="Storage">
+        <Field label={t('itemDialog.storage')}>
           <SelectField
             value={form.storage_id}
             onChange={(value) => setForm({ ...form, storage_id: value })}
-            noneLabel="No storage"
+            noneLabel={t('itemDialog.noStorage')}
             options={storages.map((storage) => ({ value: storage.id, label: storage.name }))}
           />
         </Field>
       </div>
-      <Field label="Notes">
+      <Field label={t('common.notes')}>
         <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
       {item?.id && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
-          Delete this input
+          {t('itemDialog.delete')}
         </button>
       )}
     </FormDialog>
@@ -416,6 +406,7 @@ function ItemDialog({ open, onOpenChange, item, storages, onSaved }) {
 }
 
 function StorageDialog({ open, onOpenChange, storage, onSaved }) {
+  const { t } = useI18n();
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -461,35 +452,39 @@ function StorageDialog({ open, onOpenChange, storage, onSaved }) {
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={storage ? 'Edit storage' : 'New storage'}
+      title={storage ? t('storageDialog.editTitle') : t('storageDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitLabel={storage ? 'Save storage' : 'Add storage'}
+      submitLabel={storage ? t('storageDialog.save') : t('storageDialog.add')}
     >
-      <Field label="Name">
-        <Input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Main warehouse" required />
+      <Field label={t('common.name')}>
+        <Input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('storageDialog.namePlaceholder')} required />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Type">
-          <SelectField value={form.kind} onChange={(value) => setForm({ ...form, kind: value })} options={STORAGE_KINDS} />
+        <Field label={t('common.type')}>
+          <SelectField
+            value={form.kind}
+            onChange={(value) => setForm({ ...form, kind: value })}
+            options={STORAGE_KINDS.map((value) => ({ value, label: t(`sk.${value}`) }))}
+          />
         </Field>
-        <Field label="Location">
-          <Input value={form.location || ''} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Near the workshop" />
+        <Field label={t('storageDialog.location')}>
+          <Input value={form.location || ''} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder={t('storageDialog.locationPlaceholder')} />
         </Field>
       </div>
-      <Field label="Capacity">
+      <Field label={t('storageDialog.capacity')}>
         <Input
           value={form.capacity_note || ''}
           onChange={(e) => setForm({ ...form, capacity_note: e.target.value })}
-          placeholder="40 tonnes"
+          placeholder={t('storageDialog.capacityPlaceholder')}
         />
       </Field>
-      <Field label="Notes">
+      <Field label={t('common.notes')}>
         <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
       {storage?.id && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
-          Delete this storage
+          {t('storageDialog.delete')}
         </button>
       )}
     </FormDialog>
@@ -497,6 +492,7 @@ function StorageDialog({ open, onOpenChange, storage, onSaved }) {
 }
 
 function MovementDialog({ open, onOpenChange, preset, items, blocks, onSave }) {
+  const { t } = useI18n();
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -534,32 +530,32 @@ function MovementDialog({ open, onOpenChange, preset, items, blocks, onSave }) {
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Stock movement"
-      description="Stock in records a purchase; stock out records use in the field."
+      title={t('moveDialog.title')}
+      description={t('moveDialog.desc')}
       onSubmit={submit}
       saving={saving}
-      submitLabel="Save movement"
+      submitLabel={t('moveDialog.save')}
     >
-      <Field label="Input">
+      <Field label={t('inv.input')}>
         <SelectField
           value={form.item_id}
           onChange={(value) => setForm({ ...form, item_id: value })}
           options={items.map((item) => ({ value: item.id, label: `${item.name} (${fmtNum(item.stock, 1)} ${item.unit})` }))}
-          placeholder="Pick an input"
+          placeholder={t('moveDialog.pickInput')}
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Direction">
+        <Field label={t('moveDialog.direction')}>
           <SelectField
             value={form.kind}
             onChange={(value) => setForm({ ...form, kind: value })}
             options={[
-              { value: 'in', label: 'Stock in' },
-              { value: 'out', label: 'Stock out' },
+              { value: 'in', label: t('inv.stockIn') },
+              { value: 'out', label: t('inv.stockOut') },
             ]}
           />
         </Field>
-        <Field label="Quantity">
+        <Field label={t('common.quantity')}>
           <Input
             type="number"
             step="0.1"
@@ -568,24 +564,24 @@ function MovementDialog({ open, onOpenChange, preset, items, blocks, onSave }) {
             required
           />
         </Field>
-        <Field label="Date">
+        <Field label={t('common.date')}>
           <Input type="date" value={form.date || ''} onChange={(e) => setForm({ ...form, date: e.target.value })} />
         </Field>
-        <Field label="Cost">
+        <Field label={t('common.cost')}>
           <Input type="number" value={form.cost ?? ''} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
         </Field>
       </div>
       {form.kind === 'out' && (
-        <Field label="Used on block">
+        <Field label={t('moveDialog.usedOnBlock')}>
           <SelectField
             value={form.block_id}
             onChange={(value) => setForm({ ...form, block_id: value })}
-            noneLabel="No block"
+            noneLabel={t('moveDialog.noBlock')}
             options={blocks.map((block) => ({ value: block.id, label: block.name }))}
           />
         </Field>
       )}
-      <Field label="Notes">
+      <Field label={t('common.notes')}>
         <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
     </FormDialog>

@@ -1,8 +1,14 @@
 export const CURRENCY = 'MAD';
 
+let LOCALE = 'fr-FR';
+
+export const setLocale = (locale) => {
+  LOCALE = locale;
+};
+
 export const fmtNum = (n, digits = 1) => {
   const value = Number(n) || 0;
-  return value.toLocaleString('en-US', { maximumFractionDigits: digits });
+  return value.toLocaleString(LOCALE, { maximumFractionDigits: digits });
 };
 
 export const fmtMoney = (n) => `${fmtNum(n, 0)} ${CURRENCY}`;
@@ -13,8 +19,11 @@ export const fmtDate = (iso) => {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' });
 };
+
+export const fmtLongDate = () =>
+  new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
 
 export const monthRange = (monthKey) => {
   // monthKey: YYYY-MM
@@ -29,5 +38,5 @@ export const currentMonthKey = () => new Date().toISOString().slice(0, 7);
 
 export const monthLabel = (monthKey) => {
   const [year, month] = monthKey.split('-').map(Number);
-  return new Date(year, month - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  return new Date(year, month - 1, 1).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
 };

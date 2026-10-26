@@ -13,22 +13,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList, byId } from '@/lib/data';
 import { fmtDate, fmtMoney, todayISO } from '@/lib/format';
+import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
-const TYPES = [
-  { value: 'planting', label: 'Planting' },
-  { value: 'irrigation', label: 'Irrigation' },
-  { value: 'fertilising', label: 'Fertilising' },
-  { value: 'spraying', label: 'Spraying' },
-  { value: 'harvest', label: 'Harvest' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'transport', label: 'Transport' },
-  { value: 'other', label: 'Other' },
-];
-const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
+const TYPES = ['planting', 'irrigation', 'fertilising', 'spraying', 'harvest', 'maintenance', 'transport', 'other'];
 const PRIORITY_TONE = { high: 'clay', medium: 'amber', low: 'stone' };
 
 export default function Tasks() {
+  const { t } = useI18n();
   const [tasks, setTasks] = useState([]);
   const [blocks, setBlocks] = useState([]);
   const [workers, setWorkers] = useState([]);
@@ -86,9 +78,9 @@ export default function Tasks() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Operations"
-        title="Tasks"
-        description={`${openCount} open · ${overdueCount} overdue. Assign work to blocks and track what it costs.`}
+        eyebrow={t('tasks.eyebrow')}
+        title={t('tasks.title')}
+        description={t('tasks.description', { open: openCount, overdue: overdueCount })}
         action={
           <Button
             className="rounded-xl"
@@ -97,7 +89,7 @@ export default function Tasks() {
               setDialogOpen(true);
             }}
           >
-            <Plus className="mr-1.5 h-4 w-4" /> New task
+            <Plus className="mr-1.5 h-4 w-4" /> {t('tasks.newTask')}
           </Button>
         }
       />
@@ -106,11 +98,11 @@ export default function Tasks() {
         value={filter}
         onChange={setFilter}
         options={[
-          { value: 'open', label: `Open (${openCount})` },
-          { value: 'todo', label: 'To do' },
-          { value: 'in_progress', label: 'In progress' },
-          { value: 'done', label: 'Done' },
-          { value: 'all', label: 'All' },
+          { value: 'open', label: `${t('tasks.tabOpen')} (${openCount})` },
+          { value: 'todo', label: t('tasks.tabTodo') },
+          { value: 'in_progress', label: t('tasks.tabInProgress') },
+          { value: 'done', label: t('tasks.tabDone') },
+          { value: 'all', label: t('tasks.tabAll') },
         ]}
       />
 
@@ -119,9 +111,9 @@ export default function Tasks() {
       ) : visible.length === 0 ? (
         <EmptyState
           icon={ListChecks}
-          title="Nothing here"
-          description="No tasks match this view. Add a task to plan the next piece of work."
-          action={<Button onClick={() => setDialogOpen(true)}>New task</Button>}
+          title={t('tasks.emptyTitle')}
+          description={t('tasks.emptyDesc')}
+          action={<Button onClick={() => setDialogOpen(true)}>{t('tasks.newTask')}</Button>}
         />
       ) : (
         <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
@@ -133,7 +125,7 @@ export default function Tasks() {
                 <button
                   type="button"
                   onClick={() => toggleDone(task)}
-                  aria-label={done ? 'Mark as not done' : 'Mark as done'}
+                  aria-label={done ? t('tasks.markNotDone') : t('tasks.markDone')}
                   className={cn(
                     'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors',
                     done ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary/50',
@@ -148,20 +140,20 @@ export default function Tasks() {
                     setEditing(task);
                     setDialogOpen(true);
                   }}
-                  className="min-w-0 flex-1 text-left"
+                  className="min-w-0 flex-1 text-start"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={cn('text-sm font-medium', done && 'text-muted-foreground line-through')}>
                       {task.title}
                     </span>
                     {task.priority && !done && (
-                      <StatusPill tone={PRIORITY_TONE[task.priority]}>{task.priority}</StatusPill>
+                      <StatusPill tone={PRIORITY_TONE[task.priority]}>{t(`pri.${task.priority}`)}</StatusPill>
                     )}
-                    {overdue && <StatusPill tone="clay">Overdue</StatusPill>}
-                    {task.status === 'in_progress' && <StatusPill tone="moss">In progress</StatusPill>}
+                    {overdue && <StatusPill tone="clay">{t('tasks.overdue')}</StatusPill>}
+                    {task.status === 'in_progress' && <StatusPill tone="moss">{t('tasks.inProgress')}</StatusPill>}
                   </div>
                   <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    <span>{TYPE_LABEL[task.type] || 'Task'}</span>
+                    <span>{t(`tt.${task.type}`)}</span>
                     {blockMap[task.block_id] && <span>· {blockMap[task.block_id].name}</span>}
                     {workerMap[task.assignee_id] && <span>· {workerMap[task.assignee_id].name}</span>}
                     {task.due_date && <span>· {fmtDate(task.due_date)}</span>}
@@ -179,7 +171,7 @@ export default function Tasks() {
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
                     onClick={() => remove(task)}
-                    aria-label="Delete task"
+                    aria-label={t('common.deleteTask')}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -203,6 +195,7 @@ export default function Tasks() {
 }
 
 function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
+  const { t } = useI18n();
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -252,72 +245,76 @@ function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={task ? 'Edit task' : 'New task'}
+      title={task ? t('taskDialog.editTitle') : t('taskDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitLabel={task ? 'Save task' : 'Create task'}
+      submitLabel={task ? t('taskDialog.save') : t('taskDialog.create')}
     >
-      <Field label="What needs doing?">
+      <Field label={t('taskDialog.titleLabel')}>
         <Input
           value={form.title || ''}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
-          placeholder="Irrigate olive terrace"
+          placeholder={t('taskDialog.titlePlaceholder')}
           required
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Type">
-          <SelectField value={form.type} onChange={(value) => setForm({ ...form, type: value })} options={TYPES} />
+        <Field label={t('common.type')}>
+          <SelectField
+            value={form.type}
+            onChange={(value) => setForm({ ...form, type: value })}
+            options={TYPES.map((value) => ({ value, label: t(`tt.${value}`) }))}
+          />
         </Field>
-        <Field label="Priority">
+        <Field label={t('taskDialog.priority')}>
           <SelectField
             value={form.priority}
             onChange={(value) => setForm({ ...form, priority: value })}
             options={[
-              { value: 'low', label: 'Low' },
-              { value: 'medium', label: 'Medium' },
-              { value: 'high', label: 'High' },
+              { value: 'low', label: t('pri.low') },
+              { value: 'medium', label: t('pri.medium') },
+              { value: 'high', label: t('pri.high') },
             ]}
           />
         </Field>
-        <Field label="Block">
+        <Field label={t('common.block')}>
           <SelectField
             value={form.block_id}
             onChange={(value) => setForm({ ...form, block_id: value })}
-            noneLabel="No block"
+            noneLabel={t('taskDialog.noBlock')}
             options={blocks.map((block) => ({ value: block.id, label: block.name }))}
           />
         </Field>
-        <Field label="Assigned to">
+        <Field label={t('taskDialog.assignedTo')}>
           <SelectField
             value={form.assignee_id}
             onChange={(value) => setForm({ ...form, assignee_id: value })}
-            noneLabel="Unassigned"
+            noneLabel={t('taskDialog.unassigned')}
             options={workers.map((worker) => ({ value: worker.id, label: worker.name }))}
           />
         </Field>
-        <Field label="Due date">
+        <Field label={t('taskDialog.dueDate')}>
           <Input type="date" value={form.due_date || ''} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
         </Field>
-        <Field label="Status">
+        <Field label={t('common.status')}>
           <SelectField
             value={form.status}
             onChange={(value) => setForm({ ...form, status: value })}
             options={[
-              { value: 'todo', label: 'To do' },
-              { value: 'in_progress', label: 'In progress' },
-              { value: 'done', label: 'Done' },
+              { value: 'todo', label: t('st.todo') },
+              { value: 'in_progress', label: t('st.in_progress') },
+              { value: 'done', label: t('st.done') },
             ]}
           />
         </Field>
-        <Field label="Estimated cost">
+        <Field label={t('taskDialog.estimatedCost')}>
           <Input
             type="number"
             value={form.estimated_cost ?? ''}
             onChange={(e) => setForm({ ...form, estimated_cost: e.target.value })}
           />
         </Field>
-        <Field label="Actual cost">
+        <Field label={t('taskDialog.actualCost')}>
           <Input
             type="number"
             value={form.actual_cost ?? ''}
@@ -325,7 +322,7 @@ function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
           />
         </Field>
       </div>
-      <Field label="Notes">
+      <Field label={t('common.notes')}>
         <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
     </FormDialog>

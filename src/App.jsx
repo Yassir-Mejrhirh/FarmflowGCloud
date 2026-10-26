@@ -16,6 +16,7 @@ import Workers from '@/pages/Workers';
 import Machinery from '@/pages/Machinery';
 import Inventory from '@/pages/Inventory';
 import Costs from '@/pages/Costs';
+import { I18nProvider } from '@/lib/I18nContext';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -42,6 +43,7 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
+    <I18nProvider>
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
@@ -55,6 +57,7 @@ const AuthenticatedApp = () => {
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </I18nProvider>
   );
 };
 
