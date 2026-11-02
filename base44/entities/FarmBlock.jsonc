@@ -42,6 +42,10 @@
     "variety_id": {
       "type": "string"
     },
+    "season_id": {
+      "type": "string",
+      "description": "Season the block is currently cultivated in"
+    },
     "planting_date": {
       "type": "string",
       "format": "date"

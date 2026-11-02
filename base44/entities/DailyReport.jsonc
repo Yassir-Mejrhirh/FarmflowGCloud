@@ -1,0 +1,105 @@
+{
+  "name": "DailyReport",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "block_id": {
+      "type": "string",
+      "description": "Parcel the operations were carried out on"
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "planting",
+        "irrigation",
+        "fertilising",
+        "spraying",
+        "harvest",
+        "maintenance",
+        "transport",
+        "other"
+      ],
+      "default": "other"
+    },
+    "description": {
+      "type": "string"
+    },
+    "labour": {
+      "type": "array",
+      "description": "Workers used and the days worked",
+      "items": {
+        "type": "object",
+        "properties": {
+          "worker_id": {
+            "type": "string"
+          },
+          "days": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "machinery": {
+      "type": "array",
+      "description": "Machines used and their hours",
+      "items": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Inputs consumed and their quantities",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "date",
+    "block_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

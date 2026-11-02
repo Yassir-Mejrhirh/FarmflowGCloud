@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
+import OverviewGroups from '@/components/dashboard/OverviewGroups';
 import StatCard from '@/components/StatCard';
 import StatusPill from '@/components/StatusPill';
 import { fetchList, byId, sumBy } from '@/lib/data';
@@ -96,6 +97,8 @@ export default function Dashboard() {
           </Link>
         }
       />
+
+      <OverviewGroups />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

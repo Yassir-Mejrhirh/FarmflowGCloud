@@ -16,6 +16,11 @@ import Workers from '@/pages/Workers';
 import Machinery from '@/pages/Machinery';
 import Inventory from '@/pages/Inventory';
 import Costs from '@/pages/Costs';
+import Seasons from '@/pages/Seasons';
+import Varieties from '@/pages/Varieties';
+import Suppliers from '@/pages/Suppliers';
+import PlantingEntry from '@/pages/PlantingEntry';
+import DailyReport from '@/pages/DailyReport';
 import { I18nProvider } from '@/lib/I18nContext';
 
 const AuthenticatedApp = () => {
@@ -54,6 +59,11 @@ const AuthenticatedApp = () => {
         <Route path="/machinery" element={<Machinery />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/costs" element={<Costs />} />
+        <Route path="/seasons" element={<Seasons />} />
+        <Route path="/varieties" element={<Varieties />} />
+        <Route path="/suppliers" element={<Suppliers />} />
+        <Route path="/planting" element={<PlantingEntry />} />
+        <Route path="/daily-report" element={<DailyReport />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
