@@ -13,34 +13,35 @@ import { fetchList, byId } from '@/lib/data';
 import { fmtDate, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
-const TYPES = ['planting', 'irrigation', 'fertilising', 'spraying', 'harvest', 'maintenance', 'transport', 'other'];
-
 export default function DailyReport() {
   const { t } = useI18n();
   const [blocks, setBlocks] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [reports, setReports] = useState([]);
-  const [form, setForm] = useState({ date: todayISO(), block_id: '', operation: 'other', description: '', notes: '' });
+  const [form, setForm] = useState({ date: todayISO(), block_id: '', task_id: '', description: '', notes: '' });
   const [labour, setLabour] = useState([]);
   const [machinery, setMachinery] = useState([]);
   const [inputs, setInputs] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    const [blockRows, workerRows, machineRows, itemRows, reportRows] = await Promise.all([
+    const [blockRows, workerRows, machineRows, itemRows, reportRows, taskRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
+      fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
     ]);
     setBlocks(blockRows);
     setWorkers(workerRows);
     setMachines(machineRows);
     setItems(itemRows);
     setReports(reportRows);
+    setTasks(taskRows);
   };
 
   useEffect(() => {
@@ -48,15 +49,17 @@ export default function DailyReport() {
   }, []);
 
   const blockMap = useMemo(() => byId(blocks), [blocks]);
+  const taskMap = useMemo(() => byId(tasks), [tasks]);
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.block_id) return;
+    if (!form.block_id || !form.task_id) return;
     setSaving(true);
     await base44.entities.DailyReport.create({
       date: form.date,
       block_id: form.block_id,
-      operation: form.operation,
+      task_id: form.task_id,
+      operation: taskMap[form.task_id]?.type || 'other',
       description: form.description.trim(),
       notes: form.notes,
       labour: labour
@@ -107,12 +110,18 @@ export default function DailyReport() {
             </Field>
           </div>
 
-          <Field label={t('report.operation')}>
+          <Field label={t('report.task')}>
             <SelectField
-              value={form.operation}
-              onChange={(value) => setForm({ ...form, operation: value })}
-              options={TYPES.map((value) => ({ value, label: t(`tt.${value}`) }))}
+              value={form.task_id}
+              onChange={(value) => setForm({ ...form, task_id: value })}
+              options={tasks.map((task) => ({
+                value: task.id,
+                label: `${t(`tt.${task.type}`)} · ${task.subtask || task.title}`,
+              }))}
             />
+            {tasks.length === 0 && (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">{t('report.noTask')}</p>
+            )}
           </Field>
 
           <Field label={t('report.descLabel')}>
@@ -168,10 +177,12 @@ export default function DailyReport() {
           </Field>
 
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={saving || !form.block_id} className="rounded-xl">
+            <Button type="submit" disabled={saving || !form.block_id || !form.task_id} className="rounded-xl">
               {saving ? t('common.saving') : t('report.submit')}
             </Button>
-            {!form.block_id && <span className="text-[11px] text-muted-foreground">{t('report.needBlock')}</span>}
+            {(!form.block_id || !form.task_id) && (
+              <span className="text-[11px] text-muted-foreground">{t('report.needBlock')}</span>
+            )}
           </div>
         </form>
 
@@ -186,7 +197,10 @@ export default function DailyReport() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{blockMap[report.block_id]?.name || '—'}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{fmtDate(report.date)}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {fmtDate(report.date)}
+                        {taskMap[report.task_id] ? ` · ${taskMap[report.task_id].subtask || taskMap[report.task_id].title}` : ''}
+                      </p>
                     </div>
                     <StatusPill tone="moss">{t(`tt.${report.operation}`)}</StatusPill>
                   </div>

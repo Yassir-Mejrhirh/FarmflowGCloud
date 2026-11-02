@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowUpRight, Check, Coins, ListChecks, MapPin, PackageSearch, Plus, Users, ChevronRight,
+  ArrowUpRight, Check, Coins, ListChecks, MapPin, PackageSearch, Users, ChevronRight,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
@@ -88,14 +88,6 @@ export default function Dashboard() {
         eyebrow={dateLabel}
         title={t('dash.title')}
         description={t('dash.description')}
-        action={
-          <Link
-            to="/tasks"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" /> {t('dash.newTask')}
-          </Link>
-        }
       />
 
       <OverviewGroups />

@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Parcel the operations were carried out on"
     },
+    "task_id": {
+      "type": "string",
+      "description": "Task from the catalogue that was carried out"
+    },
     "operation": {
       "type": "string",
       "enum": [
