@@ -4,13 +4,14 @@ import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import BoundaryDrawer from '@/components/blocks/BoundaryDrawer';
+import IrrigationZones from '@/components/blocks/IrrigationZones';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { polygonAreaHa } from '@/lib/geo';
 import { useI18n } from '@/lib/I18nContext';
 
 const EMPTY = {
-  name: '', code: '', crop_id: '', variety_id: '', planting_date: '', status: 'active', soil_type: '', notes: '', boundary: [],
+  name: '', code: '', farm: '', locality: '', crop_id: '', variety_id: '', planting_date: '', status: 'active', soil_type: '', notes: '', boundary: [], irrigation_zones: [],
 };
 
 const STATUSES = ['active', 'preparing', 'harvest', 'fallow'];
@@ -27,6 +28,8 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
         ? {
             name: block.name || '',
             code: block.code || '',
+            farm: block.farm || '',
+            locality: block.locality || '',
             crop_id: block.crop_id || '',
             variety_id: block.variety_id || '',
             planting_date: block.planting_date || '',
@@ -34,6 +37,10 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
             soil_type: block.soil_type || '',
             notes: block.notes || '',
             boundary: block.boundary || [],
+            irrigation_zones: (block.irrigation_zones || []).map((zone) => ({
+              name: zone.name || '',
+              area_ha: zone.area_ha ?? '',
+            })),
           }
         : EMPTY,
     );
@@ -49,6 +56,8 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
     const payload = {
       name: form.name.trim(),
       code: form.code.trim(),
+      farm: form.farm.trim(),
+      locality: form.locality.trim(),
       crop_id: form.crop_id,
       variety_id: form.variety_id,
       status: form.status,
@@ -56,6 +65,9 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
       notes: form.notes,
       boundary: form.boundary,
       area_ha: Number(area.toFixed(2)),
+      irrigation_zones: form.irrigation_zones
+        .filter((zone) => zone.name?.trim() || Number(zone.area_ha) > 0)
+        .map((zone) => ({ name: zone.name?.trim() || '', area_ha: Number(zone.area_ha) || 0 })),
     };
     if (form.planting_date) payload.planting_date = form.planting_date;
 
@@ -98,6 +110,12 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
         <Field label={t('blockDialog.code')}>
           <Input value={form.code} onChange={(e) => update('code', e.target.value)} placeholder="OL-01" />
         </Field>
+        <Field label={t('blockDialog.farm')}>
+          <Input value={form.farm} onChange={(e) => update('farm', e.target.value)} placeholder={t('blockDialog.farmPlaceholder')} />
+        </Field>
+        <Field label={t('blockDialog.locality')}>
+          <Input value={form.locality} onChange={(e) => update('locality', e.target.value)} placeholder={t('blockDialog.localityPlaceholder')} />
+        </Field>
         <Field label={t('common.crop')}>
           <SelectField
             value={form.crop_id}
@@ -137,6 +155,10 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
 
       <Field label={t('blockDialog.boundary')} hint={t('blockDialog.boundaryHint')}>
         <BoundaryDrawer points={form.boundary} onChange={(points) => update('boundary', points)} />
+      </Field>
+
+      <Field label={t('blockDialog.irrigationZones')} hint={t('blockDialog.irrigationHint')}>
+        <IrrigationZones zones={form.irrigation_zones} onChange={(zones) => update('irrigation_zones', zones)} />
       </Field>
 
       <Field label={t('common.notes')}>

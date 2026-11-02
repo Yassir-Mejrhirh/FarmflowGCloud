@@ -1,24 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Ruler, MapPin, Scale, Globe, Upload } from 'lucide-react';
+import { Plus, Ruler, MapPin, Globe, Upload, Layers } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/PageHeader';
-import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
 import BlockMap, { BLOCK_STATUS_COLORS } from '@/components/blocks/BlockMap';
 import BlockDialog from '@/components/blocks/BlockDialog';
-import HarvestDialog from '@/components/blocks/HarvestDialog';
-import ProductivityPanel from '@/components/blocks/ProductivityPanel';
-import HarvestLog from '@/components/blocks/HarvestLog';
+import BlockList from '@/components/blocks/BlockList';
+import GroupBlocksDialog from '@/components/blocks/GroupBlocksDialog';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
-import { fmtNum, fmtDate } from '@/lib/format';
-import { downloadBlockKml, blockKmlFilename, parseKmlBlocks } from '@/lib/kml';
+import { fmtNum } from '@/lib/format';
+import { downloadBlockKml, parseKmlBlocks } from '@/lib/kml';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
 const STATUS_KEYS = ['active', 'preparing', 'harvest', 'fallow'];
-const STATUS_TONE = { active: 'moss', preparing: 'amber', harvest: 'clay', fallow: 'stone' };
 
 export default function Blocks() {
   const { t } = useI18n();
@@ -29,24 +26,20 @@ export default function Blocks() {
   const [selectedId, setSelectedId] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [harvests, setHarvests] = useState([]);
-  const [harvestDialogOpen, setHarvestDialogOpen] = useState(false);
-  const [harvestBlock, setHarvestBlock] = useState(null);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef(null);
   const { toast } = useToast();
 
   const load = async () => {
-    const [blockRows, cropRows, varietyRows, harvestRows] = await Promise.all([
+    const [blockRows, cropRows, varietyRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
       fetchList(base44.entities.Variety, {}, { sort: 'name' }),
-      fetchList(base44.entities.Harvest, {}, { sort: '-date' }),
     ]);
     setBlocks(blockRows);
     setCrops(cropRows);
     setVarieties(varietyRows);
-    setHarvests(harvestRows);
     setSelectedId((prev) => (blockRows.some((b) => b.id === prev) ? prev : blockRows[0]?.id || null));
     setLoading(false);
   };
@@ -57,20 +50,8 @@ export default function Blocks() {
 
   const cropMap = useMemo(() => byId(crops), [crops]);
   const varietyMap = useMemo(() => byId(varieties), [varieties]);
-  const blockMap = useMemo(() => byId(blocks), [blocks]);
   const totalArea = blocks.reduce((sum, block) => sum + (Number(block.area_ha) || 0), 0);
   const unmapped = blocks.filter((block) => !block.boundary || block.boundary.length < 3).length;
-  const totalHarvested = harvests.reduce((sum, harvest) => sum + (Number(harvest.quantity_kg) || 0), 0);
-  const harvestByBlock = useMemo(() => {
-    const map = {};
-    harvests.forEach((harvest) => {
-      const entry = map[harvest.block_id] || (map[harvest.block_id] = { total: 0, count: 0, last: null });
-      entry.total += Number(harvest.quantity_kg) || 0;
-      entry.count += 1;
-      if (!entry.last || harvest.date > entry.last) entry.last = harvest.date;
-    });
-    return map;
-  }, [harvests]);
 
   const openNew = () => {
     setEditing(null);
@@ -80,11 +61,6 @@ export default function Blocks() {
   const openEdit = (block) => {
     setEditing(block);
     setDialogOpen(true);
-  };
-
-  const openHarvest = (block) => {
-    setHarvestBlock(block || null);
-    setHarvestDialogOpen(true);
   };
 
   const handleImportKml = async (event) => {
@@ -129,8 +105,8 @@ export default function Blocks() {
               className="hidden"
               onChange={handleImportKml}
             />
-            <Button variant="outline" onClick={() => openHarvest(null)} className="rounded-xl">
-              <Scale className="mr-1.5 h-4 w-4" /> {t('blocks.logHarvest')}
+            <Button variant="outline" onClick={() => setGroupDialogOpen(true)} className="rounded-xl" disabled={!blocks.length}>
+              <Layers className="mr-1.5 h-4 w-4" /> {t('blocks.groupButton')}
             </Button>
             <Button onClick={openNew} className="rounded-xl">
               <Plus className="mr-1.5 h-4 w-4" /> {t('blocks.newBlock')}
@@ -139,10 +115,9 @@ export default function Blocks() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <SummaryTile icon={MapPin} label={t('blocks.tilesBlocks')} value={blocks.length} />
         <SummaryTile icon={Ruler} label={t('blocks.mappedArea')} value={`${fmtNum(totalArea, 2)} ha`} />
-        <SummaryTile icon={Scale} label={t('blocks.totalHarvested')} value={`${fmtNum(totalHarvested, 0)} kg`} tone="sage" />
         <SummaryTile icon={MapPin} label={t('blocks.needsBoundary')} value={unmapped} tone="clay" />
       </div>
 
@@ -169,92 +144,16 @@ export default function Blocks() {
             </div>
           </div>
 
-          <div className="space-y-2 xl:max-h-[520px] xl:overflow-y-auto xl:pr-1">
-            {blocks.map((block) => {
-              const crop = cropMap[block.crop_id];
-              const variety = varietyMap[block.variety_id];
-              const harvestStats = harvestByBlock[block.id];
-              const active = block.id === selectedId;
-              return (
-                <div
-                  key={block.id}
-                  className={cn(
-                    'rounded-2xl border bg-card p-4 transition-all duration-200',
-                    active ? 'border-primary/40 shadow-[0_18px_40px_-38px_rgba(20,45,35,0.9)]' : 'border-border/70',
-                  )}
-                >
-                  <button type="button" onClick={() => setSelectedId(block.id)} className="w-full text-start">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-display text-base leading-tight">{block.name}</p>
-                        <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                          {block.code || t('blocks.noCode')}
-                        </p>
-                      </div>
-                      <StatusPill tone={STATUS_TONE[block.status] || 'stone'}>
-                        {t(`st.${block.status}`)}
-                      </StatusPill>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span className="tabular-nums">{fmtNum(block.area_ha, 2)} ha</span>
-                      <span className="truncate">
-                        {crop ? `${crop.name}${variety ? ` · ${variety.name}` : ''}` : t('common.noCropAssigned')}
-                      </span>
-                    </div>
-                    {harvestStats && (
-                      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-sage">
-                        <span className="font-medium tabular-nums">{fmtNum(harvestStats.total, 0)} {t('blocks.kgHarvested')}</span>
-                        <span className="tabular-nums">
-                          {fmtNum(Number(block.area_ha) > 0 ? harvestStats.total / Number(block.area_ha) : 0, 0)} kg/ha
-                        </span>
-                        <span>{t('blocks.lastHarvest', { date: fmtDate(harvestStats.last) })}</span>
-                      </p>
-                    )}
-                  </button>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">
-                      {t('blocks.boundaryPoints', { n: block.boundary?.length || 0 })}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => downloadBlockKml([block], blockKmlFilename(block))}
-                        className="text-[11px] font-medium text-sage hover:underline"
-                      >
-                        Google Earth
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openHarvest(block)}
-                        className="text-[11px] font-medium text-sage hover:underline"
-                      >
-                        {t('blocks.logHarvest')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(block)}
-                        className="text-[11px] font-medium text-primary hover:underline"
-                      >
-                        {t('blocks.editBlock')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <BlockList
+            blocks={blocks}
+            cropMap={cropMap}
+            varietyMap={varietyMap}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onEdit={openEdit}
+          />
         </div>
       )}
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <ProductivityPanel
-          blocks={blocks}
-          harvests={harvests}
-          cropMap={cropMap}
-          onLogHarvest={() => openHarvest(null)}
-        />
-        <HarvestLog harvests={harvests} blockMap={blockMap} onDeleted={load} />
-      </div>
 
       <BlockDialog
         open={dialogOpen}
@@ -265,10 +164,9 @@ export default function Blocks() {
         onSaved={load}
       />
 
-      <HarvestDialog
-        open={harvestDialogOpen}
-        onOpenChange={setHarvestDialogOpen}
-        block={harvestBlock}
+      <GroupBlocksDialog
+        open={groupDialogOpen}
+        onOpenChange={setGroupDialogOpen}
         blocks={blocks}
         onSaved={load}
       />

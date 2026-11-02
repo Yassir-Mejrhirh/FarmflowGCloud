@@ -10,6 +10,14 @@
       "type": "string",
       "description": "Short reference code"
     },
+    "farm": {
+      "type": "string",
+      "description": "Farm the block belongs to"
+    },
+    "locality": {
+      "type": "string",
+      "description": "Locality or village of the block"
+    },
     "area_ha": {
       "type": "number",
       "description": "Area in hectares, calculated from boundary"
@@ -50,6 +58,21 @@
     },
     "soil_type": {
       "type": "string"
+    },
+    "irrigation_zones": {
+      "type": "array",
+      "description": "Subdivisions of the block for irrigation",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "area_ha": {
+            "type": "number"
+          }
+        }
+      }
     },
     "notes": {
       "type": "string"
