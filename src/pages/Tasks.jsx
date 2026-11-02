@@ -12,12 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
-
-const TYPES = ['planting', 'irrigation', 'fertilising', 'spraying', 'harvest', 'maintenance', 'transport', 'other'];
+import { BUILT_IN_TYPES, NEW_NATURE, natureLabel } from '@/lib/taskNature';
 
 export default function Tasks() {
   const { t } = useI18n();
   const [tasks, setTasks] = useState([]);
+  const [natures, setNatures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -28,8 +28,14 @@ export default function Tasks() {
     setLoading(false);
   };
 
+  const loadNatures = async () => {
+    const rows = await fetchList(base44.entities.TaskNature, {}, { sort: 'name' });
+    setNatures(rows);
+  };
+
   useEffect(() => {
     load();
+    loadNatures();
   }, []);
 
   const remove = async (task) => {
@@ -88,7 +94,7 @@ export default function Tasks() {
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium">{task.subtask || task.title}</span>
-                  <StatusPill tone="moss">{t(`tt.${task.type}`)}</StatusPill>
+                  <StatusPill tone="moss">{natureLabel(task.type, natures, t)}</StatusPill>
                 </div>
                 {task.description && (
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
@@ -109,15 +115,25 @@ export default function Tasks() {
         </ul>
       )}
 
-      <TaskDialog open={dialogOpen} onOpenChange={setDialogOpen} task={editing} onSaved={load} />
+      <TaskDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        task={editing}
+        natures={natures}
+        onNaturesChanged={loadNatures}
+        onSaved={load}
+      />
     </div>
   );
 }
 
-function TaskDialog({ open, onOpenChange, task, onSaved }) {
+function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [showNewNature, setShowNewNature] = useState(false);
+  const [newNature, setNewNature] = useState('');
+  const [creatingNature, setCreatingNature] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -126,13 +142,33 @@ function TaskDialog({ open, onOpenChange, task, onSaved }) {
       subtask: task?.subtask || '',
       description: task?.description || '',
     });
+    setShowNewNature(false);
+    setNewNature('');
   }, [open, task]);
+
+  const natureOptions = [
+    ...BUILT_IN_TYPES.map((value) => ({ value, label: t(`tt.${value}`) })),
+    ...natures.map((nature) => ({ value: nature.name, label: nature.name })),
+    { value: NEW_NATURE, label: t('taskDialog.newNature') },
+  ];
+
+  const createNature = async () => {
+    const name = newNature.trim();
+    if (!name) return;
+    setCreatingNature(true);
+    const created = await base44.entities.TaskNature.create({ name });
+    await onNaturesChanged();
+    setCreatingNature(false);
+    setNewNature('');
+    setShowNewNature(false);
+    setForm((prev) => ({ ...prev, type: created.name || name }));
+  };
 
   const submit = async (event) => {
     event.preventDefault();
     setSaving(true);
     const payload = {
-      title: form.subtask?.trim() || task?.title || t(`tt.${form.type}`),
+      title: form.subtask?.trim() || task?.title || natureLabel(form.type, natures, t),
       type: form.type,
       subtask: form.subtask?.trim() || '',
       description: form.description || '',
@@ -160,9 +196,43 @@ function TaskDialog({ open, onOpenChange, task, onSaved }) {
       <Field label={t('taskDialog.nature')}>
         <SelectField
           value={form.type}
-          onChange={(value) => setForm({ ...form, type: value })}
-          options={TYPES.map((value) => ({ value, label: t(`tt.${value}`) }))}
+          onChange={(value) => {
+            if (value === NEW_NATURE) {
+              setShowNewNature(true);
+              return;
+            }
+            setForm({ ...form, type: value });
+          }}
+          options={natureOptions}
         />
+        {showNewNature ? (
+          <div className="flex gap-2 pt-1">
+            <Input
+              value={newNature}
+              onChange={(e) => setNewNature(e.target.value)}
+              placeholder={t('taskDialog.naturePlaceholder')}
+            />
+            <Button
+              type="button"
+              size="sm"
+              className="shrink-0 rounded-lg"
+              onClick={createNature}
+              disabled={creatingNature || !newNature.trim()}
+            >
+              {t('taskDialog.natureCreate')}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-1 h-7 gap-1 rounded-lg px-2 text-xs text-primary hover:text-primary"
+            onClick={() => setShowNewNature(true)}
+          >
+            <Plus className="h-3.5 w-3.5" /> {t('taskDialog.addNature')}
+          </Button>
+        )}
       </Field>
       <Field label={t('taskDialog.subtask')}>
         <Input

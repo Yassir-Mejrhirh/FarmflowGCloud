@@ -7,16 +7,7 @@
     },
     "type": {
       "type": "string",
-      "enum": [
-        "planting",
-        "irrigation",
-        "fertilising",
-        "spraying",
-        "harvest",
-        "maintenance",
-        "transport",
-        "other"
-      ],
+      "description": "Nature of the task: planting, irrigation, fertilising, spraying, harvest, maintenance, transport, other, or a custom nature name",
       "default": "other"
     },
     "subtask": {

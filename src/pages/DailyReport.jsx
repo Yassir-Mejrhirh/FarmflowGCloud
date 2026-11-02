@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { fetchList, byId } from '@/lib/data';
 import { fmtDate, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import { natureLabel } from '@/lib/taskNature';
 
 export default function DailyReport() {
   const { t } = useI18n();
@@ -20,6 +21,7 @@ export default function DailyReport() {
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [natures, setNatures] = useState([]);
   const [reports, setReports] = useState([]);
   const [form, setForm] = useState({ date: todayISO(), block_id: '', task_id: '', description: '', notes: '' });
   const [labour, setLabour] = useState([]);
@@ -28,13 +30,14 @@ export default function DailyReport() {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    const [blockRows, workerRows, machineRows, itemRows, reportRows, taskRows] = await Promise.all([
+    const [blockRows, workerRows, machineRows, itemRows, reportRows, taskRows, natureRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
       fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
+      fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
     ]);
     setBlocks(blockRows);
     setWorkers(workerRows);
@@ -42,6 +45,7 @@ export default function DailyReport() {
     setItems(itemRows);
     setReports(reportRows);
     setTasks(taskRows);
+    setNatures(natureRows);
   };
 
   useEffect(() => {
@@ -116,7 +120,7 @@ export default function DailyReport() {
               onChange={(value) => setForm({ ...form, task_id: value })}
               options={tasks.map((task) => ({
                 value: task.id,
-                label: `${t(`tt.${task.type}`)} · ${task.subtask || task.title}`,
+                label: `${natureLabel(task.type, natures, t)} · ${task.subtask || task.title}`,
               }))}
             />
             {tasks.length === 0 && (
@@ -202,7 +206,7 @@ export default function DailyReport() {
                         {taskMap[report.task_id] ? ` · ${taskMap[report.task_id].subtask || taskMap[report.task_id].title}` : ''}
                       </p>
                     </div>
-                    <StatusPill tone="moss">{t(`tt.${report.operation}`)}</StatusPill>
+                    <StatusPill tone="moss">{natureLabel(report.operation, natures, t)}</StatusPill>
                   </div>
                   {report.description && (
                     <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{report.description}</p>
