@@ -120,7 +120,7 @@ export default function DailyReport() {
               onChange={(value) => setForm({ ...form, task_id: value })}
               options={tasks.map((task) => ({
                 value: task.id,
-                label: `${natureLabel(task.type, natures, t)} · ${task.subtask || task.title}`,
+                label: natureLabel(task.type, natures, t),
               }))}
             />
             {tasks.length === 0 && (
@@ -203,7 +203,6 @@ export default function DailyReport() {
                       <p className="truncate text-sm font-medium">{blockMap[report.block_id]?.name || '—'}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {fmtDate(report.date)}
-                        {taskMap[report.task_id] ? ` · ${taskMap[report.task_id].subtask || taskMap[report.task_id].title}` : ''}
                       </p>
                     </div>
                     <StatusPill tone="moss">{natureLabel(report.operation, natures, t)}</StatusPill>

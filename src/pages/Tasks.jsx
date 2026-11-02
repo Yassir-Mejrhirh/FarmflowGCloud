@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, ListChecks, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
-import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
 import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
@@ -92,10 +91,7 @@ export default function Tasks() {
                 }}
                 className="min-w-0 flex-1 text-start"
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">{task.subtask || task.title}</span>
-                  <StatusPill tone="moss">{natureLabel(task.type, natures, t)}</StatusPill>
-                </div>
+                <span className="text-sm font-medium">{natureLabel(task.type, natures, t)}</span>
                 {task.description && (
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
                 )}
@@ -139,7 +135,6 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
     if (!open) return;
     setForm({
       type: task?.type || 'other',
-      subtask: task?.subtask || '',
       description: task?.description || '',
     });
     setShowNewNature(false);
@@ -168,9 +163,8 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
     event.preventDefault();
     setSaving(true);
     const payload = {
-      title: form.subtask?.trim() || task?.title || natureLabel(form.type, natures, t),
+      title: natureLabel(form.type, natures, t),
       type: form.type,
-      subtask: form.subtask?.trim() || '',
       description: form.description || '',
     };
 
@@ -233,13 +227,6 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
             <Plus className="h-3.5 w-3.5" /> {t('taskDialog.addNature')}
           </Button>
         )}
-      </Field>
-      <Field label={t('taskDialog.subtask')}>
-        <Input
-          value={form.subtask || ''}
-          onChange={(e) => setForm({ ...form, subtask: e.target.value })}
-          placeholder={t('taskDialog.subtaskPlaceholder')}
-        />
       </Field>
       <Field label={t('taskDialog.descLabel')}>
         <Textarea
