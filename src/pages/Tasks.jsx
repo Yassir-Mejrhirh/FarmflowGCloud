@@ -187,15 +187,13 @@ export default function Tasks() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         task={editing}
-        blocks={blocks}
-        workers={workers}
         onSaved={load}
       />
     </div>
   );
 }
 
-function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
+function TaskDialog({ open, onOpenChange, task, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
@@ -203,37 +201,27 @@ function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
   useEffect(() => {
     if (!open) return;
     setForm({
-      title: task?.title || '',
       type: task?.type || 'other',
-      block_id: task?.block_id || '',
-      assignee_id: task?.assignee_id || '',
-      completed_date: task?.completed_date || todayISO(),
-      priority: task?.priority || 'medium',
-      estimated_cost: task?.estimated_cost ?? '',
-      actual_cost: task?.actual_cost ?? '',
-      notes: task?.notes || '',
+      subtask: task?.subtask || '',
+      description: task?.description || '',
     });
   }, [open, task]);
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.title?.trim()) return;
     setSaving(true);
     const payload = {
-      title: form.title.trim(),
+      title: form.subtask?.trim() || task?.title || t(`tt.${form.type}`),
       type: form.type,
-      block_id: form.block_id,
-      assignee_id: form.assignee_id,
-      priority: form.priority,
-      status: 'done',
-      completed_date: form.completed_date || todayISO(),
-      estimated_cost: Number(form.estimated_cost) || 0,
-      actual_cost: Number(form.actual_cost) || 0,
-      notes: form.notes || '',
+      subtask: form.subtask?.trim() || '',
+      description: form.description || '',
     };
 
-    if (task?.id) await base44.entities.Task.update(task.id, payload);
-    else await base44.entities.Task.create(payload);
+    if (task?.id) {
+      await base44.entities.Task.update(task.id, payload);
+    } else {
+      await base44.entities.Task.create({ ...payload, status: 'done', completed_date: todayISO() });
+    }
     setSaving(false);
     onOpenChange(false);
     onSaved();
@@ -248,69 +236,27 @@ function TaskDialog({ open, onOpenChange, task, blocks, workers, onSaved }) {
       saving={saving}
       submitLabel={task ? t('taskDialog.save') : t('taskDialog.create')}
     >
-      <Field label={t('taskDialog.titleLabel')}>
-        <Input
-          value={form.title || ''}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          placeholder={t('taskDialog.titlePlaceholder')}
-          required
+      <Field label={t('taskDialog.nature')}>
+        <SelectField
+          value={form.type}
+          onChange={(value) => setForm({ ...form, type: value })}
+          options={TYPES.map((value) => ({ value, label: t(`tt.${value}`) }))}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('common.type')}>
-          <SelectField
-            value={form.type}
-            onChange={(value) => setForm({ ...form, type: value })}
-            options={TYPES.map((value) => ({ value, label: t(`tt.${value}`) }))}
-          />
-        </Field>
-        <Field label={t('taskDialog.priority')}>
-          <SelectField
-            value={form.priority}
-            onChange={(value) => setForm({ ...form, priority: value })}
-            options={[
-              { value: 'low', label: t('pri.low') },
-              { value: 'medium', label: t('pri.medium') },
-              { value: 'high', label: t('pri.high') },
-            ]}
-          />
-        </Field>
-        <Field label={t('common.block')}>
-          <SelectField
-            value={form.block_id}
-            onChange={(value) => setForm({ ...form, block_id: value })}
-            noneLabel={t('taskDialog.noBlock')}
-            options={blocks.map((block) => ({ value: block.id, label: block.name }))}
-          />
-        </Field>
-        <Field label={t('taskDialog.assignedTo')}>
-          <SelectField
-            value={form.assignee_id}
-            onChange={(value) => setForm({ ...form, assignee_id: value })}
-            noneLabel={t('taskDialog.unassigned')}
-            options={workers.map((worker) => ({ value: worker.id, label: worker.name }))}
-          />
-        </Field>
-        <Field label={t('taskDialog.completionDate')}>
-          <Input type="date" value={form.completed_date || ''} onChange={(e) => setForm({ ...form, completed_date: e.target.value })} />
-        </Field>
-        <Field label={t('taskDialog.estimatedCost')}>
-          <Input
-            type="number"
-            value={form.estimated_cost ?? ''}
-            onChange={(e) => setForm({ ...form, estimated_cost: e.target.value })}
-          />
-        </Field>
-        <Field label={t('taskDialog.actualCost')}>
-          <Input
-            type="number"
-            value={form.actual_cost ?? ''}
-            onChange={(e) => setForm({ ...form, actual_cost: e.target.value })}
-          />
-        </Field>
-      </div>
-      <Field label={t('common.notes')}>
-        <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+      <Field label={t('taskDialog.subtask')}>
+        <Input
+          value={form.subtask || ''}
+          onChange={(e) => setForm({ ...form, subtask: e.target.value })}
+          placeholder={t('taskDialog.subtaskPlaceholder')}
+        />
+      </Field>
+      <Field label={t('taskDialog.descLabel')}>
+        <Textarea
+          value={form.description || ''}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          rows={3}
+          placeholder={t('taskDialog.descPlaceholder')}
+        />
       </Field>
     </FormDialog>
   );

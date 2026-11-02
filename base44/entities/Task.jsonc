@@ -19,6 +19,14 @@
       ],
       "default": "other"
     },
+    "subtask": {
+      "type": "string",
+      "description": "Short label of the sub-task"
+    },
+    "description": {
+      "type": "string",
+      "description": "Details of what has to be done"
+    },
     "block_id": {
       "type": "string"
     },
