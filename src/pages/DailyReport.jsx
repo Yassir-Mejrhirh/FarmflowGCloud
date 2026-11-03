@@ -28,6 +28,7 @@ export default function DailyReport() {
   const [machinery, setMachinery] = useState([]);
   const [inputs, setInputs] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [rangeError, setRangeError] = useState(null);
 
   const load = async () => {
     const [blockRows, workerRows, machineRows, itemRows, reportRows, taskRows, natureRows] = await Promise.all([
@@ -58,6 +59,18 @@ export default function DailyReport() {
   const submit = async (event) => {
     event.preventDefault();
     if (!form.block_id || !form.task_id) return;
+
+    const block = blockMap[form.block_id];
+    if (block?.planting_date && form.date < block.planting_date) {
+      setRangeError({ key: 'report.outOfRangeBefore', date: fmtDate(block.planting_date) });
+      return;
+    }
+    if (block?.crop_end_date && form.date > block.crop_end_date) {
+      setRangeError({ key: 'report.outOfRangeAfter', date: fmtDate(block.crop_end_date) });
+      return;
+    }
+
+    setRangeError(null);
     setSaving(true);
     await base44.entities.DailyReport.create({
       date: form.date,
@@ -103,12 +116,28 @@ export default function DailyReport() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label={t('report.date')}>
-              <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(e) => {
+                  setRangeError(null);
+                  setForm({ ...form, date: e.target.value });
+                }}
+                required
+              />
+              {rangeError && (
+                <p className="mt-1.5 text-[11px] font-medium text-destructive">
+                  {t(rangeError.key, { date: rangeError.date })}
+                </p>
+              )}
             </Field>
             <Field label={t('report.block')}>
               <SelectField
                 value={form.block_id}
-                onChange={(value) => setForm({ ...form, block_id: value })}
+                onChange={(value) => {
+                  setRangeError(null);
+                  setForm({ ...form, block_id: value });
+                }}
                 options={blocks.map((block) => ({ value: block.id, label: block.name }))}
               />
             </Field>

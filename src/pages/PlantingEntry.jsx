@@ -80,7 +80,7 @@ export default function PlantingEntry() {
                   <Sprout className="h-4 w-4 shrink-0 text-sage" strokeWidth={1.7} />
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                   <Field label={t('planting.crop')}>
                     <SelectField
                       value={block.crop_id}
@@ -105,11 +105,18 @@ export default function PlantingEntry() {
                       options={seasons.map((season) => ({ value: season.id, label: season.name }))}
                     />
                   </Field>
-                  <Field label={t('planting.plantingDate')}>
+                  <Field label={t('planting.cropStartDate')}>
                     <Input
                       type="date"
                       value={block.planting_date || ''}
                       onChange={(e) => patch(block, { planting_date: e.target.value })}
+                    />
+                  </Field>
+                  <Field label={t('planting.cropEndDate')}>
+                    <Input
+                      type="date"
+                      value={block.crop_end_date || ''}
+                      onChange={(e) => patch(block, { crop_end_date: e.target.value })}
                     />
                   </Field>
                 </div>

@@ -48,7 +48,13 @@
     },
     "planting_date": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "Start date of the crop cycle in the block"
+    },
+    "crop_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "End date of the crop cycle in the block"
     },
     "status": {
       "type": "string",
