@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
 import { fmtNum } from '@/lib/format';
 import { downloadBlockKml, parseKmlBlocks } from '@/lib/kml';
+import { readKmzText } from '@/lib/kmz';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
@@ -63,13 +64,13 @@ export default function Blocks() {
     setDialogOpen(true);
   };
 
-  const handleImportKml = async (event) => {
+  const handleImportKmz = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
     setImporting(true);
     try {
-      const parsed = parseKmlBlocks(await file.text());
+      const parsed = parseKmlBlocks(await readKmzText(await file.arrayBuffer()));
       if (!parsed.length) {
         toast({ title: t('blocks.toastNoBoundaries'), description: t('blocks.toastNoBoundariesDesc'), variant: 'destructive' });
         return;
@@ -101,9 +102,9 @@ export default function Blocks() {
             <input
               ref={importInputRef}
               type="file"
-              accept=".kml,.xml,application/vnd.google-earth.kml+xml"
+              accept=".kmz,application/vnd.google-earth.kmz"
               className="hidden"
-              onChange={handleImportKml}
+              onChange={handleImportKmz}
             />
             <Button variant="outline" onClick={() => setGroupDialogOpen(true)} className="rounded-xl" disabled={!blocks.length}>
               <Layers className="mr-1.5 h-4 w-4" /> {t('blocks.groupButton')}
