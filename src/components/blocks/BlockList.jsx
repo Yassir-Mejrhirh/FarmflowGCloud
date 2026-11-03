@@ -63,6 +63,7 @@ export default function BlockList({ blocks, cropMap, varietyMap, selectedId, onS
                   block={block}
                   crop={cropMap[block.crop_id]}
                   variety={varietyMap[block.variety_id]}
+                  varietyMap={varietyMap}
                   active={block.id === selectedId}
                   onSelect={() => onSelect(block.id)}
                   onEdit={() => onEdit(block)}

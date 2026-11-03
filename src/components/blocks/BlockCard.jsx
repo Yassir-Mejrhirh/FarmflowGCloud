@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils';
 
 const STATUS_TONE = { active: 'moss', preparing: 'amber', harvest: 'clay', fallow: 'stone' };
 
-export default function BlockCard({ block, crop, variety, active, onSelect, onEdit }) {
+export default function BlockCard({ block, crop, variety, varietyMap = {}, active, onSelect, onEdit }) {
   const { t } = useI18n();
   const zones = block.irrigation_zones?.length || 0;
+  const subBlocks = block.sub_blocks || [];
 
   return (
     <div
@@ -45,6 +46,19 @@ export default function BlockCard({ block, crop, variety, active, onSelect, onEd
           <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-sage">
             <Droplets className="h-3 w-3" /> {t('blocks.zones', { n: zones })}
           </p>
+        )}
+        {subBlocks.length > 0 && (
+          <ul className="mt-2 space-y-0.5 border-t border-border/60 pt-2">
+            {subBlocks.map((sub, index) => (
+              <li key={index} className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                <span className="truncate">
+                  {sub.name || t('blockDialog.subBlockDefaultName', { n: index + 1 })}
+                  {varietyMap[sub.variety_id] ? ` · ${varietyMap[sub.variety_id].name}` : ''}
+                </span>
+                <span className="shrink-0 tabular-nums">{fmtNum(sub.area_ha, 2)} ha</span>
+              </li>
+            ))}
+          </ul>
         )}
       </button>
       <div className="mt-3 flex items-center justify-between">

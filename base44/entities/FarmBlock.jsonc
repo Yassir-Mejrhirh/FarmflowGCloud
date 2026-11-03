@@ -69,6 +69,24 @@
     "soil_type": {
       "type": "string"
     },
+    "sub_blocks": {
+      "type": "array",
+      "description": "Sub-divisions of the block, each with its own area and variety",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "area_ha": {
+            "type": "number"
+          },
+          "variety_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "irrigation_zones": {
       "type": "array",
       "description": "Subdivisions of the block for irrigation",
