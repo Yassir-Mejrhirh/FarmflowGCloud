@@ -21,6 +21,8 @@ import Varieties from '@/pages/Varieties';
 import Suppliers from '@/pages/Suppliers';
 import PlantingEntry from '@/pages/PlantingEntry';
 import DailyReport from '@/pages/DailyReport';
+import InputInvoices from '@/pages/InputInvoices';
+import InputInvoicesList from '@/pages/InputInvoicesList';
 import { I18nProvider } from '@/lib/I18nContext';
 
 const AuthenticatedApp = () => {
@@ -64,6 +66,8 @@ const AuthenticatedApp = () => {
         <Route path="/suppliers" element={<Suppliers />} />
         <Route path="/planting" element={<PlantingEntry />} />
         <Route path="/daily-report" element={<DailyReport />} />
+        <Route path="/input-invoices" element={<InputInvoices />} />
+        <Route path="/input-invoices/all" element={<InputInvoicesList />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
