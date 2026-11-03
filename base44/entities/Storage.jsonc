@@ -15,8 +15,18 @@
       ],
       "default": "warehouse"
     },
+    "farm": {
+      "type": "string",
+      "description": "Name of the farm the storage belongs to"
+    },
     "location": {
       "type": "string"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
     },
     "capacity_note": {
       "type": "string"

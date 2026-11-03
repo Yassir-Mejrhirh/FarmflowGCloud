@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   BarChart3, Boxes, CalendarRange, ChevronRight, ClipboardList, Layers, ListChecks, MapPin,
-  Settings2, Sprout, Tractor, Truck, Users, Wallet, Leaf, ClipboardCheck, Receipt,
+  Settings2, Sprout, Tractor, Truck, Users, Wallet, Leaf, ClipboardCheck, Receipt, House, Warehouse,
 } from 'lucide-react';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -13,6 +13,8 @@ export default function OverviewGroups() {
       key: 'param',
       icon: Settings2,
       items: [
+        { to: '/farms', label: t('param.farms'), icon: House },
+        { to: '/storages', label: t('param.storages'), icon: Warehouse },
         { to: '/seasons', label: t('param.season'), icon: CalendarRange },
         { to: '/tasks', label: t('param.tasks'), icon: ListChecks },
         { to: '/blocks', label: t('param.blocks'), icon: MapPin },

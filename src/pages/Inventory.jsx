@@ -5,6 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
 import Segmented from '@/components/Segmented';
+import StorageDialog from '@/components/storages/StorageDialog';
 import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
@@ -18,7 +19,6 @@ import { cn } from '@/lib/utils';
 
 const CATEGORIES = ['seed', 'fertilizer', 'pesticide', 'herbicide', 'fuel', 'packaging', 'other'];
 const UNITS = ['kg', 'l', 'bag', 'pack', 'unit'];
-const STORAGE_KINDS = ['warehouse', 'cold_room', 'silo', 'shed'];
 
 export default function Inventory() {
   const { t } = useI18n();
@@ -399,92 +399,6 @@ function ItemDialog({ open, onOpenChange, item, storages, onSaved }) {
       {item?.id && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
           {t('itemDialog.delete')}
-        </button>
-      )}
-    </FormDialog>
-  );
-}
-
-function StorageDialog({ open, onOpenChange, storage, onSaved }) {
-  const { t } = useI18n();
-  const [form, setForm] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setForm({
-      name: storage?.name || '',
-      kind: storage?.kind || 'warehouse',
-      location: storage?.location || '',
-      capacity_note: storage?.capacity_note || '',
-      notes: storage?.notes || '',
-    });
-  }, [open, storage]);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    if (!form.name?.trim()) return;
-    setSaving(true);
-    const payload = {
-      name: form.name.trim(),
-      kind: form.kind,
-      location: form.location || '',
-      capacity_note: form.capacity_note || '',
-      notes: form.notes || '',
-    };
-    if (storage?.id) await base44.entities.Storage.update(storage.id, payload);
-    else await base44.entities.Storage.create(payload);
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
-  };
-
-  const remove = async () => {
-    if (!storage?.id) return;
-    setSaving(true);
-    await base44.entities.Storage.delete(storage.id);
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
-  };
-
-  return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={storage ? t('storageDialog.editTitle') : t('storageDialog.newTitle')}
-      onSubmit={submit}
-      saving={saving}
-      submitLabel={storage ? t('storageDialog.save') : t('storageDialog.add')}
-    >
-      <Field label={t('common.name')}>
-        <Input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('storageDialog.namePlaceholder')} required />
-      </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('common.type')}>
-          <SelectField
-            value={form.kind}
-            onChange={(value) => setForm({ ...form, kind: value })}
-            options={STORAGE_KINDS.map((value) => ({ value, label: t(`sk.${value}`) }))}
-          />
-        </Field>
-        <Field label={t('storageDialog.location')}>
-          <Input value={form.location || ''} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder={t('storageDialog.locationPlaceholder')} />
-        </Field>
-      </div>
-      <Field label={t('storageDialog.capacity')}>
-        <Input
-          value={form.capacity_note || ''}
-          onChange={(e) => setForm({ ...form, capacity_note: e.target.value })}
-          placeholder={t('storageDialog.capacityPlaceholder')}
-        />
-      </Field>
-      <Field label={t('common.notes')}>
-        <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
-      </Field>
-      {storage?.id && (
-        <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
-          {t('storageDialog.delete')}
         </button>
       )}
     </FormDialog>

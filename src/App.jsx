@@ -19,6 +19,8 @@ import Costs from '@/pages/Costs';
 import Seasons from '@/pages/Seasons';
 import Varieties from '@/pages/Varieties';
 import Suppliers from '@/pages/Suppliers';
+import Farms from '@/pages/Farms';
+import Storages from '@/pages/Storages';
 import PlantingEntry from '@/pages/PlantingEntry';
 import DailyReport from '@/pages/DailyReport';
 import InputInvoices from '@/pages/InputInvoices';
@@ -64,6 +66,8 @@ const AuthenticatedApp = () => {
         <Route path="/seasons" element={<Seasons />} />
         <Route path="/varieties" element={<Varieties />} />
         <Route path="/suppliers" element={<Suppliers />} />
+        <Route path="/farms" element={<Farms />} />
+        <Route path="/storages" element={<Storages />} />
         <Route path="/planting" element={<PlantingEntry />} />
         <Route path="/daily-report" element={<DailyReport />} />
         <Route path="/input-invoices" element={<InputInvoices />} />
