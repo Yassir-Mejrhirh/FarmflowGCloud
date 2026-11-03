@@ -1,4 +1,5 @@
-import { MapContainer, TileLayer, CircleMarker, useMapEvents } from 'react-leaflet';
+import { useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { SATELLITE_URL } from '@/components/blocks/BlockMap';
 import { DEFAULT_CENTER } from '@/lib/geo';
@@ -9,17 +10,38 @@ function ClickCatcher({ onPick }) {
   return null;
 }
 
+function Recenter({ value, skipRef }) {
+  const map = useMap();
+  useEffect(() => {
+    if (value?.lat == null || value?.lng == null) return;
+    const key = `${value.lat},${value.lng}`;
+    if (skipRef.current === key) {
+      skipRef.current = null;
+      return;
+    }
+    map.setView([value.lat, value.lng], 15);
+  }, [value?.lat, value?.lng, map, skipRef]);
+  return null;
+}
+
 export default function LocationPicker({ value, onChange }) {
   const { t } = useI18n();
+  const skipRef = useRef(null);
   const hasPoint = value?.lat != null && value?.lng != null;
   const center = hasPoint ? [value.lat, value.lng] : DEFAULT_CENTER;
+
+  const handleTap = (point) => {
+    skipRef.current = `${point.lat},${point.lng}`;
+    onChange(point);
+  };
 
   return (
     <div className="space-y-2">
       <div className="h-[220px] w-full overflow-hidden rounded-xl border border-border/70">
         <MapContainer center={center} zoom={hasPoint ? 15 : 12} scrollWheelZoom={false} className="h-full w-full">
           <TileLayer url={SATELLITE_URL} attribution="Imagery © Esri, Maxar, Earthstar Geographics" />
-          <ClickCatcher onPick={onChange} />
+          <ClickCatcher onPick={handleTap} />
+          <Recenter value={value} skipRef={skipRef} />
           {hasPoint && (
             <CircleMarker
               center={[value.lat, value.lng]}

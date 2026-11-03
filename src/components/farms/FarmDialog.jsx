@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
+import KmzPointImport from '@/components/geo/KmzPointImport';
 import LocationPicker from '@/components/geo/LocationPicker';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -74,10 +75,13 @@ export default function FarmDialog({ open, onOpenChange, farm, onSaved }) {
         />
       </Field>
       <Field label={t('storageDialog.geolocation')}>
-        <LocationPicker
-          value={form.latitude != null ? { lat: form.latitude, lng: form.longitude } : null}
-          onChange={setPoint}
-        />
+        <div className="space-y-2">
+          <LocationPicker
+            value={form.latitude != null ? { lat: form.latitude, lng: form.longitude } : null}
+            onChange={setPoint}
+          />
+          <KmzPointImport onPick={setPoint} />
+        </div>
       </Field>
       <Field label={t('common.notes')}>
         <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />

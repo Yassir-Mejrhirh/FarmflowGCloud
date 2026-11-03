@@ -114,3 +114,28 @@ export const parseKmlBlocks = (text) => {
   });
   return blocks;
 };
+
+/** Parses a KML document into geolocation points: [{ name, latitude, longitude }]. */
+export const parseKmlPoints = (text) => {
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  if (doc.getElementsByTagName('parsererror').length) {
+    throw new Error('This file is not a valid KML document.');
+  }
+
+  const points = [];
+  Array.from(doc.getElementsByTagName('Placemark')).forEach((placemark, index) => {
+    const name = placemark.getElementsByTagName('name')[0]?.textContent?.trim() || `Point ${index + 1}`;
+    const coords = Array.from(placemark.getElementsByTagName('coordinates'))
+      .flatMap((node) => node.textContent.trim().split(/\s+/).map((tuple) => {
+        const [lng, lat] = tuple.split(',').map(Number);
+        return { lat, lng };
+      }))
+      .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+
+    if (!coords.length) return;
+    const latitude = coords.reduce((sum, point) => sum + point.lat, 0) / coords.length;
+    const longitude = coords.reduce((sum, point) => sum + point.lng, 0) / coords.length;
+    points.push({ name, latitude: Number(latitude.toFixed(6)), longitude: Number(longitude.toFixed(6)) });
+  });
+  return points;
+};
