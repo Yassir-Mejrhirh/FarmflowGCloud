@@ -166,10 +166,6 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
         </Field>
       </div>
 
-      <Field label={t('blockDialog.boundary')} hint={t('blockDialog.boundaryHint')}>
-        <BoundaryDrawer points={form.boundary} onChange={(points) => update('boundary', points)} />
-      </Field>
-
       <Field label={t('blockDialog.subBlocks')} hint={t('blockDialog.subBlocksHint')}>
         <SubBlocksEditor
           subBlocks={form.sub_blocks}
@@ -179,6 +175,10 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
           cropId={form.crop_id}
           varieties={varieties}
         />
+      </Field>
+
+      <Field label={t('blockDialog.boundary')} hint={t('blockDialog.boundaryHint')}>
+        <BoundaryDrawer points={form.boundary} onChange={(points) => update('boundary', points)} />
       </Field>
 
       <Field label={t('blockDialog.irrigationZones')} hint={t('blockDialog.irrigationHint')}>
