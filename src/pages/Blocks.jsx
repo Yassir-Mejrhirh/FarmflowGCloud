@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Ruler, MapPin, Globe, Upload, Layers } from 'lucide-react';
+import { Plus, Ruler, MapPin, Globe, Upload, Layers, Satellite } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
-import BlockMap, { BLOCK_STATUS_COLORS } from '@/components/blocks/BlockMap';
+import SatelliteDialog from '@/components/blocks/SatelliteDialog';
 import BlockDialog from '@/components/blocks/BlockDialog';
 import BlockList from '@/components/blocks/BlockList';
 import GroupBlocksDialog from '@/components/blocks/GroupBlocksDialog';
@@ -16,8 +16,6 @@ import { readKmzText } from '@/lib/kmz';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
-const STATUS_KEYS = ['active', 'preparing', 'harvest', 'fallow'];
-
 export default function Blocks() {
   const { t } = useI18n();
   const [blocks, setBlocks] = useState([]);
@@ -28,6 +26,7 @@ export default function Blocks() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef(null);
   const { toast } = useToast();
@@ -106,6 +105,9 @@ export default function Blocks() {
               className="hidden"
               onChange={handleImportKmz}
             />
+            <Button variant="outline" onClick={() => setMapOpen(true)} className="rounded-xl" disabled={!blocks.length}>
+              <Satellite className="mr-1.5 h-4 w-4" /> {t('blocks.satellite')}
+            </Button>
             <Button variant="outline" onClick={() => setGroupDialogOpen(true)} className="rounded-xl" disabled={!blocks.length}>
               <Layers className="mr-1.5 h-4 w-4" /> {t('blocks.groupButton')}
             </Button>
@@ -132,19 +134,7 @@ export default function Blocks() {
           action={<Button onClick={openNew}>{t('blocks.plotBlock')}</Button>}
         />
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[1.55fr_1fr]">
-          <div className="rounded-2xl border border-border/70 bg-card p-2">
-            <BlockMap blocks={blocks} selectedId={selectedId} onSelect={setSelectedId} />
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-3">
-              {STATUS_KEYS.map((key) => (
-                <span key={key} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: BLOCK_STATUS_COLORS[key] }} />
-                  {t(`st.${key}`)}
-                </span>
-              ))}
-            </div>
-          </div>
-
+        <div className="grid gap-5">
           <BlockList
             blocks={blocks}
             cropMap={cropMap}
@@ -163,6 +153,14 @@ export default function Blocks() {
         crops={crops}
         varieties={varieties}
         onSaved={load}
+      />
+
+      <SatelliteDialog
+        open={mapOpen}
+        onOpenChange={setMapOpen}
+        blocks={blocks}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
       />
 
       <GroupBlocksDialog

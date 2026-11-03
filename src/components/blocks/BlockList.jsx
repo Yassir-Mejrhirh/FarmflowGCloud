@@ -42,7 +42,7 @@ export default function BlockList({ blocks, cropMap, varietyMap, selectedId, onS
         ]}
       />
 
-      <div className="space-y-3 xl:max-h-[470px] xl:overflow-y-auto xl:pr-1">
+      <div className="space-y-3">
         {groups.map((group) => {
           const groupArea = group.rows.reduce((sum, block) => sum + (Number(block.area_ha) || 0), 0);
           return (

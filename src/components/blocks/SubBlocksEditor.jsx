@@ -1,6 +1,7 @@
 import { Plus, Scissors, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import SelectField from '@/components/SelectField';
 import { fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -37,18 +38,21 @@ export default function SubBlocksEditor({ subBlocks = [], onChange, totalArea = 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        {[2, 3].map((count) => (
-          <Button
-            key={count}
-            type="button"
-            variant="outline"
-            size="sm"
-            className="rounded-lg"
-            onClick={() => onChange(buildSplit(count, blockName.trim(), area, t))}
-          >
-            <Scissors className="h-3.5 w-3.5" /> {t(`blockDialog.split${count}`)}
-          </Button>
-        ))}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="rounded-lg">
+              <Scissors className="h-3.5 w-3.5" /> {t('blockDialog.splitBlock')}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => onChange(buildSplit(2, blockName.trim(), area, t))}>
+              {t('blockDialog.splitInto2')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onChange(buildSplit(3, blockName.trim(), area, t))}>
+              {t('blockDialog.splitInto3')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {subBlocks.length === 0 ? (
