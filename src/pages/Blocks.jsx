@@ -64,12 +64,15 @@ export default function Blocks() {
   };
 
   const handleImportKmz = async (event) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
     event.target.value = '';
-    if (!file) return;
+    if (!files.length) return;
     setImporting(true);
     try {
-      const parsed = parseKmlBlocks(await readKmzText(await file.arrayBuffer()));
+      const parsed = [];
+      for (const file of files) {
+        parsed.push(...parseKmlBlocks(await readKmzText(await file.arrayBuffer())));
+      }
       if (!parsed.length) {
         toast({ title: t('blocks.toastNoBoundaries'), description: t('blocks.toastNoBoundariesDesc'), variant: 'destructive' });
         return;
@@ -102,6 +105,7 @@ export default function Blocks() {
               ref={importInputRef}
               type="file"
               accept=".kmz,application/vnd.google-earth.kmz"
+              multiple
               className="hidden"
               onChange={handleImportKmz}
             />
