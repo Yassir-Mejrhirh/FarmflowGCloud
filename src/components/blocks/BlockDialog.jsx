@@ -8,6 +8,7 @@ import IrrigationZones from '@/components/blocks/IrrigationZones';
 import SubBlocksEditor from '@/components/blocks/SubBlocksEditor';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { fetchList } from '@/lib/data';
 import { polygonAreaHa } from '@/lib/geo';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -17,9 +18,22 @@ const EMPTY = {
 
 const STATUSES = ['active', 'preparing', 'harvest', 'fallow'];
 
+const normalize = (value) => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const detectFarm = (name, farms) => {
+  const target = normalize(name);
+  if (!target) return '';
+  const match = farms.find((farm) => {
+    const farmName = normalize(farm.name);
+    return farmName.length > 1 && target.includes(farmName);
+  });
+  return match ? match.name : '';
+};
+
 export default function BlockDialog({ open, onOpenChange, block, crops, varieties, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState(EMPTY);
+  const [farms, setFarms] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -50,9 +64,18 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
           }
         : EMPTY,
     );
+    fetchList(base44.entities.Farm, {}, { sort: 'name' }).then(setFarms);
   }, [open, block]);
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleNameChange = (value) => setForm((prev) => {
+    const keepManual = prev.farm && prev.farm !== detectFarm(prev.name, farms);
+    return { ...prev, name: value, farm: keepManual ? prev.farm : detectFarm(value, farms) };
+  });
+
+  const farmNames = farms.map((farm) => farm.name);
+  if (form.farm && !farmNames.includes(form.farm)) farmNames.unshift(form.farm);
   const area = polygonAreaHa(form.boundary);
 
   const handleSubmit = async (event) => {
@@ -118,13 +141,19 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('blockDialog.blockName')}>
-          <Input value={form.name} onChange={(e) => update('name', e.target.value)} placeholder={t('blockDialog.namePlaceholder')} required />
+          <Input value={form.name} onChange={(e) => handleNameChange(e.target.value)} placeholder={t('blockDialog.namePlaceholder')} required />
         </Field>
         <Field label={t('blockDialog.code')}>
           <Input value={form.code} onChange={(e) => update('code', e.target.value)} placeholder="OL-01" />
         </Field>
         <Field label={t('blockDialog.farm')}>
-          <Input value={form.farm} onChange={(e) => update('farm', e.target.value)} placeholder={t('blockDialog.farmPlaceholder')} />
+          <SelectField
+            value={form.farm}
+            onChange={(value) => update('farm', value)}
+            noneLabel={t('blockDialog.farmNone')}
+            options={farmNames.map((name) => ({ value: name, label: name }))}
+            placeholder={t('blockDialog.farmPlaceholder')}
+          />
         </Field>
         <Field label={t('blockDialog.locality')}>
           <Input value={form.locality} onChange={(e) => update('locality', e.target.value)} placeholder={t('blockDialog.localityPlaceholder')} />
