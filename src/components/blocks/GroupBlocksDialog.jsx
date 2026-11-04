@@ -3,7 +3,9 @@ import { Check } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
+import SelectField from '@/components/SelectField';
 import { Input } from '@/components/ui/input';
+import { fetchList } from '@/lib/data';
 import { fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -11,6 +13,7 @@ import { cn } from '@/lib/utils';
 export default function GroupBlocksDialog({ open, onOpenChange, blocks, onSaved }) {
   const { t } = useI18n();
   const [farm, setFarm] = useState('');
+  const [farms, setFarms] = useState([]);
   const [locality, setLocality] = useState('');
   const [selected, setSelected] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -20,6 +23,7 @@ export default function GroupBlocksDialog({ open, onOpenChange, blocks, onSaved 
     setFarm('');
     setLocality('');
     setSelected([]);
+    fetchList(base44.entities.Farm, {}, { sort: 'name' }).then((rows) => setFarms(rows.map((row) => row.name)));
   }, [open]);
 
   const toggle = (id) =>
@@ -65,7 +69,13 @@ export default function GroupBlocksDialog({ open, onOpenChange, blocks, onSaved 
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('blockDialog.farm')}>
-          <Input value={farm} onChange={(e) => setFarm(e.target.value)} placeholder={t('blockDialog.farmPlaceholder')} />
+          <SelectField
+            value={farm}
+            onChange={setFarm}
+            noneLabel={t('blockDialog.farmNone')}
+            options={farms.map((name) => ({ value: name, label: name }))}
+            placeholder={t('blockDialog.farmPlaceholder')}
+          />
         </Field>
         <Field label={t('blockDialog.locality')}>
           <Input
