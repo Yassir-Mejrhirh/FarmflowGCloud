@@ -1,4 +1,4 @@
-import { Droplets } from 'lucide-react';
+import { Download, Pencil } from 'lucide-react';
 import StatusPill from '@/components/StatusPill';
 import { fmtNum } from '@/lib/format';
 import { downloadBlockKml, blockKmlFilename } from '@/lib/kml';
@@ -7,77 +7,53 @@ import { cn } from '@/lib/utils';
 
 const STATUS_TONE = { active: 'moss', preparing: 'amber', harvest: 'clay', fallow: 'stone' };
 
-export default function BlockCard({ block, crop, variety, varietyMap = {}, active, onSelect, onEdit }) {
+export default function BlockCard({ block, crop, variety, active, onSelect, onEdit }) {
   const { t } = useI18n();
-  const zones = block.irrigation_zones?.length || 0;
-  const subBlocks = block.sub_blocks || [];
+  const culture = crop ? `${crop.name}${variety ? ` · ${variety.name}` : ''}` : t('common.noCropAssigned');
+  const place = [block.farm, block.locality].filter(Boolean).join(' · ');
 
   return (
     <div
       className={cn(
-        'rounded-2xl border bg-card p-4 transition-all duration-200',
-        active ? 'border-primary/40 shadow-[0_18px_40px_-38px_rgba(20,45,35,0.9)]' : 'border-border/70',
+        'rounded-xl border px-3 py-2 transition-all duration-200',
+        active ? 'border-primary/40 bg-secondary/40' : 'border-border/70 bg-card hover:border-border',
       )}
     >
-      <button type="button" onClick={onSelect} className="w-full text-start">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate font-display text-base leading-tight">{block.name}</p>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              {block.code || t('blocks.noCode')}
-            </p>
-          </div>
-          <StatusPill tone={STATUS_TONE[block.status] || 'stone'}>{t(`st.${block.status}`)}</StatusPill>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="tabular-nums">{fmtNum(block.area_ha, 2)} ha</span>
-          <span className="truncate">
-            {crop ? `${crop.name}${variety ? ` · ${variety.name}` : ''}` : t('common.noCropAssigned')}
-          </span>
-        </div>
-        {(block.farm || block.locality) && (
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
-            {block.farm && <span>{block.farm}</span>}
-            {block.farm && block.locality && <span>·</span>}
-            {block.locality && <span>{block.locality}</span>}
-          </p>
-        )}
-        {zones > 0 && (
-          <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-sage">
-            <Droplets className="h-3 w-3" /> {t('blocks.zones', { n: zones })}
-          </p>
-        )}
-        {subBlocks.length > 0 && (
-          <ul className="mt-2 space-y-0.5 border-t border-border/60 pt-2">
-            {subBlocks.map((sub, index) => (
-              <li key={index} className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                <span className="truncate">
-                  {sub.name || t('blockDialog.subBlockDefaultName', { n: index + 1 })}
-                  {varietyMap[sub.variety_id] ? ` · ${varietyMap[sub.variety_id].name}` : ''}
-                </span>
-                <span className="shrink-0 tabular-nums">{fmtNum(sub.area_ha, 2)} ha</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </button>
-      <div className="mt-3 flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground">
-          {t('blocks.boundaryPoints', { n: block.boundary?.length || 0 })}
-        </span>
-        <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-start">
+          <p className="truncate text-sm font-medium leading-tight">{block.name}</p>
+        </button>
+        <StatusPill tone={STATUS_TONE[block.status] || 'stone'}>{t(`st.${block.status}`)}</StatusPill>
+        <div className="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={() => downloadBlockKml([block], blockKmlFilename(block))}
-            className="text-[11px] font-medium text-sage hover:underline"
+            title="Google Earth"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
           >
-            Google Earth
+            <Download className="h-3.5 w-3.5" />
           </button>
-          <button type="button" onClick={onEdit} className="text-[11px] font-medium text-primary hover:underline">
-            {t('blocks.editBlock')}
+          <button
+            type="button"
+            onClick={onEdit}
+            title={t('blocks.editBlock')}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+          >
+            <Pencil className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
+      <button
+        type="button"
+        onClick={onSelect}
+        className="mt-0.5 flex w-full items-center gap-1.5 overflow-hidden text-start text-[11px] text-muted-foreground"
+      >
+        <span className="shrink-0 tabular-nums">{fmtNum(block.area_ha, 2)} ha</span>
+        <span className="shrink-0 opacity-50">·</span>
+        <span className="truncate">{culture}</span>
+        {place && <span className="shrink-0 opacity-50">·</span>}
+        {place && <span className="truncate">{place}</span>}
+      </button>
     </div>
   );
 }
