@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Check } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import FormDialog from '@/components/FormDialog';
@@ -24,6 +24,18 @@ export default function GroupBlocksDialog({ open, onOpenChange, blocks, onSaved 
 
   const toggle = (id) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]));
+
+  const groups = useMemo(() => {
+    const map = new Map();
+    blocks.forEach((block) => {
+      const key = block.farm?.trim() || t('blocks.groupUnassigned');
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(block);
+    });
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, rows]) => ({ label, rows }));
+  }, [blocks, t]);
 
   const allSelected = blocks.length > 0 && selected.length === blocks.length;
   const canSave = selected.length > 0 && (farm.trim() || locality.trim());
@@ -73,31 +85,46 @@ export default function GroupBlocksDialog({ open, onOpenChange, blocks, onSaved 
           >
             {allSelected ? t('groupDialog.clearAll') : t('groupDialog.selectAll')}
           </button>
-          {blocks.map((block) => {
-            const checked = selected.includes(block.id);
+          {groups.map((group) => {
+            const groupArea = group.rows.reduce((sum, block) => sum + (Number(block.area_ha) || 0), 0);
             return (
-              <button
-                key={block.id}
-                type="button"
-                onClick={() => toggle(block.id)}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-start text-sm transition-colors',
-                  checked ? 'bg-secondary' : 'hover:bg-muted/60',
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
-                    checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
-                  )}
-                >
-                  {checked && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{block.name}</span>
-                <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                  {fmtNum(block.area_ha, 2)} ha
-                </span>
-              </button>
+              <div key={group.label} className="space-y-1">
+                <div className="flex items-baseline justify-between gap-2 px-2 pt-1.5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    {group.label}
+                  </p>
+                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                    {group.rows.length} · {fmtNum(groupArea, 2)} ha
+                  </span>
+                </div>
+                {group.rows.map((block) => {
+                  const checked = selected.includes(block.id);
+                  return (
+                    <button
+                      key={block.id}
+                      type="button"
+                      onClick={() => toggle(block.id)}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-start text-sm transition-colors',
+                        checked ? 'bg-secondary' : 'hover:bg-muted/60',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
+                          checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
+                        )}
+                      >
+                        {checked && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{block.name}</span>
+                      <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                        {fmtNum(block.area_ha, 2)} ha
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             );
           })}
         </div>
