@@ -4,7 +4,6 @@ import { base44 } from '@/api/base44Client';
 import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
-import { Input } from '@/components/ui/input';
 import { fetchList } from '@/lib/data';
 import { fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -14,14 +13,12 @@ export default function GroupBlocksDialog({ open, onOpenChange, blocks, onSaved 
   const { t } = useI18n();
   const [farm, setFarm] = useState('');
   const [farms, setFarms] = useState([]);
-  const [locality, setLocality] = useState('');
   const [selected, setSelected] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setFarm('');
-    setLocality('');
     setSelected([]);
     fetchList(base44.entities.Farm, {}, { sort: 'name' }).then((rows) => setFarms(rows.map((row) => row.name)));
   }, [open]);
@@ -42,14 +39,12 @@ export default function GroupBlocksDialog({ open, onOpenChange, blocks, onSaved 
   }, [blocks, t]);
 
   const allSelected = blocks.length > 0 && selected.length === blocks.length;
-  const canSave = selected.length > 0 && (farm.trim() || locality.trim());
+  const canSave = selected.length > 0 && Boolean(farm.trim());
 
   const submit = async (event) => {
     event.preventDefault();
     if (!canSave) return;
-    const patch = {};
-    if (farm.trim()) patch.farm = farm.trim();
-    if (locality.trim()) patch.locality = locality.trim();
+    const patch = { farm: farm.trim() };
     setSaving(true);
     await base44.entities.FarmBlock.bulkUpdate(selected.map((id) => ({ id, ...patch })));
     setSaving(false);
@@ -67,24 +62,15 @@ export default function GroupBlocksDialog({ open, onOpenChange, blocks, onSaved 
       saving={saving}
       submitLabel={t('groupDialog.apply')}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('blockDialog.farm')}>
-          <SelectField
-            value={farm}
-            onChange={setFarm}
-            noneLabel={t('blockDialog.farmNone')}
-            options={farms.map((name) => ({ value: name, label: name }))}
-            placeholder={t('blockDialog.farmPlaceholder')}
-          />
-        </Field>
-        <Field label={t('blockDialog.locality')}>
-          <Input
-            value={locality}
-            onChange={(e) => setLocality(e.target.value)}
-            placeholder={t('blockDialog.localityPlaceholder')}
-          />
-        </Field>
-      </div>
+      <Field label={t('blockDialog.farm')}>
+        <SelectField
+          value={farm}
+          onChange={setFarm}
+          noneLabel={t('blockDialog.farmNone')}
+          options={farms.map((name) => ({ value: name, label: name }))}
+          placeholder={t('blockDialog.farmPlaceholder')}
+        />
+      </Field>
 
       <Field label={`${t('groupDialog.parcels')} (${selected.length}/${blocks.length})`}>
         <div className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-border/70 p-2">

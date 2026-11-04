@@ -10,7 +10,7 @@ const STATUS_TONE = { active: 'moss', preparing: 'amber', harvest: 'clay', fallo
 export default function BlockCard({ block, crop, variety, active, onSelect, onEdit }) {
   const { t } = useI18n();
   const culture = crop ? `${crop.name}${variety ? ` · ${variety.name}` : ''}` : t('common.noCropAssigned');
-  const place = [block.farm, block.locality].filter(Boolean).join(' · ');
+  const place = block.farm?.trim() || '';
 
   return (
     <div

@@ -16,7 +16,6 @@ export default function BlockList({ blocks, cropMap, varietyMap, selectedId, onS
     if (groupBy === 'none') return [{ key: 'all', label: null, rows: blocks }];
 
     const keyOf = (block) => {
-      if (groupBy === 'locality') return block.locality?.trim() || t('blocks.groupUnassigned');
       if (groupBy === 'farm') return block.farm?.trim() || t('blocks.groupUnassigned');
       return cropMap[block.crop_id]?.name || t('blockDialog.noCropYet');
     };
@@ -40,7 +39,6 @@ export default function BlockList({ blocks, cropMap, varietyMap, selectedId, onS
         onChange={setGroupBy}
         options={[
           { value: 'none', label: t('blocks.groupNone') },
-          { value: 'locality', label: t('blocks.groupLocality') },
           { value: 'farm', label: t('blocks.groupFarm') },
           { value: 'crop', label: t('blocks.groupCrop') },
         ]}

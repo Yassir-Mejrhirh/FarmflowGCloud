@@ -13,7 +13,7 @@ import { polygonAreaHa } from '@/lib/geo';
 import { useI18n } from '@/lib/I18nContext';
 
 const EMPTY = {
-  name: '', code: '', farm: '', locality: '', crop_id: '', variety_id: '', planting_date: '', status: 'active', soil_type: '', notes: '', boundary: [], sub_blocks: [], irrigation_zones: [],
+  name: '', code: '', farm: '', crop_id: '', variety_id: '', planting_date: '', status: 'active', soil_type: '', notes: '', boundary: [], sub_blocks: [], irrigation_zones: [],
 };
 
 const STATUSES = ['active', 'preparing', 'harvest', 'fallow'];
@@ -74,7 +74,6 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
             name: block.name || '',
             code: block.code || '',
             farm: block.farm || '',
-            locality: block.locality || '',
             crop_id: block.crop_id || '',
             variety_id: block.variety_id || '',
             planting_date: block.planting_date || '',
@@ -123,7 +122,6 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
       name: form.name.trim(),
       code: form.code.trim(),
       farm: form.farm.trim(),
-      locality: form.locality.trim(),
       crop_id: form.crop_id,
       variety_id: form.variety_id,
       status: form.status,
@@ -191,9 +189,6 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
             options={farmNames.map((name) => ({ value: name, label: name }))}
             placeholder={t('blockDialog.farmPlaceholder')}
           />
-        </Field>
-        <Field label={t('blockDialog.locality')}>
-          <Input value={form.locality} onChange={(e) => update('locality', e.target.value)} placeholder={t('blockDialog.localityPlaceholder')} />
         </Field>
         <Field label={t('common.crop')}>
           <SelectField
