@@ -20,14 +20,44 @@ const STATUSES = ['active', 'preparing', 'harvest', 'fallow'];
 
 const normalize = (value) => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-const detectFarm = (name, farms) => {
-  const target = normalize(name);
-  if (!target) return '';
-  const match = farms.find((farm) => {
-    const farmName = normalize(farm.name);
-    return farmName.length > 1 && target.includes(farmName);
+const letters = (value) => normalize(value).replace(/[^a-z0-9]/g, '');
+
+// Reduce a label to its consonants ("Mnabha1" -> "mnbh") so abbreviations like "MNB1" can match it.
+const skeleton = (value) => letters(value).replace(/[0-9]/g, '').replace(/[aeiouy]/g, '');
+
+const detectFarm = (labels, farms) => {
+  const candidates = labels.map(letters).filter((label) => label.length >= 2);
+  if (!candidates.length) return '';
+
+  let best = '';
+  let bestScore = 0;
+
+  farms.forEach((farm) => {
+    const farmLabel = letters(farm.name);
+    if (farmLabel.length < 2) return;
+    const farmSkeleton = skeleton(farm.name);
+    const farmDigits = farmLabel.replace(/[^0-9]/g, '');
+
+    candidates.forEach((candidate) => {
+      let score = 0;
+      if (candidate.includes(farmLabel)) {
+        score = 100 + farmLabel.length;
+      } else {
+        const candidateSkeleton = skeleton(candidate);
+        if (candidateSkeleton.length >= 3 && farmSkeleton.startsWith(candidateSkeleton)) {
+          score = 50 + candidateSkeleton.length;
+          const candidateDigits = candidate.replace(/[^0-9]/g, '');
+          if (candidateDigits && candidateDigits === farmDigits) score += 10;
+        }
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = farm.name;
+      }
+    });
   });
-  return match ? match.name : '';
+
+  return best;
 };
 
 export default function BlockDialog({ open, onOpenChange, block, crops, varieties, onSaved }) {
@@ -64,15 +94,22 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
           }
         : EMPTY,
     );
-    fetchList(base44.entities.Farm, {}, { sort: 'name' }).then(setFarms);
+    fetchList(base44.entities.Farm, {}, { sort: 'name' }).then((list) => {
+      setFarms(list);
+      setForm((prev) => (prev.farm ? prev : { ...prev, farm: detectFarm([prev.name, prev.code], list) }));
+    });
   }, [open, block]);
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const handleNameChange = (value) => setForm((prev) => {
-    const keepManual = prev.farm && prev.farm !== detectFarm(prev.name, farms);
-    return { ...prev, name: value, farm: keepManual ? prev.farm : detectFarm(value, farms) };
-  });
+  const withDetectedFarm = (prev, patch) => {
+    const next = { ...prev, ...patch };
+    const keepManual = prev.farm && prev.farm !== detectFarm([prev.name, prev.code], farms);
+    return { ...next, farm: keepManual ? prev.farm : detectFarm([next.name, next.code], farms) };
+  };
+
+  const handleNameChange = (value) => setForm((prev) => withDetectedFarm(prev, { name: value }));
+  const handleCodeChange = (value) => setForm((prev) => withDetectedFarm(prev, { code: value }));
 
   const farmNames = farms.map((farm) => farm.name);
   if (form.farm && !farmNames.includes(form.farm)) farmNames.unshift(form.farm);
@@ -144,7 +181,7 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
           <Input value={form.name} onChange={(e) => handleNameChange(e.target.value)} placeholder={t('blockDialog.namePlaceholder')} required />
         </Field>
         <Field label={t('blockDialog.code')}>
-          <Input value={form.code} onChange={(e) => update('code', e.target.value)} placeholder="OL-01" />
+          <Input value={form.code} onChange={(e) => handleCodeChange(e.target.value)} placeholder="OL-01" />
         </Field>
         <Field label={t('blockDialog.farm')}>
           <SelectField
