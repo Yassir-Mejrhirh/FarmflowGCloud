@@ -5,7 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import WorkerDialog from '@/components/workers/WorkerDialog';
-import WorkerCard from '@/components/workers/WorkerCard';
+import WorkerTable from '@/components/workers/WorkerTable';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -41,20 +41,7 @@ export default function Workers() {
 
   const activeCount = workers.filter((worker) => worker.active !== false).length;
   const declaredCount = workers.filter((worker) => worker.declared).length;
-  const teams = useMemo(() => {
-    const map = new Map();
-    workers.forEach((worker) => {
-      const key = worker.team || '';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(worker);
-    });
-    return [...map.entries()]
-      .sort(([a], [b]) => (a || '\uffff').localeCompare(b || '\uffff'))
-      .map(([team, rows]) => ({ team, rows }));
-  }, [workers]);
-
   const teamNames = useMemo(() => [...new Set(workers.map((worker) => worker.team).filter(Boolean))], [workers]);
-  const grouped = teamNames.length > 0;
 
   return (
     <div className="space-y-8">
@@ -91,29 +78,13 @@ export default function Workers() {
           action={<Button onClick={() => setWorkerDialog(true)}>{t('workers.add')}</Button>}
         />
       ) : (
-        <div className="space-y-6">
-          {teams.map((group) => (
-            <div key={group.team || 'none'} className="space-y-2">
-              {grouped && (
-                <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                  {group.team || t('workers.noTeam')} · {group.rows.length}
-                </p>
-              )}
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {group.rows.map((worker) => (
-                  <WorkerCard
-                    key={worker.id}
-                    worker={worker}
-                    onEdit={() => {
-                      setEditingWorker(worker);
-                      setWorkerDialog(true);
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <WorkerTable
+          workers={workers}
+          onEdit={(worker) => {
+            setEditingWorker(worker);
+            setWorkerDialog(true);
+          }}
+        />
       )}
 
       <WorkerDialog
