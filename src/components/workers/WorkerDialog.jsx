@@ -10,12 +10,14 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useI18n } from '@/lib/I18nContext';
 
-const ROLES = ['field_worker', 'operator', 'supervisor', 'seasonal'];
+const PRIORITIES = ['1', '2', '3'];
+const DEFINITIONS = ['nominative', 'salary_band'];
 const NEW_FUNCTION = '__new_function__';
 
 const emptyForm = {
   name: '',
-  role: 'field_worker',
+  priority: '1',
+  definition: '',
   worker_function: '',
   farm: '',
   team: '',
@@ -45,7 +47,8 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       worker
         ? {
             name: worker.name || '',
-            role: worker.role || 'field_worker',
+            priority: worker.priority || '1',
+            definition: worker.definition || '',
             worker_function: worker.worker_function || '',
             farm: worker.farm || '',
             team: worker.team || '',
@@ -84,7 +87,8 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
     setSaving(true);
     const payload = {
       name: form.name.trim(),
-      role: form.role || 'field_worker',
+      priority: form.priority || '1',
+      definition: form.definition || '',
       worker_function: form.worker_function || '',
       farm: form.farm || '',
       team: form.team.trim(),
@@ -95,7 +99,6 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       transport_rate: Number(form.transport_rate) || 0,
       phone: form.phone || '',
       daily_rate: Number(form.daily_rate) || 0,
-      active: Boolean(form.active),
       notes: form.notes || '',
     };
     if (form.start_date) payload.start_date = form.start_date;
@@ -131,6 +134,16 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
     >
       <Field label={t('workerDialog.fullName')}>
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      </Field>
+
+      <Field label={t('workerDialog.definition')} hint={t('workerDialog.definitionHint')}>
+        <SelectField
+          value={form.definition}
+          onChange={(value) => setForm({ ...form, definition: value })}
+          placeholder={t('workerDialog.definitionPlaceholder')}
+          noneLabel={t('workerDialog.definitionNone')}
+          options={DEFINITIONS.map((value) => ({ value, label: t(`wr.def_${value}`) }))}
+        />
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -177,11 +190,11 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
             </Button>
           )}
         </Field>
-        <Field label={t('workerDialog.role')}>
+        <Field label={t('workerDialog.priority')} hint={t('workerDialog.priorityHint')}>
           <SelectField
-            value={form.role}
-            onChange={(value) => setForm({ ...form, role: value })}
-            options={ROLES.map((value) => ({ value, label: t(`wr.${value}`) }))}
+            value={form.priority}
+            onChange={(value) => setForm({ ...form, priority: value })}
+            options={PRIORITIES.map((value) => ({ value, label: t(`wr.priority_${value}`) }))}
           />
         </Field>
         <Field label={t('workerDialog.assignment')}>
@@ -199,6 +212,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
             list="worker-teams"
             placeholder={t('workerDialog.teamPlaceholder')}
           />
+
           <datalist id="worker-teams">
             {teams.map((name) => (
               <option key={name} value={name} />
@@ -225,7 +239,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
             placeholder="06 12 34 56 78"
           />
         </Field>
-        <Field label={t('workerDialog.started')}>
+        <Field label={t('workerDialog.hireDate')} hint={t('workerDialog.hireDateHint')}>
           <Input
             type="date"
             value={form.start_date}
@@ -268,10 +282,6 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       <div className="flex items-center justify-between rounded-xl border border-border/70 bg-secondary/40 px-3 py-2.5">
         <span className="text-sm">{t('workerDialog.declared')}</span>
         <Switch checked={Boolean(form.declared)} onCheckedChange={(checked) => setForm({ ...form, declared: checked })} />
-      </div>
-      <div className="flex items-center justify-between rounded-xl border border-border/70 bg-secondary/40 px-3 py-2.5">
-        <span className="text-sm">{t('workerDialog.currentlyWorking')}</span>
-        <Switch checked={Boolean(form.active)} onCheckedChange={(checked) => setForm({ ...form, active: checked })} />
       </div>
       <Field label={t('common.notes')}>
         <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />

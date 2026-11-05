@@ -13,7 +13,8 @@ const initials = (name = '') =>
 
 export default function WorkerCard({ worker, onEdit }) {
   const { t } = useI18n();
-  const subtitle = worker.worker_function || t(`wr.${worker.role}`);
+  const subtitle =
+    worker.worker_function || (worker.definition ? t(`wr.def_${worker.definition}`) : '');
   const transport = worker.transporter_name
     ? `${worker.transporter_name} · ${
         worker.transport_rate_type === 'per_person'
@@ -36,8 +37,8 @@ export default function WorkerCard({ worker, onEdit }) {
           <p className="truncate text-sm font-medium">{worker.name}</p>
           <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <StatusPill tone={worker.active === false ? 'stone' : 'moss'}>
-          {worker.active === false ? t('common.inactive') : t('common.active')}
+        <StatusPill tone={worker.priority === '3' ? 'stone' : worker.priority === '2' ? 'amber' : 'moss'}>
+          {t('workerDialog.priority')} {worker.priority || '1'}
         </StatusPill>
       </div>
 

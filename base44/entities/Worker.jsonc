@@ -5,15 +5,32 @@
     "name": {
       "type": "string"
     },
-    "role": {
+    "priority": {
       "type": "string",
+      "description": "Presence priority: 1 all year, 2 frequent depending on the season, 3 rarely present",
       "enum": [
-        "field_worker",
-        "operator",
-        "supervisor",
-        "seasonal"
+        "1",
+        "2",
+        "3"
       ],
-      "default": "field_worker"
+      "enumColors": [
+        "green",
+        "yellow",
+        "gray"
+      ],
+      "default": "1"
+    },
+    "definition": {
+      "type": "string",
+      "description": "Whether the worker is paid by name (nominative) or by a salary band",
+      "enum": [
+        "nominative",
+        "salary_band"
+      ],
+      "enumColors": [
+        "blue",
+        "purple"
+      ]
     },
     "worker_function": {
       "type": "string",
@@ -25,7 +42,7 @@
     },
     "team": {
       "type": "string",
-      "description": "Team the worker belongs to"
+      "description": "Team the worker belongs to, when applicable"
     },
     "registration_number": {
       "type": "string",
@@ -58,7 +75,8 @@
     },
     "start_date": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "Hire date, when known"
     },
     "active": {
       "type": "boolean",
