@@ -16,6 +16,7 @@ const emptyForm = () => ({
   invoice_number: '',
   supplier_id: '',
   item_id: '',
+  quantity: '',
   unit: '',
   unit_price: '',
   amount: '',
@@ -43,6 +44,7 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
       invoice_number: form.invoice_number.trim(),
       supplier_id: form.supplier_id,
       item_id: form.item_id,
+      quantity: Number(form.quantity) || 0,
       unit: form.unit.trim(),
       unit_price: Number(form.unit_price) || 0,
       amount: Number(form.amount) || 0,
@@ -90,6 +92,14 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
             onChange={(value) => set('item_id', value)}
             noneLabel={t('invInvoices.noItem')}
             options={items.map((item) => ({ value: item.id, label: item.name }))}
+          />
+        </Field>
+        <Field label={t('invInvoices.quantity')}>
+          <Input
+            type="number"
+            step="0.01"
+            value={form.quantity}
+            onChange={(e) => set('quantity', e.target.value)}
           />
         </Field>
         <Field label={t('invInvoices.unit')}>

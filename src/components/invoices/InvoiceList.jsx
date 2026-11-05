@@ -19,6 +19,7 @@ export default function InvoiceList({ invoices, supplierMap, itemMap }) {
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {supplier?.name || t('invInvoices.unknownSupplier')}
                 {item ? ` · ${item.name}` : ` · ${t('invInvoices.unknownItem')}`}
+                {invoice.quantity ? ` · ${invoice.quantity}${invoice.unit ? ` ${invoice.unit}` : ''}` : ''}
                 {invoice.unit_price
                   ? ` · ${fmtMoney(invoice.unit_price)}${invoice.unit ? `/${invoice.unit}` : ''}`
                   : ''}

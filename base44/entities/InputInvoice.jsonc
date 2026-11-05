@@ -18,6 +18,10 @@
       "type": "string",
       "description": "Input purchased"
     },
+    "quantity": {
+      "type": "number",
+      "description": "Quantity purchased"
+    },
     "unit": {
       "type": "string",
       "description": "Unit of the purchased quantity, e.g. L, KG, Flacon"
