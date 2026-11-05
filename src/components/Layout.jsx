@@ -4,6 +4,7 @@ import { Menu, Leaf, ArrowLeft } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import CompanySwitcher from '@/components/CompanySwitcher';
+import UserBadge from '@/components/UserBadge';
 import { CompanyProvider } from '@/lib/CompanyContext';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ export default function Layout() {
             <Leaf className="h-4 w-4 text-primary" strokeWidth={2} />
             <span className="font-display text-base tracking-tight">Terra</span>
           </div>
+          <UserBadge className="hidden sm:inline-flex" />
           <CompanySwitcher />
           <LanguageSwitcher />
         </header>
