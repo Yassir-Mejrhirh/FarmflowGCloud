@@ -7,7 +7,7 @@ import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import UsageField from '@/components/dailyreport/UsageField';
 import InputStockNote from '@/components/dailyreport/InputStockNote';
-import { buildInputTotals } from '@/lib/inventory';
+import { buildOnHand } from '@/lib/inventory';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ export default function DailyReport() {
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [natures, setNatures] = useState([]);
   const [reports, setReports] = useState([]);
@@ -38,7 +39,7 @@ export default function DailyReport() {
   const [rangeError, setRangeError] = useState(null);
 
   const load = async () => {
-    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, reportRows, taskRows, natureRows] = await Promise.all([
+    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, reportRows, taskRows, natureRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
@@ -46,6 +47,7 @@ export default function DailyReport() {
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
+      fetchList(base44.entities.StockMovement, {}),
       fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
       fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
       fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
@@ -57,6 +59,7 @@ export default function DailyReport() {
     setMachines(machineRows);
     setItems(itemRows);
     setInvoices(invoiceRows);
+    setMovements(movementRows);
     setReports(reportRows);
     setTasks(taskRows);
     setNatures(natureRows);
@@ -91,12 +94,15 @@ export default function DailyReport() {
   }, [visibleBlocks, crops, t]);
   const taskMap = useMemo(() => byId(tasks), [tasks]);
   const itemMap = useMemo(() => byId(items), [items]);
-  const stockTotals = useMemo(() => buildInputTotals(invoices), [invoices]);
+  const stockTotals = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
+  const blockCount = form.block_ids.length || 1;
   const stockExceeded = inputs.some(
-    (line) => line.item_id && Number(line.quantity) > (stockTotals[line.item_id]?.quantity || 0),
+    (line) =>
+      line.item_id &&
+      Number(line.quantity) * blockCount > (stockTotals[line.item_id]?.quantity || 0),
   );
   const canSubmit =
     form.block_ids.length > 0 && !!form.task_id && (!machineRequired || machineryReady) && !stockExceeded;
@@ -140,6 +146,20 @@ export default function DailyReport() {
     await base44.entities.DailyReport.bulkCreate(
       form.block_ids.map((blockId) => ({ ...base, block_id: blockId })),
     );
+    if (base.inputs.length) {
+      await base44.entities.StockMovement.bulkCreate(
+        form.block_ids.flatMap((blockId) =>
+          base.inputs.map((line) => ({
+            item_id: line.item_id,
+            kind: 'out',
+            quantity: line.quantity,
+            date: form.date,
+            block_id: blockId,
+            notes: base.description,
+          })),
+        ),
+      );
+    }
     setSaving(false);
     setForm({ ...form, block_ids: [], description: '', notes: '' });
     setLabour([]);
@@ -279,7 +299,7 @@ export default function DailyReport() {
                 <InputStockNote
                   item={itemMap[line.item_id]}
                   stock={stockTotals[line.item_id]?.quantity || 0}
-                  used={line.quantity}
+                  used={Number(line.quantity) * blockCount}
                 />
               )}
             />

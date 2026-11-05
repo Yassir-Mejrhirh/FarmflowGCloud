@@ -9,7 +9,7 @@ import StorageDialog from '@/components/storages/StorageDialog';
 import ItemDialog from '@/components/inventory/ItemDialog';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
-import { buildInputTotals } from '@/lib/inventory';
+import { buildInputTotals, buildOnHand } from '@/lib/inventory';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ export default function Inventory() {
   const [items, setItems] = useState([]);
   const [storages, setStorages] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [itemDialog, setItemDialog] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -27,14 +28,16 @@ export default function Inventory() {
   const [editingStorage, setEditingStorage] = useState(null);
 
   const load = async () => {
-    const [itemRows, storageRows, invoiceRows] = await Promise.all([
+    const [itemRows, storageRows, invoiceRows, movementRows] = await Promise.all([
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.Storage, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
+      fetchList(base44.entities.StockMovement, {}),
     ]);
     setItems(itemRows);
     setStorages(storageRows);
     setInvoices(invoiceRows);
+    setMovements(movementRows);
     setLoading(false);
   };
 
@@ -44,7 +47,8 @@ export default function Inventory() {
 
   const totals = useMemo(() => buildInputTotals(invoices), [invoices]);
 
-  const quantityOf = (item) => totals[item.id]?.quantity || 0;
+  const onHand = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
+  const quantityOf = (item) => onHand[item.id]?.quantity || 0;
   const avgCostOf = (item) => {
     const row = totals[item.id];
     return row && row.quantity ? row.cost / row.quantity : 0;
