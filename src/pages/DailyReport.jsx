@@ -19,6 +19,8 @@ export default function DailyReport() {
   const [blocks, setBlocks] = useState([]);
   const [farms, setFarms] = useState([]);
   const [farmId, setFarmId] = useState('');
+  const [cropId, setCropId] = useState('');
+  const [crops, setCrops] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
@@ -33,9 +35,10 @@ export default function DailyReport() {
   const [rangeError, setRangeError] = useState(null);
 
   const load = async () => {
-    const [blockRows, farmRows, workerRows, machineRows, itemRows, reportRows, taskRows, natureRows] = await Promise.all([
+    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, reportRows, taskRows, natureRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
+      fetchList(base44.entities.Crop, {}, { sort: 'name' }),
       fetchList(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
@@ -45,6 +48,7 @@ export default function DailyReport() {
     ]);
     setBlocks(blockRows);
     setFarms(farmRows);
+    setCrops(cropRows);
     setWorkers(workerRows);
     setMachines(machineRows);
     setItems(itemRows);
@@ -60,9 +64,14 @@ export default function DailyReport() {
   const blockMap = useMemo(() => byId(blocks), [blocks]);
 
   const farmName = farms.find((farm) => farm.id === farmId)?.name;
-  const farmBlocks = useMemo(
-    () => (farmName ? blocks.filter((block) => block.farm === farmName) : blocks),
-    [blocks, farmName],
+  const visibleBlocks = useMemo(
+    () =>
+      blocks.filter(
+        (block) =>
+          (!farmName || block.farm === farmName) &&
+          (!cropId || block.crop_id === cropId),
+      ),
+    [blocks, farmName, cropId],
   );
   const taskMap = useMemo(() => byId(tasks), [tasks]);
 
@@ -154,7 +163,10 @@ export default function DailyReport() {
                   setFarmId(value);
                   const name = farms.find((farm) => farm.id === value)?.name;
                   const stillVisible = blocks.some(
-                    (block) => block.id === form.block_id && (!name || block.farm === name),
+                    (block) =>
+                      block.id === form.block_id &&
+                      (!name || block.farm === name) &&
+                      (!cropId || block.crop_id === cropId),
                   );
                   if (!stillVisible) setForm({ ...form, block_id: '' });
                 }}
@@ -164,16 +176,36 @@ export default function DailyReport() {
             </Field>
           </div>
 
-          <Field label={t('report.block')}>
-            <SelectField
-              value={form.block_id}
-              onChange={(value) => {
-                setRangeError(null);
-                setForm({ ...form, block_id: value });
-              }}
-              options={farmBlocks.map((block) => ({ value: block.id, label: block.name }))}
-            />
-          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('common.crop')}>
+              <SelectField
+                value={cropId}
+                onChange={(value) => {
+                  setRangeError(null);
+                  setCropId(value);
+                  const stillVisible = blocks.some(
+                    (block) =>
+                      block.id === form.block_id &&
+                      (!farmName || block.farm === farmName) &&
+                      (!value || block.crop_id === value),
+                  );
+                  if (!stillVisible) setForm({ ...form, block_id: '' });
+                }}
+                options={crops.map((crop) => ({ value: crop.id, label: crop.name }))}
+                noneLabel={t('report.allCrops')}
+              />
+            </Field>
+            <Field label={t('report.block')}>
+              <SelectField
+                value={form.block_id}
+                onChange={(value) => {
+                  setRangeError(null);
+                  setForm({ ...form, block_id: value });
+                }}
+                options={visibleBlocks.map((block) => ({ value: block.id, label: block.name }))}
+              />
+            </Field>
+          </div>
 
           <Field label={t('report.task')}>
             <SelectField
