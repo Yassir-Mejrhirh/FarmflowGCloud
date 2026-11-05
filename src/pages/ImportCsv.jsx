@@ -116,7 +116,7 @@ export default function ImportCsv() {
       setResult({ created: response.data?.created || 0, route: table?.route });
       clearFile();
     } catch (err) {
-      const data = err?.response?.data;
+      const data = err?.response?.data || err?.data;
       if (data?.errors?.length) {
         setServerErrors(data.errors);
         setError(t('imp.invalidRows', { n: data.errors.length }));
