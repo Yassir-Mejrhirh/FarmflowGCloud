@@ -26,6 +26,8 @@ import DailyReport from '@/pages/DailyReport';
 import InputInvoices from '@/pages/InputInvoices';
 import InputInvoicesList from '@/pages/InputInvoicesList';
 import StockCount from '@/pages/StockCount';
+import LabourStatus from '@/pages/LabourStatus';
+import StockStatus from '@/pages/StockStatus';
 import { I18nProvider } from '@/lib/I18nContext';
 
 const AuthenticatedApp = () => {
@@ -74,6 +76,8 @@ const AuthenticatedApp = () => {
         <Route path="/input-invoices" element={<InputInvoices />} />
         <Route path="/input-invoices/all" element={<InputInvoicesList />} />
         <Route path="/stock-count" element={<StockCount />} />
+        <Route path="/labour-status" element={<LabourStatus />} />
+        <Route path="/stock-status" element={<StockStatus />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

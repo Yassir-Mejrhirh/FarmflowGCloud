@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   BarChart3, Boxes, CalendarRange, ChevronRight, ClipboardList, Layers, ListChecks, MapPin,
-  Settings2, Sprout, Tractor, Truck, Users, Wallet, Leaf, ClipboardCheck, Receipt, House, Warehouse,
+  Settings2, Sprout, Tractor, Truck, Users, Leaf, ClipboardCheck, Receipt, House, Warehouse,
 } from 'lucide-react';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -40,8 +40,8 @@ export default function OverviewGroups() {
       key: 'reports',
       icon: BarChart3,
       items: [
-        { to: '/costs', label: t('ov.reportCosts'), icon: Wallet },
-        { to: '/daily-report', label: t('ov.reportJournal'), icon: ClipboardList },
+        { to: '/labour-status', label: t('ov.reportLabour'), icon: Users },
+        { to: '/stock-status', label: t('ov.reportStocks'), icon: Boxes },
       ],
     },
   ];
