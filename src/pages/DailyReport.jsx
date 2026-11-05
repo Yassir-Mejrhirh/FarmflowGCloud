@@ -95,12 +95,17 @@ export default function DailyReport() {
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
-  const canSubmit = form.block_ids.length > 0 && !!form.task_id && (!machineRequired || machineryReady);
+  const stockExceeded = inputs.some(
+    (line) => line.item_id && Number(line.quantity) > (stockTotals[line.item_id]?.quantity || 0),
+  );
+  const canSubmit =
+    form.block_ids.length > 0 && !!form.task_id && (!machineRequired || machineryReady) && !stockExceeded;
 
   const submit = async (event) => {
     event.preventDefault();
     if (!form.block_ids.length || !form.task_id) return;
     if (machineRequired && !machineryReady) return;
+    if (stockExceeded) return;
 
     for (const id of form.block_ids) {
       const block = blockMap[id];
@@ -293,6 +298,9 @@ export default function DailyReport() {
             )}
             {machineRequired && !machineryReady && (
               <span className="text-[11px] font-medium text-destructive">{t('report.machineRequired')}</span>
+            )}
+            {stockExceeded && (
+              <span className="text-[11px] font-medium text-destructive">{t('report.stockBlocked')}</span>
             )}
           </div>
         </form>
