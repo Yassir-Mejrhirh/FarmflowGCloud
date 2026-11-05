@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { MapPin, Sprout } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
-import Field from '@/components/Field';
-import SelectField from '@/components/SelectField';
-import { Input } from '@/components/ui/input';
+import FarmGroupHeader from '@/components/planting/FarmGroupHeader';
+import PlantingBulkBar from '@/components/planting/PlantingBulkBar';
+import PlantingBlockCard from '@/components/planting/PlantingBlockCard';
 import { fetchList } from '@/lib/data';
 import { fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -18,6 +18,11 @@ export default function PlantingEntry() {
   const [varieties, setVarieties] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkCropId, setBulkCropId] = useState('');
+  const [bulkVarietyId, setBulkVarietyId] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [collapsed, setCollapsed] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -35,9 +40,44 @@ export default function PlantingEntry() {
     })();
   }, []);
 
+  const groups = useMemo(() => {
+    const map = new Map();
+    blocks.forEach((block) => {
+      const label = block.farm?.trim() || t('planting.noFarm');
+      if (!map.has(label)) map.set(label, []);
+      map.get(label).push(block);
+    });
+
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, rows]) => ({
+        key: label,
+        label,
+        rows,
+        area: rows.reduce((sum, row) => sum + (Number(row.area_ha) || 0), 0),
+      }));
+  }, [blocks, t]);
+
   const patch = async (block, changes) => {
     setBlocks((prev) => prev.map((row) => (row.id === block.id ? { ...row, ...changes } : row)));
     await base44.entities.FarmBlock.update(block.id, changes);
+  };
+
+  const toggleBlock = (id) =>
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((row) => row !== id) : [...prev, id]));
+
+  const toggleAll = () =>
+    setSelectedIds((prev) => (prev.length === blocks.length ? [] : blocks.map((block) => block.id)));
+
+  const applyBulk = async () => {
+    if (!bulkCropId || selectedIds.length === 0) return;
+    const ids = selectedIds;
+    const changes = { crop_id: bulkCropId, variety_id: bulkVarietyId || '' };
+    setApplying(true);
+    setBlocks((prev) => prev.map((row) => (ids.includes(row.id) ? { ...row, ...changes } : row)));
+    setSelectedIds([]);
+    await Promise.all(ids.map((id) => base44.entities.FarmBlock.update(id, changes)));
+    setApplying(false);
   };
 
   return (
@@ -62,68 +102,56 @@ export default function PlantingEntry() {
           }
         />
       ) : (
-        <ul className="space-y-3">
-          {blocks.map((block) => {
-            const varietyOptions = varieties
-              .filter((variety) => !block.crop_id || variety.crop_id === block.crop_id)
-              .map((variety) => ({ value: variety.id, label: variety.name }));
+        <div className="space-y-6">
+          <PlantingBulkBar
+            crops={crops}
+            varieties={varieties}
+            cropId={bulkCropId}
+            varietyId={bulkVarietyId}
+            onCropChange={(value) => {
+              setBulkCropId(value);
+              setBulkVarietyId('');
+            }}
+            onVarietyChange={setBulkVarietyId}
+            count={selectedIds.length}
+            total={blocks.length}
+            allSelected={selectedIds.length === blocks.length}
+            onToggleAll={toggleAll}
+            onApply={applyBulk}
+            applying={applying}
+          />
 
-            return (
-              <li key={block.id} className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-display text-base leading-tight">{block.name}</p>
-                    <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {block.code || '—'} · {fmtNum(block.area_ha, 2)} ha
-                    </p>
-                  </div>
-                  <Sprout className="h-4 w-4 shrink-0 text-sage" strokeWidth={1.7} />
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                  <Field label={t('planting.crop')}>
-                    <SelectField
-                      value={block.crop_id}
-                      onChange={(value) => patch(block, { crop_id: value, variety_id: '' })}
-                      noneLabel={t('planting.noCrop')}
-                      options={crops.map((crop) => ({ value: crop.id, label: crop.name }))}
-                    />
-                  </Field>
-                  <Field label={t('planting.variety')}>
-                    <SelectField
-                      value={block.variety_id}
-                      onChange={(value) => patch(block, { variety_id: value })}
-                      noneLabel={t('planting.noVariety')}
-                      options={varietyOptions}
-                    />
-                  </Field>
-                  <Field label={t('planting.season')}>
-                    <SelectField
-                      value={block.season_id}
-                      onChange={(value) => patch(block, { season_id: value })}
-                      noneLabel={t('planting.noSeason')}
-                      options={seasons.map((season) => ({ value: season.id, label: season.name }))}
-                    />
-                  </Field>
-                  <Field label={t('planting.cropStartDate')}>
-                    <Input
-                      type="date"
-                      value={block.planting_date || ''}
-                      onChange={(e) => patch(block, { planting_date: e.target.value })}
-                    />
-                  </Field>
-                  <Field label={t('planting.cropEndDate')}>
-                    <Input
-                      type="date"
-                      value={block.crop_end_date || ''}
-                      onChange={(e) => patch(block, { crop_end_date: e.target.value })}
-                    />
-                  </Field>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+          <div className="space-y-4">
+            {groups.map((group) => (
+              <div key={group.key} className="space-y-2">
+                <FarmGroupHeader
+                  label={group.label}
+                  meta={`${group.rows.length} · ${fmtNum(group.area, 2)} ha`}
+                  collapsed={Boolean(collapsed[group.key])}
+                  onToggle={() =>
+                    setCollapsed((prev) => ({ ...prev, [group.key]: !prev[group.key] }))
+                  }
+                />
+                {!collapsed[group.key] && (
+                  <ul className="space-y-3">
+                    {group.rows.map((block) => (
+                      <PlantingBlockCard
+                        key={block.id}
+                        block={block}
+                        crops={crops}
+                        varieties={varieties}
+                        seasons={seasons}
+                        selected={selectedIds.includes(block.id)}
+                        onToggleSelect={() => toggleBlock(block.id)}
+                        onPatch={patch}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
