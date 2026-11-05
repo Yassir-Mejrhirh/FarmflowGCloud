@@ -5,7 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
 import { fetchList } from '@/lib/data';
-import { avgCostOf, buildInputTotals, buildOnHand } from '@/lib/inventory';
+import { avgCostOf, buildCountTotals, buildInputTotals, buildOnHand, mergeTotals } from '@/lib/inventory';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -18,13 +18,14 @@ export default function StockStatus() {
 
   useEffect(() => {
     const load = async () => {
-      const [itemRows, invoiceRows, movementRows] = await Promise.all([
+      const [itemRows, invoiceRows, movementRows, countRows] = await Promise.all([
         fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
         fetchList(base44.entities.InputInvoice, {}),
         fetchList(base44.entities.StockMovement, {}),
+        fetchList(base44.entities.InventoryCount, {}),
       ]);
       setItems(itemRows);
-      setPurchases(buildInputTotals(invoiceRows));
+      setPurchases(mergeTotals(buildInputTotals(invoiceRows), buildCountTotals(countRows)));
       setOnHand(buildOnHand(invoiceRows, movementRows));
       setLoading(false);
     };

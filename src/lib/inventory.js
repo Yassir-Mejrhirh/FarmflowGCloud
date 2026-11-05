@@ -15,6 +15,35 @@ export function buildInputTotals(invoices = []) {
   return totals;
 }
 
+// Quantity and value per input, as recorded in validated inventory counts.
+export function buildCountTotals(counts = []) {
+  const totals = {};
+  counts.forEach((count) => {
+    (count.lines || []).forEach((line) => {
+      if (!line.item_id) return;
+      const quantity = Number(line.quantity) || 0;
+      const row = totals[line.item_id] || { quantity: 0, cost: 0 };
+      row.quantity += quantity;
+      row.cost += quantity * (Number(line.unit_price) || 0);
+      totals[line.item_id] = row;
+    });
+  });
+  return totals;
+}
+
+// Adds inventory-count valuations to the purchase totals, for the weighted average price.
+export function mergeTotals(base = {}, extra = {}) {
+  const merged = {};
+  Object.entries(base).forEach(([itemId, row]) => {
+    merged[itemId] = { ...row };
+  });
+  Object.entries(extra).forEach(([itemId, row]) => {
+    const existing = merged[itemId] || { quantity: 0, cost: 0 };
+    merged[itemId] = { quantity: existing.quantity + row.quantity, cost: existing.cost + row.cost };
+  });
+  return merged;
+}
+
 // On-hand quantity per input: purchases from invoices, plus stock-in movements, minus stock-out movements.
 export function buildOnHand(invoices = [], movements = []) {
   const totals = buildInputTotals(invoices);
