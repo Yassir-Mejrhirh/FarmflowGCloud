@@ -22,6 +22,8 @@ export default function PlantingEntry() {
   const [bulkCropId, setBulkCropId] = useState('');
   const [bulkVarietyId, setBulkVarietyId] = useState('');
   const [bulkSeasonId, setBulkSeasonId] = useState('');
+  const [bulkStartDate, setBulkStartDate] = useState('');
+  const [bulkEndDate, setBulkEndDate] = useState('');
   const [applying, setApplying] = useState(false);
   const [collapsed, setCollapsed] = useState({});
 
@@ -77,6 +79,8 @@ export default function PlantingEntry() {
       changes.variety_id = bulkVarietyId || '';
     }
     if (bulkSeasonId) changes.season_id = bulkSeasonId;
+    if (bulkStartDate) changes.planting_date = bulkStartDate;
+    if (bulkEndDate) changes.crop_end_date = bulkEndDate;
     if (selectedIds.length === 0 || Object.keys(changes).length === 0) return;
     const ids = selectedIds;
     setApplying(true);
@@ -116,12 +120,16 @@ export default function PlantingEntry() {
             cropId={bulkCropId}
             varietyId={bulkVarietyId}
             seasonId={bulkSeasonId}
+            startDate={bulkStartDate}
+            endDate={bulkEndDate}
             onCropChange={(value) => {
               setBulkCropId(value);
               setBulkVarietyId('');
             }}
             onVarietyChange={setBulkVarietyId}
             onSeasonChange={setBulkSeasonId}
+            onStartDateChange={setBulkStartDate}
+            onEndDateChange={setBulkEndDate}
             count={selectedIds.length}
             total={blocks.length}
             allSelected={selectedIds.length === blocks.length}

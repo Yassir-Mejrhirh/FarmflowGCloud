@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { useI18n } from '@/lib/I18nContext';
@@ -10,9 +11,13 @@ export default function PlantingBulkBar({
   cropId,
   varietyId,
   seasonId,
+  startDate,
+  endDate,
   onCropChange,
   onVarietyChange,
   onSeasonChange,
+  onStartDateChange,
+  onEndDateChange,
   count,
   total,
   allSelected,
@@ -62,18 +67,25 @@ export default function PlantingBulkBar({
             options={seasons.map((season) => ({ value: season.id, label: season.name }))}
           />
         </Field>
-        <div className="flex items-end justify-between gap-3 sm:col-span-2">
-          <p className="text-xs text-muted-foreground">
-            {t('planting.selectedCount', { count, total })}
-          </p>
-          <Button
-            type="button"
-            onClick={onApply}
-            disabled={(!cropId && !seasonId) || count === 0 || applying}
-          >
-            {applying ? t('planting.applying') : t('planting.apply')}
-          </Button>
-        </div>
+        <Field label={t('planting.cropStartDate')}>
+          <Input type="date" value={startDate} onChange={(e) => onStartDateChange(e.target.value)} />
+        </Field>
+        <Field label={t('planting.cropEndDate')}>
+          <Input type="date" value={endDate} onChange={(e) => onEndDateChange(e.target.value)} />
+        </Field>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          {t('planting.selectedCount', { count, total })}
+        </p>
+        <Button
+          type="button"
+          onClick={onApply}
+          disabled={(!cropId && !seasonId && !startDate && !endDate) || count === 0 || applying}
+        >
+          {applying ? t('planting.applying') : t('planting.apply')}
+        </Button>
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">{t('planting.bulkHint')}</p>
     </div>
