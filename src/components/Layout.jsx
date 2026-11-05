@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { Menu, Leaf } from 'lucide-react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Menu, Leaf, ArrowLeft } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/I18nContext';
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const { t } = useI18n();
 
   return (
     <div className="min-h-screen bg-background">
@@ -35,6 +38,15 @@ export default function Layout() {
         </header>
 
         <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-8 sm:px-8 lg:pt-12">
+          {pathname !== '/' && (
+            <Link
+              to="/"
+              className="mb-5 inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" strokeWidth={1.8} />
+              {t('common.backOverview')}
+            </Link>
+          )}
           <Outlet />
         </main>
       </div>

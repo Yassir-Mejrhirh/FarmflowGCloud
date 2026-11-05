@@ -3,6 +3,7 @@ export const TRANSLATIONS = {
     'common.save': 'Enregistrer',
     'common.cancel': 'Annuler',
     'common.saving': 'Enregistrement…',
+    'common.backOverview': 'Vue d’ensemble',
     'common.edit': 'Modifier',
     'common.delete': 'Supprimer',
     'common.select': 'Sélectionner…',
@@ -755,6 +756,7 @@ export const TRANSLATIONS = {
     'common.deleteExpense': 'حذف النفقة',
     'common.deleteHarvest': 'حذف الحصاد',
     'common.noCropAssigned': 'لا محصول محدد',
+    'common.backOverview': 'نظرة عامة',
 
     'st.active': 'في نمو',
     'st.preparing': 'قيد التحضير',

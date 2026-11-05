@@ -69,11 +69,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
-        eyebrow={dateLabel}
-        title={t('dash.title')}
-        description={t('dash.description')}
-      />
+      <PageHeader eyebrow={dateLabel} />
 
       <OverviewGroups />
 
