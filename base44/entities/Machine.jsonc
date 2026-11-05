@@ -2,6 +2,10 @@
   "name": "Machine",
   "type": "object",
   "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
     "name": {
       "type": "string"
     },

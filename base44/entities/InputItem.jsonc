@@ -2,6 +2,10 @@
   "name": "InputItem",
   "type": "object",
   "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
     "name": {
       "type": "string"
     },
@@ -11,7 +15,7 @@
     },
     "formulation": {
       "type": "string",
-      "description": "Formulation such as Liquide, Poudre, Granul\u00e9"
+      "description": "Formulation such as Liquide, Poudre, Granule"
     },
     "unit": {
       "type": "string",

@@ -5,6 +5,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import CompanySwitcher from '@/components/CompanySwitcher';
 
 export default function Sidebar({ onNavigate }) {
   const { t } = useI18n();
@@ -78,6 +79,7 @@ export default function Sidebar({ onNavigate }) {
       </nav>
 
       <div className="space-y-3 border-t border-border/70 px-5 py-4">
+        <CompanySwitcher className="w-full justify-between" />
         <LanguageSwitcher />
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           {t('sidebar.footer')}

@@ -3,6 +3,8 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Menu, Leaf, ArrowLeft } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import CompanySwitcher from '@/components/CompanySwitcher';
+import { CompanyProvider } from '@/lib/CompanyContext';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/I18nContext';
@@ -13,6 +15,7 @@ export default function Layout() {
   const { t } = useI18n();
 
   return (
+    <CompanyProvider>
     <div className="min-h-screen bg-background">
       <aside className="fixed inset-y-0 start-0 z-40 hidden w-64 border-e border-border/70 bg-sidebar lg:block">
         <Sidebar />
@@ -34,6 +37,7 @@ export default function Layout() {
             <Leaf className="h-4 w-4 text-primary" strokeWidth={2} />
             <span className="font-display text-base tracking-tight">Terra</span>
           </div>
+          <CompanySwitcher />
           <LanguageSwitcher />
         </header>
 
@@ -51,5 +55,6 @@ export default function Layout() {
         </main>
       </div>
     </div>
+    </CompanyProvider>
   );
 }

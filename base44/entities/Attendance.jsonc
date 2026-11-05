@@ -2,6 +2,10 @@
   "name": "Attendance",
   "type": "object",
   "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
     "worker_id": {
       "type": "string"
     },

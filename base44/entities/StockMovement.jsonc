@@ -2,6 +2,10 @@
   "name": "StockMovement",
   "type": "object",
   "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
     "item_id": {
       "type": "string"
     },
