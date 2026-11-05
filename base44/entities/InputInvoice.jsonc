@@ -14,6 +14,10 @@
     "supplier_id": {
       "type": "string"
     },
+    "storage_id": {
+      "type": "string",
+      "description": "Storage where the inputs were delivered"
+    },
     "lines": {
       "type": "array",
       "description": "Inputs purchased on this invoice",

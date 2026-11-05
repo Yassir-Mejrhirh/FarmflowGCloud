@@ -42,7 +42,6 @@ export default function Inventory() {
     load();
   }, []);
 
-  const storageMap = useMemo(() => byId(storages), [storages]);
   const totals = useMemo(() => buildInputTotals(invoices), [invoices]);
 
   const quantityOf = (item) => totals[item.id]?.quantity || 0;
@@ -124,9 +123,7 @@ export default function Inventory() {
                       {low && <StatusPill tone="clay">{t('common.low')}</StatusPill>}
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {[categoryLabel(item.category), item.formulation, storageMap[item.storage_id]?.name]
-                        .filter(Boolean)
-                        .join(' · ')}
+                      {[categoryLabel(item.category), item.formulation].filter(Boolean).join(' · ')}
                     </p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {avgCost
@@ -198,7 +195,6 @@ export default function Inventory() {
         open={itemDialog}
         onOpenChange={setItemDialog}
         item={editingItem}
-        storages={storages}
         onSaved={load}
       />
       <StorageDialog

@@ -23,11 +23,10 @@ const emptyForm = () => ({
   supplier_ids: [],
   min_stock_enabled: false,
   min_stock: '',
-  storage_id: '',
   notes: '',
 });
 
-export default function ItemDialog({ open, onOpenChange, item, storages, onSaved }) {
+export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState(emptyForm);
   const [categories, setCategories] = useState([]);
@@ -46,7 +45,6 @@ export default function ItemDialog({ open, onOpenChange, item, storages, onSaved
       supplier_ids: item?.supplier_ids || [],
       min_stock_enabled: Boolean(item?.min_stock_enabled),
       min_stock: item?.min_stock ?? '',
-      storage_id: item?.storage_id || '',
       notes: item?.notes || '',
     });
     setNewCategory('');
@@ -93,7 +91,6 @@ export default function ItemDialog({ open, onOpenChange, item, storages, onSaved
       supplier_ids: form.supplier_ids,
       min_stock_enabled: form.min_stock_enabled,
       min_stock: Number(form.min_stock) || 0,
-      storage_id: form.storage_id,
       notes: form.notes.trim(),
     };
     if (item?.id) await base44.entities.InputItem.update(item.id, payload);
@@ -171,14 +168,6 @@ export default function ItemDialog({ open, onOpenChange, item, storages, onSaved
           />
         </Field>
 
-        <Field label={t('itemDialog.storage')}>
-          <SelectField
-            value={form.storage_id}
-            onChange={(value) => set('storage_id', value)}
-            noneLabel={t('itemDialog.noStorage')}
-            options={storages.map((storage) => ({ value: storage.id, label: storage.name }))}
-          />
-        </Field>
       </div>
 
       <Field label={t('itemDialog.suppliers')} hint={t('itemDialog.suppliersHint')}>

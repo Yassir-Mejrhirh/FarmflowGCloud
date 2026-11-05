@@ -14,17 +14,20 @@ export default function InputInvoices() {
   const [suppliers, setSuppliers] = useState([]);
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [storages, setStorages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [supplierRows, itemRows, invoiceRows] = await Promise.all([
+    const [supplierRows, itemRows, invoiceRows, storageRows] = await Promise.all([
       fetchList(base44.entities.Supplier, {}, { sort: 'name' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}, { sort: '-date' }),
+      fetchList(base44.entities.Storage, {}, { sort: 'name' }),
     ]);
     setSuppliers(supplierRows);
     setItems(itemRows);
     setInvoices(invoiceRows);
+    setStorages(storageRows);
     setLoading(false);
   };
 
@@ -34,6 +37,7 @@ export default function InputInvoices() {
 
   const supplierMap = byId(suppliers);
   const itemMap = byId(items);
+  const storageMap = byId(storages);
   const recent = invoices.slice(0, 5);
 
   return (
@@ -55,7 +59,7 @@ export default function InputInvoices() {
         <div className="h-48 animate-pulse rounded-2xl bg-muted" />
       ) : (
         <>
-          <InvoiceForm suppliers={suppliers} items={items} onSaved={load} />
+          <InvoiceForm suppliers={suppliers} items={items} storages={storages} onSaved={load} />
 
           <section className="space-y-3">
             <div className="flex items-end justify-between gap-3">
@@ -69,7 +73,7 @@ export default function InputInvoices() {
                 {t('invInvoices.emptyDesc')}
               </p>
             ) : (
-              <InvoiceList invoices={recent} supplierMap={supplierMap} itemMap={itemMap} />
+              <InvoiceList invoices={recent} supplierMap={supplierMap} itemMap={itemMap} storageMap={storageMap} />
             )}
           </section>
         </>

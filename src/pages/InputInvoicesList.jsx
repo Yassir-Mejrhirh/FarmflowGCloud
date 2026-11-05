@@ -15,24 +15,28 @@ export default function InputInvoicesList() {
   const [suppliers, setSuppliers] = useState([]);
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [storages, setStorages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [supplierRows, itemRows, invoiceRows] = await Promise.all([
+      const [supplierRows, itemRows, invoiceRows, storageRows] = await Promise.all([
         fetchList(base44.entities.Supplier, {}, { sort: 'name' }),
         fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
         fetchList(base44.entities.InputInvoice, {}, { sort: '-date' }),
+        fetchList(base44.entities.Storage, {}, { sort: 'name' }),
       ]);
       setSuppliers(supplierRows);
       setItems(itemRows);
       setInvoices(invoiceRows);
+      setStorages(storageRows);
       setLoading(false);
     })();
   }, []);
 
   const supplierMap = byId(suppliers);
   const itemMap = byId(items);
+  const storageMap = byId(storages);
 
   return (
     <div className="space-y-8">
@@ -74,7 +78,7 @@ export default function InputInvoicesList() {
               <p className="font-display text-lg leading-tight tabular-nums">{fmtMoney(sumBy(invoices, 'amount'))}</p>
             </div>
           </div>
-          <InvoiceList invoices={invoices} supplierMap={supplierMap} itemMap={itemMap} />
+          <InvoiceList invoices={invoices} supplierMap={supplierMap} itemMap={itemMap} storageMap={storageMap} />
         </>
       )}
     </div>

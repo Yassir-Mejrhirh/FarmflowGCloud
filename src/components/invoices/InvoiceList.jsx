@@ -3,7 +3,7 @@ import { fmtDate, fmtMoney } from '@/lib/format';
 
 const lineTotal = (line) => (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
 
-export default function InvoiceList({ invoices, supplierMap, itemMap }) {
+export default function InvoiceList({ invoices, supplierMap, itemMap, storageMap = {} }) {
   const { t } = useI18n();
 
   return (
@@ -20,7 +20,9 @@ export default function InvoiceList({ invoices, supplierMap, itemMap }) {
                   <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{fmtDate(invoice.date)}</span>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {supplier?.name || t('invInvoices.unknownSupplier')}
+                  {[supplier?.name || t('invInvoices.unknownSupplier'), storageMap[invoice.storage_id]?.name]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </p>
               </div>
               <p className="font-display text-base leading-tight tabular-nums">{fmtMoney(invoice.amount)}</p>

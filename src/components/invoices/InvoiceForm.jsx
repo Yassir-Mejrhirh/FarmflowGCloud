@@ -17,13 +17,14 @@ const emptyForm = () => ({
   date: todayISO(),
   invoice_number: '',
   supplier_id: '',
+  storage_id: '',
   lines: [emptyLine()],
   notes: '',
 });
 
 const lineTotal = (line) => (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
 
-export default function InvoiceForm({ suppliers, items, onSaved }) {
+export default function InvoiceForm({ suppliers, items, storages = [], onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -57,6 +58,7 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
       date: form.date,
       invoice_number: form.invoice_number.trim(),
       supplier_id: form.supplier_id,
+      storage_id: form.storage_id,
       lines: form.lines
         .filter((line) => line.item_id || Number(line.quantity) || Number(line.unit_price))
         .map((line) => ({
@@ -85,7 +87,7 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Field label={t('common.date')}>
           <Input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
         </Field>
@@ -102,6 +104,14 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
             onChange={(value) => set('supplier_id', value)}
             noneLabel={t('invInvoices.noSupplier')}
             options={suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name }))}
+          />
+        </Field>
+        <Field label={t('invInvoices.storage')}>
+          <SelectField
+            value={form.storage_id}
+            onChange={(value) => set('storage_id', value)}
+            noneLabel={t('invInvoices.noStorage')}
+            options={storages.map((storage) => ({ value: storage.id, label: storage.name }))}
           />
         </Field>
       </div>
