@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
+import PhotoField from '@/components/machinery/PhotoField';
 import SparePartsEditor from '@/components/machinery/SparePartsEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
       type: machine?.type || 'tractor',
       year: machine?.year ?? '',
       plate: machine?.plate || '',
+      photo_uri: machine?.photo_uri || '',
       status: machine?.status || 'operational',
       notes: machine?.notes || '',
       spare_parts: (machine?.spare_parts || []).map((row) => ({ ...row })),
@@ -71,6 +73,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
       type: form.type,
       year: form.year === '' || form.year == null ? null : Number(form.year),
       plate: form.plate || '',
+      photo_uri: form.photo_uri || '',
       status: form.status,
       notes: form.notes || '',
       spare_parts: (form.spare_parts || []).filter((row) => row.kind || row.brand || row.reference),
@@ -167,6 +170,11 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
           </Button>
         </div>
       )}
+
+      <PhotoField
+        value={form.photo_uri || ''}
+        onChange={(photo_uri) => setForm({ ...form, photo_uri })}
+      />
 
       <SparePartsEditor
         value={form.spare_parts || []}

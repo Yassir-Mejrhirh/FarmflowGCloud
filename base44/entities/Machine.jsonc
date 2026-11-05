@@ -21,6 +21,10 @@
     "plate": {
       "type": "string"
     },
+    "photo_uri": {
+      "type": "string",
+      "description": "Private storage URI of the machine photo"
+    },
     "spare_parts": {
       "type": "array",
       "description": "Spare part references for this machine",

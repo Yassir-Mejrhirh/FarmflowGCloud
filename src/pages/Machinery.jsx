@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import MachineDialog, { machineTypeLabel } from '@/components/machinery/MachineDialog';
+import MachinePhoto from '@/components/machinery/MachinePhoto';
 import { fetchList, byId } from '@/lib/data';
 import { fmtDate, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -112,6 +113,14 @@ export default function Machinery() {
                   {t(`mst.${machine.status}`)}
                 </StatusPill>
               </div>
+
+              {machine.photo_uri && (
+                <MachinePhoto
+                  file_uri={machine.photo_uri}
+                  alt={machine.name}
+                  className="mt-4 h-36 w-full rounded-xl object-cover"
+                />
+              )}
 
               <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
                 <div>
