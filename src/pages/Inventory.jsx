@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Boxes, Warehouse } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
 import Segmented from '@/components/Segmented';
 import StorageDialog from '@/components/storages/StorageDialog';
 import ItemDialog from '@/components/inventory/ItemDialog';
+import CountList from '@/components/inventory/CountList';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
 import { buildInputTotals, buildOnHand } from '@/lib/inventory';
@@ -21,6 +23,7 @@ export default function Inventory() {
   const [storages, setStorages] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [counts, setCounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [itemDialog, setItemDialog] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -28,16 +31,18 @@ export default function Inventory() {
   const [editingStorage, setEditingStorage] = useState(null);
 
   const load = async () => {
-    const [itemRows, storageRows, invoiceRows, movementRows] = await Promise.all([
+    const [itemRows, storageRows, invoiceRows, movementRows, countRows] = await Promise.all([
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.Storage, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
       fetchList(base44.entities.StockMovement, {}),
+      fetchList(base44.entities.InventoryCount, {}, { sort: '-date' }),
     ]);
     setItems(itemRows);
     setStorages(storageRows);
     setInvoices(invoiceRows);
     setMovements(movementRows);
+    setCounts(countRows);
     setLoading(false);
   };
 
@@ -74,6 +79,7 @@ export default function Inventory() {
           <Button
             className="rounded-xl"
             onClick={() => {
+              if (tab === 'counts') return;
               if (tab === 'storages') {
                 setEditingStorage(null);
                 setStorageDialog(true);
@@ -82,8 +88,17 @@ export default function Inventory() {
                 setItemDialog(true);
               }
             }}
+            asChild={tab === 'counts'}
           >
-            <Plus className="mr-1.5 h-4 w-4" /> {tab === 'storages' ? t('inv.newStorage') : t('inv.newInput')}
+            {tab === 'counts' ? (
+              <Link to="/stock-count">
+                <Plus className="mr-1.5 h-4 w-4" /> {t('inv.newCount')}
+              </Link>
+            ) : (
+              <span>
+                <Plus className="mr-1.5 h-4 w-4" /> {tab === 'storages' ? t('inv.newStorage') : t('inv.newInput')}
+              </span>
+            )}
           </Button>
         }
       />
@@ -100,6 +115,7 @@ export default function Inventory() {
         options={[
           { value: 'inputs', label: `${t('inv.tabInputs')} (${items.length})` },
           { value: 'storages', label: `${t('inv.tabStorages')} (${storages.length})` },
+          { value: 'counts', label: `${t('inv.tabCounts')} (${counts.length})` },
         ]}
       />
 
@@ -162,6 +178,8 @@ export default function Inventory() {
             })}
           </ul>
         )
+      ) : tab === 'counts' ? (
+        <CountList counts={counts} storages={storages} />
       ) : storages.length === 0 ? (
         <EmptyState
           icon={Warehouse}
