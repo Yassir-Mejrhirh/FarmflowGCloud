@@ -43,6 +43,14 @@ export default function PlantingBulkBar({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <Field label={t('planting.season')}>
+          <SelectField
+            value={seasonId}
+            onChange={onSeasonChange}
+            noneLabel={t('planting.noSeason')}
+            options={seasons.map((season) => ({ value: season.id, label: season.name }))}
+          />
+        </Field>
         <Field label={t('planting.crop')}>
           <SelectField
             value={cropId}
@@ -57,14 +65,6 @@ export default function PlantingBulkBar({
             onChange={onVarietyChange}
             noneLabel={t('planting.noVariety')}
             options={varietyOptions}
-          />
-        </Field>
-        <Field label={t('planting.season')}>
-          <SelectField
-            value={seasonId}
-            onChange={onSeasonChange}
-            noneLabel={t('planting.noSeason')}
-            options={seasons.map((season) => ({ value: season.id, label: season.name }))}
           />
         </Field>
         <Field label={t('planting.cropStartDate')}>

@@ -39,6 +39,14 @@ export default function PlantingBlockCard({ block, crops, varieties, seasons, se
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <Field label={t('planting.season')}>
+          <SelectField
+            value={block.season_id}
+            onChange={(value) => onPatch(block, { season_id: value })}
+            noneLabel={t('planting.noSeason')}
+            options={seasons.map((season) => ({ value: season.id, label: season.name }))}
+          />
+        </Field>
         <Field label={t('planting.crop')}>
           <SelectField
             value={block.crop_id}
@@ -53,14 +61,6 @@ export default function PlantingBlockCard({ block, crops, varieties, seasons, se
             onChange={(value) => onPatch(block, { variety_id: value })}
             noneLabel={t('planting.noVariety')}
             options={varietyOptions}
-          />
-        </Field>
-        <Field label={t('planting.season')}>
-          <SelectField
-            value={block.season_id}
-            onChange={(value) => onPatch(block, { season_id: value })}
-            noneLabel={t('planting.noSeason')}
-            options={seasons.map((season) => ({ value: season.id, label: season.name }))}
           />
         </Field>
         <Field label={t('planting.cropStartDate')}>
