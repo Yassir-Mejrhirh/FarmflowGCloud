@@ -27,6 +27,10 @@
     "cost": {
       "type": "number"
     },
+    "storage_id": {
+      "type": "string",
+      "description": "Storage the movement applies to"
+    },
     "block_id": {
       "type": "string"
     },

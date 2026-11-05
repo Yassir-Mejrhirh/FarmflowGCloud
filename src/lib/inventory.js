@@ -31,6 +31,21 @@ export function buildOnHand(invoices = [], movements = []) {
   return onHand;
 }
 
+// Storage of a farm that holds the most of this input, so stock-outs leave the right depot.
+export function pickStorageFor(storages = [], invoices = [], itemId) {
+  if (!storages.length || !itemId) return '';
+  const purchased = {};
+  invoices.forEach((invoice) => {
+    if (!invoice.storage_id || !storages.some((storage) => storage.id === invoice.storage_id)) return;
+    (invoice.lines || []).forEach((line) => {
+      if (line.item_id !== itemId) return;
+      purchased[invoice.storage_id] = (purchased[invoice.storage_id] || 0) + (Number(line.quantity) || 0);
+    });
+  });
+  const best = Object.entries(purchased).sort((a, b) => b[1] - a[1])[0];
+  return best ? best[0] : storages[0].id;
+}
+
 // Weighted average purchase price (prix moyen pondéré).
 export function avgCostOf(totals, itemId) {
   const row = totals[itemId];

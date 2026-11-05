@@ -7,7 +7,7 @@ import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import UsageField from '@/components/dailyreport/UsageField';
 import InputStockNote from '@/components/dailyreport/InputStockNote';
-import { buildOnHand } from '@/lib/inventory';
+import { buildOnHand, pickStorageFor } from '@/lib/inventory';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ export default function DailyReport() {
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [storages, setStorages] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [natures, setNatures] = useState([]);
   const [reports, setReports] = useState([]);
@@ -39,7 +40,7 @@ export default function DailyReport() {
   const [rangeError, setRangeError] = useState(null);
 
   const load = async () => {
-    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, reportRows, taskRows, natureRows] = await Promise.all([
+    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, storageRows, reportRows, taskRows, natureRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
@@ -48,6 +49,7 @@ export default function DailyReport() {
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
       fetchList(base44.entities.StockMovement, {}),
+      fetchList(base44.entities.Storage, {}, { sort: 'name' }),
       fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
       fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
       fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
@@ -60,6 +62,7 @@ export default function DailyReport() {
     setItems(itemRows);
     setInvoices(invoiceRows);
     setMovements(movementRows);
+    setStorages(storageRows);
     setReports(reportRows);
     setTasks(taskRows);
     setNatures(natureRows);
@@ -148,16 +151,21 @@ export default function DailyReport() {
     );
     if (base.inputs.length) {
       await base44.entities.StockMovement.bulkCreate(
-        form.block_ids.flatMap((blockId) =>
-          base.inputs.map((line) => ({
+        form.block_ids.flatMap((blockId) => {
+          const farmName = blockMap[blockId]?.farm;
+          const farmStorages = farmName
+            ? storages.filter((storage) => storage.farm === farmName)
+            : [];
+          return base.inputs.map((line) => ({
             item_id: line.item_id,
             kind: 'out',
             quantity: line.quantity,
             date: form.date,
+            storage_id: pickStorageFor(farmStorages, invoices, line.item_id),
             block_id: blockId,
             notes: base.description,
-          })),
-        ),
+          }));
+        }),
       );
     }
     setSaving(false);
