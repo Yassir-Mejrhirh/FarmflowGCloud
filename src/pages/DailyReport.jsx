@@ -5,7 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
-import UsageEditor from '@/components/dailyreport/UsageEditor';
+import UsageField from '@/components/dailyreport/UsageField';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -225,9 +225,10 @@ export default function DailyReport() {
           </Field>
 
           <div className="space-y-2">
-            <UsageEditor
+            <UsageField
               icon={Users}
               title={t('report.labour')}
+              placeholder={t('report.chooseLabour')}
               lines={labour}
               onChange={setLabour}
               options={workers.map((worker) => ({ value: worker.id, label: worker.name }))}
@@ -237,9 +238,10 @@ export default function DailyReport() {
               addLabel={t('report.addLabour')}
               emptyLabel={t('report.noLabour')}
             />
-            <UsageEditor
+            <UsageField
               icon={Tractor}
               title={t('report.machinery')}
+              placeholder={t('report.chooseMachinery')}
               lines={machinery}
               onChange={setMachinery}
               options={machines.map((machine) => ({ value: machine.id, label: machine.name }))}
@@ -249,9 +251,10 @@ export default function DailyReport() {
               addLabel={t('report.addMachine')}
               emptyLabel={t('report.noMachine')}
             />
-            <UsageEditor
+            <UsageField
               icon={Boxes}
               title={t('report.inputs')}
+              placeholder={t('report.chooseInputs')}
               lines={inputs}
               onChange={setInputs}
               options={items.map((item) => ({ value: item.id, label: `${item.name}${item.unit ? ` (${item.unit})` : ''}` }))}
