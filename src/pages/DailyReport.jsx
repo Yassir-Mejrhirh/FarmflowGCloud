@@ -190,10 +190,7 @@ export default function DailyReport() {
             </Field>
           </div>
 
-          <Field
-            label={t('report.blocks')}
-            hint={form.block_ids.length > 0 ? t('report.blocksSelected', { n: form.block_ids.length }) : ''}
-          >
+          <Field label={t('report.blocks')}>
             <BlockPicker
               groups={blockGroups}
               selected={form.block_ids}
