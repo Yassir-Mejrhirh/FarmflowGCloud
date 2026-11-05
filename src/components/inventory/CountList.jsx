@@ -1,13 +1,36 @@
-import { ClipboardCheck } from 'lucide-react';
+import { useState } from 'react';
+import { ClipboardCheck, Trash2 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-export default function CountList({ counts, storages }) {
+export default function CountList({ counts, storages, onDeleted }) {
   const { t } = useI18n();
+  const { toast } = useToast();
+  const [pending, setPending] = useState(null);
   const storageName = (id) => storages.find((storage) => storage.id === id)?.name || '—';
+
+  const remove = async () => {
+    if (!pending) return;
+    await base44.entities.InventoryCount.delete(pending.id);
+    setPending(null);
+    toast({ title: t('inv.countDeleted') });
+    onDeleted?.();
+  };
 
   if (!counts.length) {
     return (
@@ -25,6 +48,7 @@ export default function CountList({ counts, storages }) {
   }
 
   return (
+    <>
     <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
       {counts.map((count) => {
         const lines = count.lines || [];
@@ -53,9 +77,35 @@ export default function CountList({ counts, storages }) {
                 {t('inv.countUnits')}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setPending(count)}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors duration-200 hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+              {t('common.delete')}
+            </button>
           </li>
         );
       })}
     </ul>
+
+    <AlertDialog open={Boolean(pending)} onOpenChange={(open) => !open && setPending(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('inv.deleteCount')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pending ? `${fmtDate(pending.date)} — ${t('inv.deleteCountDesc')}` : t('inv.deleteCountDesc')}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogAction onClick={remove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {t('inv.deleteCountConfirm')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

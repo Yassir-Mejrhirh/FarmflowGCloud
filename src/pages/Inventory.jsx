@@ -179,7 +179,7 @@ export default function Inventory() {
           </ul>
         )
       ) : tab === 'counts' ? (
-        <CountList counts={counts} storages={storages} />
+        <CountList counts={counts} storages={storages} onDeleted={load} />
       ) : storages.length === 0 ? (
         <EmptyState
           icon={Warehouse}
