@@ -53,6 +53,11 @@
       "default": false,
       "description": "Whether the worker is declared"
     },
+    "transport_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether transport details apply to this worker"
+    },
     "transporter_name": {
       "type": "string"
     },

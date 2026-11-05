@@ -23,6 +23,7 @@ const emptyForm = {
   team: '',
   registration_number: '',
   declared: false,
+  transport_enabled: false,
   transporter_name: '',
   transport_rate_type: 'fixed',
   transport_rate: '',
@@ -54,6 +55,9 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
             team: worker.team || '',
             registration_number: worker.registration_number || '',
             declared: Boolean(worker.declared),
+            transport_enabled: Boolean(
+              worker.transport_enabled || worker.transporter_name || worker.transport_rate,
+            ),
             transporter_name: worker.transporter_name || '',
             transport_rate_type: worker.transport_rate_type || 'fixed',
             transport_rate: worker.transport_rate ?? '',
@@ -94,9 +98,10 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       team: form.team.trim(),
       registration_number: form.registration_number || '',
       declared: Boolean(form.declared),
-      transporter_name: form.transporter_name || '',
-      transport_rate_type: form.transport_rate_type || 'fixed',
-      transport_rate: Number(form.transport_rate) || 0,
+      transport_enabled: Boolean(form.transport_enabled),
+      transporter_name: form.transport_enabled ? form.transporter_name || '' : '',
+      transport_rate_type: form.transport_enabled ? form.transport_rate_type || 'fixed' : 'fixed',
+      transport_rate: form.transport_enabled ? Number(form.transport_rate) || 0 : 0,
       phone: form.phone || '',
       daily_rate: Number(form.daily_rate) || 0,
       notes: form.notes || '',
@@ -249,34 +254,50 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       </div>
 
       <div className="space-y-3 rounded-xl border border-border/70 bg-secondary/30 p-3">
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          {t('workerDialog.transport')}
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label={t('workerDialog.transporterName')}>
-            <Input
-              value={form.transporter_name}
-              onChange={(e) => setForm({ ...form, transporter_name: e.target.value })}
-            />
-          </Field>
-          <Field label={t('workerDialog.transportRateType')}>
-            <SelectField
-              value={form.transport_rate_type}
-              onChange={(value) => setForm({ ...form, transport_rate_type: value })}
-              options={[
-                { value: 'fixed', label: t('workerDialog.transportFixed') },
-                { value: 'per_person', label: t('workerDialog.transportPerPerson') },
-              ]}
-            />
-          </Field>
-          <Field label={t('workerDialog.transportAmount')}>
-            <Input
-              type="number"
-              value={form.transport_rate}
-              onChange={(e) => setForm({ ...form, transport_rate: e.target.value })}
-            />
-          </Field>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {t('workerDialog.transport')}
+          </p>
+          <Switch
+            checked={Boolean(form.transport_enabled)}
+            onCheckedChange={(checked) =>
+              setForm({
+                ...form,
+                transport_enabled: checked,
+                ...(checked
+                  ? {}
+                  : { transporter_name: '', transport_rate_type: 'fixed', transport_rate: '' }),
+              })
+            }
+          />
         </div>
+        {form.transport_enabled && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('workerDialog.transporterName')}>
+              <Input
+                value={form.transporter_name}
+                onChange={(e) => setForm({ ...form, transporter_name: e.target.value })}
+              />
+            </Field>
+            <Field label={t('workerDialog.transportRateType')}>
+              <SelectField
+                value={form.transport_rate_type}
+                onChange={(value) => setForm({ ...form, transport_rate_type: value })}
+                options={[
+                  { value: 'fixed', label: t('workerDialog.transportFixed') },
+                  { value: 'per_person', label: t('workerDialog.transportPerPerson') },
+                ]}
+              />
+            </Field>
+            <Field label={t('workerDialog.transportAmount')}>
+              <Input
+                type="number"
+                value={form.transport_rate}
+                onChange={(e) => setForm({ ...form, transport_rate: e.target.value })}
+              />
+            </Field>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between rounded-xl border border-border/70 bg-secondary/40 px-3 py-2.5">
