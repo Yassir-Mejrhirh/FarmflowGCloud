@@ -13,14 +13,17 @@ export default function StockCount() {
   const [items, setItems] = useState([]);
   const [storages, setStorages] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [itemRows, storageRows, invoiceRows] = await Promise.all([
+    const [itemRows, storageRows, invoiceRows, user] = await Promise.all([
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.Storage, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
+      base44.auth.me(),
     ]);
+    setCurrentUser(user);
     setItems(itemRows);
     setStorages(storageRows);
     setInvoices(invoiceRows);
@@ -53,6 +56,7 @@ export default function StockCount() {
           items={items}
           storages={storages}
           unitCostFor={(itemId) => Math.round(avgCostOf(totals, itemId) * 100) / 100}
+          responsible={currentUser?.full_name || ''}
           onSaved={onSaved}
         />
       )}

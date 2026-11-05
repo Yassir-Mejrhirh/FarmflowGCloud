@@ -16,12 +16,11 @@ const emptyLine = () => ({ item_id: '', category: '', unit: '', unit_price: '', 
 const emptyForm = () => ({
   date: todayISO(),
   storage_id: '',
-  responsible: '',
   lines: [emptyLine()],
   notes: '',
 });
 
-export default function CountForm({ items, storages, unitCostFor, onSaved }) {
+export default function CountForm({ items, storages, unitCostFor, onSaved, responsible = '' }) {
   const { t } = useI18n();
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -71,7 +70,7 @@ export default function CountForm({ items, storages, unitCostFor, onSaved }) {
       setError(t('stockCount.required'));
       return;
     }
-    if (!form.responsible.trim()) {
+    if (!responsible.trim()) {
       setError(t('stockCount.needResponsible'));
       return;
     }
@@ -80,7 +79,7 @@ export default function CountForm({ items, storages, unitCostFor, onSaved }) {
     await base44.entities.InventoryCount.create({
       date: form.date,
       storage_id: form.storage_id,
-      responsible: form.responsible.trim(),
+      responsible: responsible.trim(),
       lines: filledLines.map((line) => ({
         item_id: line.item_id,
         category: line.category.trim(),
@@ -219,14 +218,10 @@ export default function CountForm({ items, storages, unitCostFor, onSaved }) {
               </tr>
               <tr className="border-t border-border/60">
                 <td colSpan={3} className="px-2.5 py-3">
-                  <Field label={t('stockCount.responsible')}>
-                    <Input
-                      value={form.responsible}
-                      onChange={(e) => set('responsible', e.target.value)}
-                      placeholder={t('stockCount.responsiblePlaceholder')}
-                      className="h-9 max-w-[260px]"
-                    />
-                  </Field>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    {t('stockCount.responsible')}
+                  </p>
+                  <p className="mt-0.5 text-sm font-medium">{responsible || t('stockCount.responsibleUnknown')}</p>
                 </td>
                 <td colSpan={3} className="px-2.5 py-3 text-end">
                   <Button type="submit" className="rounded-xl" disabled={saving}>
