@@ -10,6 +10,7 @@ import StatCard from '@/components/StatCard';
 import StatusPill from '@/components/StatusPill';
 import { fetchList, byId, sumBy } from '@/lib/data';
 import { getMonthlyCosts } from '@/lib/costs';
+import { buildInputTotals } from '@/lib/inventory';
 import { currentMonthKey, fmtLongDate, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -25,10 +26,11 @@ export default function Dashboard() {
   const [crops, setCrops] = useState([]);
   const [varieties, setVarieties] = useState([]);
   const [spend, setSpend] = useState(0);
+  const [purchases, setPurchases] = useState({});
 
   const load = async () => {
     const today = todayISO();
-    const [blockRows, taskRows, itemRows, workerRows, logRows, costs, cropRows, varietyRows] = await Promise.all([
+    const [blockRows, taskRows, itemRows, workerRows, logRows, costs, cropRows, varietyRows, invoiceRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
@@ -37,6 +39,7 @@ export default function Dashboard() {
       getMonthlyCosts(currentMonthKey()),
       fetchList(base44.entities.Crop, {}),
       fetchList(base44.entities.Variety, {}),
+      fetchList(base44.entities.InputInvoice, {}),
     ]);
     setBlocks(blockRows);
     setTasks(taskRows);
@@ -46,6 +49,7 @@ export default function Dashboard() {
     setSpend(costs.total);
     setCrops(cropRows);
     setVarieties(varietyRows);
+    setPurchases(buildInputTotals(invoiceRows));
   };
 
   useEffect(() => {
@@ -57,7 +61,9 @@ export default function Dashboard() {
 
   const dateLabel = fmtLongDate();
   const mappedArea = sumBy(blocks, 'area_ha');
-  const lowStock = items.filter((item) => (Number(item.stock) || 0) <= (Number(item.min_stock) || 0));
+  const lowStock = items.filter(
+    (item) => item.min_stock_enabled && (purchases[item.id]?.quantity || 0) <= (Number(item.min_stock) || 0),
+  );
   const crewToday = new Set(todayLogs.map((log) => log.worker_id)).size;
   const activeWorkers = workers.filter((worker) => worker.active !== false).length;
 
@@ -113,15 +119,16 @@ export default function Dashboard() {
           ) : (
             <ul className="mt-4 space-y-4">
               {lowStock.slice(0, 3).map((item) => {
+                const onHand = purchases[item.id]?.quantity || 0;
                 const level = item.min_stock
-                  ? Math.min(100, Math.round(((Number(item.stock) || 0) / Number(item.min_stock)) * 100))
+                  ? Math.min(100, Math.round((onHand / Number(item.min_stock)) * 100))
                   : 100;
                 return (
                   <li key={item.id}>
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="truncate text-sm">{item.name}</span>
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {fmtNum(item.stock, 1)} {item.unit}
+                        {fmtNum(onHand, 1)} {item.unit}
                       </span>
                     </div>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">

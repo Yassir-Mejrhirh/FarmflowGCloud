@@ -7,38 +7,31 @@
     },
     "category": {
       "type": "string",
-      "enum": [
-        "seed",
-        "fertilizer",
-        "pesticide",
-        "herbicide",
-        "fuel",
-        "packaging",
-        "other"
-      ],
-      "default": "other"
+      "description": "Category name, e.g. Insecticide, Herbicide, Engrais"
+    },
+    "formulation": {
+      "type": "string",
+      "description": "Formulation such as Liquide, Poudre, Granul\u00e9"
     },
     "unit": {
       "type": "string",
-      "enum": [
-        "kg",
-        "l",
-        "bag",
-        "pack",
-        "unit"
-      ],
-      "default": "kg"
+      "description": "Unit of measure, e.g. L, KG, Sac"
     },
-    "stock": {
-      "type": "number",
-      "default": 0
+    "supplier_ids": {
+      "type": "array",
+      "description": "Suppliers of this input",
+      "items": {
+        "type": "string"
+      }
+    },
+    "min_stock_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a minimum stock alert is active for this input"
     },
     "min_stock": {
       "type": "number",
-      "default": 0
-    },
-    "unit_cost": {
-      "type": "number"
+      "description": "Alert threshold quantity"
     },
     "storage_id": {
       "type": "string"
