@@ -6,10 +6,6 @@
       "type": "string",
       "description": "Company / entity name"
     },
-    "code": {
-      "type": "string",
-      "description": "Short reference code"
-    },
     "notes": {
       "type": "string"
     }
@@ -18,11 +14,7 @@
     "name"
   ],
   "rls": {
-    "read": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
+    "read": {},
     "create": {
       "user_condition": {
         "role": "admin"
