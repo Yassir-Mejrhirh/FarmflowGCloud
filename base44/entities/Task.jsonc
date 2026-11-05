@@ -76,16 +76,8 @@
     "title"
   ],
   "rls": {
-    "read": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
+    "read": {},
+    "create": {},
     "update": {
       "user_condition": {
         "role": "admin"
