@@ -11,7 +11,14 @@ export const fmtNum = (n, digits = 1) => {
   return value.toLocaleString(LOCALE, { maximumFractionDigits: digits });
 };
 
-export const fmtMoney = (n) => `${fmtNum(n, 0)} ${CURRENCY}`;
+export const fmtMoney = (n) => {
+  const value = Number(n) || 0;
+  const formatted = value.toLocaleString(LOCALE, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${formatted} ${CURRENCY}`;
+};
 
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 
