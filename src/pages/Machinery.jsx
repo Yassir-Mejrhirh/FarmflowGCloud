@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import MachineDialog, { machineTypeLabel } from '@/components/machinery/MachineDialog';
 import MachinePhoto from '@/components/machinery/MachinePhoto';
 import { fetchList, byId } from '@/lib/data';
+import { buildMachineCosts } from '@/lib/machineryCosts';
 import { fmtDate, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -24,6 +25,9 @@ export default function Machinery() {
   const [machines, setMachines] = useState([]);
   const [logs, setLogs] = useState([]);
   const [types, setTypes] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [items, setItems] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [machineDialog, setMachineDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -36,13 +40,19 @@ export default function Machinery() {
   };
 
   const load = async () => {
-    const [machineRows, logRows] = await Promise.all([
+    const [machineRows, logRows, reportRows, itemRows, invoiceRows] = await Promise.all([
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.MaintenanceLog, {}, { sort: '-date' }),
+      fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
+      fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+      fetchList(base44.entities.InputInvoice, {}, { sort: '-date' }),
       loadTypes(),
     ]);
     setMachines(machineRows);
     setLogs(logRows);
+    setReports(reportRows);
+    setItems(itemRows);
+    setInvoices(invoiceRows);
     setLoading(false);
   };
 
@@ -52,6 +62,10 @@ export default function Machinery() {
 
   const machineMap = useMemo(() => byId(machines), [machines]);
   const serviceCost = logs.reduce((sum, log) => sum + (Number(log.cost) || 0), 0);
+  const costRows = useMemo(
+    () => buildMachineCosts({ machines, logs, reports, items, invoices }),
+    [machines, logs, reports, items, invoices],
+  );
 
   const openLog = (machine) => {
     setLogMachine(machine);
@@ -132,6 +146,24 @@ export default function Machinery() {
                   <dd className="mt-0.5 tabular-nums text-sm">{fmtNum(machine.hours, 0)}</dd>
                 </div>
               </dl>
+
+              <div className="mt-3 rounded-xl bg-muted/50 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  {t('mach.weightedHourly')}
+                </p>
+                <p className="font-display text-lg leading-tight tabular-nums">
+                  {costRows[machine.id]?.hourly != null ? fmtMoney(costRows[machine.id].hourly) : '—'}
+                </p>
+                <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
+                  {costRows[machine.id]?.hourly != null
+                    ? t('mach.weightedBreakdown', {
+                        maintenance: fmtMoney(costRows[machine.id].maintenance),
+                        fuel: fmtMoney(costRows[machine.id].fuel),
+                        hours: fmtNum(costRows[machine.id].hours, 1),
+                      })
+                    : t('mach.weightedNoHours')}
+                </p>
+              </div>
 
               <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3">
                 <button
