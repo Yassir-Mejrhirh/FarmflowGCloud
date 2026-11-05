@@ -18,6 +18,10 @@
       "type": "string",
       "description": "Input purchased"
     },
+    "unit": {
+      "type": "string",
+      "description": "Unit of the purchased quantity, e.g. L, KG, Flacon"
+    },
     "unit_price": {
       "type": "number",
       "description": "Price per unit"

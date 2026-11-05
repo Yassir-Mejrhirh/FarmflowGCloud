@@ -9,11 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
+const UNIT_OPTIONS = ['L', 'KG', 'Flacon', 'Sac', 'Bidon', 'Tonne', 'Carton', 'Palette'];
+
 const emptyForm = () => ({
   date: todayISO(),
   invoice_number: '',
   supplier_id: '',
   item_id: '',
+  unit: '',
   unit_price: '',
   amount: '',
   notes: '',
@@ -40,6 +43,7 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
       invoice_number: form.invoice_number.trim(),
       supplier_id: form.supplier_id,
       item_id: form.item_id,
+      unit: form.unit.trim(),
       unit_price: Number(form.unit_price) || 0,
       amount: Number(form.amount) || 0,
       notes: form.notes.trim(),
@@ -87,6 +91,19 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
             noneLabel={t('invInvoices.noItem')}
             options={items.map((item) => ({ value: item.id, label: item.name }))}
           />
+        </Field>
+        <Field label={t('invInvoices.unit')}>
+          <Input
+            value={form.unit}
+            onChange={(e) => set('unit', e.target.value)}
+            list="invoice-units"
+            placeholder={t('invInvoices.unitPlaceholder')}
+          />
+          <datalist id="invoice-units">
+            {UNIT_OPTIONS.map((unit) => (
+              <option key={unit} value={unit} />
+            ))}
+          </datalist>
         </Field>
         <Field label={t('invInvoices.unitPrice')}>
           <Input type="number" step="0.01" value={form.unit_price} onChange={(e) => set('unit_price', e.target.value)} />

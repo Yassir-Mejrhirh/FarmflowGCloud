@@ -19,7 +19,9 @@ export default function InvoiceList({ invoices, supplierMap, itemMap }) {
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {supplier?.name || t('invInvoices.unknownSupplier')}
                 {item ? ` · ${item.name}` : ` · ${t('invInvoices.unknownItem')}`}
-                {invoice.unit_price ? ` · ${fmtMoney(invoice.unit_price)}` : ''}
+                {invoice.unit_price
+                  ? ` · ${fmtMoney(invoice.unit_price)}${invoice.unit ? `/${invoice.unit}` : ''}`
+                  : ''}
               </p>
               {invoice.notes && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{invoice.notes}</p>}
             </div>
