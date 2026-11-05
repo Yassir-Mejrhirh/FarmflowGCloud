@@ -33,6 +33,7 @@ export default function OverviewGroups() {
         { to: '/planting', label: t('ov.entryCrops'), icon: Layers },
         { to: '/daily-report', label: t('ov.entryReport'), icon: ClipboardList },
         { to: '/input-invoices', label: t('ov.entryInvoices'), icon: Receipt },
+        { to: '/stock-count', label: t('ov.entryStockCount'), icon: Warehouse },
       ],
     },
     {

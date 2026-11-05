@@ -1,0 +1,75 @@
+{
+  "name": "InventoryCount",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Inventory count date"
+    },
+    "storage_id": {
+      "type": "string",
+      "description": "Storage the count was made in"
+    },
+    "responsible": {
+      "type": "string",
+      "description": "Person who validated the inventory count"
+    },
+    "lines": {
+      "type": "array",
+      "description": "Counted inputs and their quantities",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "quantity": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "date"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

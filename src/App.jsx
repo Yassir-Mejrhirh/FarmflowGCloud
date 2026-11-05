@@ -25,6 +25,7 @@ import PlantingEntry from '@/pages/PlantingEntry';
 import DailyReport from '@/pages/DailyReport';
 import InputInvoices from '@/pages/InputInvoices';
 import InputInvoicesList from '@/pages/InputInvoicesList';
+import StockCount from '@/pages/StockCount';
 import { I18nProvider } from '@/lib/I18nContext';
 
 const AuthenticatedApp = () => {
@@ -72,6 +73,7 @@ const AuthenticatedApp = () => {
         <Route path="/daily-report" element={<DailyReport />} />
         <Route path="/input-invoices" element={<InputInvoices />} />
         <Route path="/input-invoices/all" element={<InputInvoicesList />} />
+        <Route path="/stock-count" element={<StockCount />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
