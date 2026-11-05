@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, PackageSearch, ChevronRight } from 'lucide-react';
+import { PackageSearch, ChevronRight } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import OverviewGroups from '@/components/dashboard/OverviewGroups';
@@ -11,17 +11,14 @@ import { useI18n } from '@/lib/I18nContext';
 
 export default function Dashboard() {
   const { t } = useI18n();
-  const [blocks, setBlocks] = useState([]);
   const [items, setItems] = useState([]);
   const [purchases, setPurchases] = useState({});
 
   const load = async () => {
-    const [blockRows, itemRows, invoiceRows] = await Promise.all([
-      fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
+    const [itemRows, invoiceRows] = await Promise.all([
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
     ]);
-    setBlocks(blockRows);
     setItems(itemRows);
     setPurchases(buildInputTotals(invoiceRows));
   };
@@ -41,7 +38,7 @@ export default function Dashboard() {
 
       <OverviewGroups />
 
-      <section className="grid gap-5 sm:grid-cols-2">
+      <section>
         <div className="rounded-2xl border border-border/70 bg-card p-5">
           <div className="flex items-center gap-2">
             <PackageSearch className="h-4 w-4 text-clay" strokeWidth={1.8} />
@@ -79,23 +76,6 @@ export default function Dashboard() {
             {t('dash.openInventory')} <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-
-        <Link
-          to="/blocks"
-          className="group block rounded-2xl bg-primary p-5 text-primary-foreground transition-transform duration-300 hover:-translate-y-0.5"
-        >
-          <p className="text-[11px] uppercase tracking-[0.18em] text-primary-foreground/60">{t('dash.georef')}</p>
-          <p className="mt-2 font-display text-xl leading-snug">
-            {t('dash.blocksDrawn', { n: blocks.length })}
-          </p>
-          <p className="mt-1.5 text-xs leading-relaxed text-primary-foreground/70">
-            {t('dash.traceHint')}
-          </p>
-          <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium">
-            {t('dash.plotNewBlock')}
-            <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </Link>
       </section>
     </div>
   );
