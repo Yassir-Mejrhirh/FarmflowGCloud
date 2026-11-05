@@ -53,7 +53,7 @@ export default function OverviewGroups() {
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-secondary text-primary">
               <group.icon className="h-3 w-3" strokeWidth={2} />
             </span>
-            <h2 className="font-display text-sm leading-tight tracking-tight">{t(`ov.${group.key}`)}</h2>
+            <h2 className="font-display text-[15px] leading-tight tracking-tight">{t(`ov.${group.key}`)}</h2>
           </div>
 
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
@@ -61,7 +61,7 @@ export default function OverviewGroups() {
               <Link
                 key={`${group.key}-${item.label}`}
                 to={item.to}
-                className="group flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 px-2 py-1 text-[11px] transition-colors duration-200 hover:border-primary/40 hover:bg-accent"
+                className="group flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 px-2 py-1.5 text-xs transition-colors duration-200 hover:border-primary/40 hover:bg-accent"
               >
                 <item.icon className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={1.8} />
                 <span className="truncate">{item.label}</span>
