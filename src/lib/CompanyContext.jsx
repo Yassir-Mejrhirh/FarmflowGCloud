@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { getActiveCompanyId, setActiveCompanyId } from '@/lib/companyScope';
+import { getActiveCompanyId, setActiveCompanyId, adoptUnassignedRecords } from '@/lib/companyScope';
 
 const CompanyContext = createContext(null);
 
@@ -17,7 +17,10 @@ export function CompanyProvider({ children }) {
     base44.entities.Company.list('-created_date').then((list) => {
       if (!alive) return;
       setCompanies(list);
-      if (!getActiveCompanyId() && list.length) setActiveCompanyId(list[0].id);
+      if (!getActiveCompanyId() && list.length) {
+        setActiveCompanyId(list[0].id);
+        window.location.reload();
+      }
     });
     return () => {
       alive = false;
@@ -33,6 +36,7 @@ export function CompanyProvider({ children }) {
 
   const createCompany = async (name) => {
     const created = await base44.entities.Company.create({ name });
+    if (!companies.length) await adoptUnassignedRecords(created.id);
     setActiveCompanyId(created.id);
     window.location.reload();
   };

@@ -5,7 +5,32 @@ const STORAGE_KEY = 'terra.company_id';
 // Company itself, and the platform User entity, are never scoped.
 const UNSCOPED = new Set(['Company', 'User']);
 
+const SCOPED_ENTITIES = [
+  'Farm',
+  'FarmBlock',
+  'Crop',
+  'Variety',
+  'Season',
+  'Task',
+  'TaskNature',
+  'WorkerFunction',
+  'Worker',
+  'Machine',
+  'MaintenanceLog',
+  'Storage',
+  'InputItem',
+  'InputCategory',
+  'InputInvoice',
+  'Supplier',
+  'Expense',
+  'Harvest',
+  'StockMovement',
+  'Attendance',
+  'DailyReport',
+];
+
 let installed = false;
+let rawEntities = null;
 
 export function getActiveCompanyId() {
   return window.localStorage.getItem(STORAGE_KEY) || '';
@@ -47,7 +72,7 @@ function scopeHandler(handler) {
 export function installCompanyScope() {
   if (installed) return;
   installed = true;
-  const rawEntities = base44.entities;
+  rawEntities = base44.entities;
 
   base44.entities = new Proxy(
     {},
@@ -58,5 +83,18 @@ export function installCompanyScope() {
         return scopeHandler(handler);
       },
     },
+  );
+}
+
+// Records created before companies existed carry no company: they are handed
+// over to the first company so nothing disappears from the app.
+export async function adoptUnassignedRecords(companyId) {
+  if (!rawEntities || !companyId) return;
+  await Promise.all(
+    SCOPED_ENTITIES.map((name) =>
+      rawEntities[name]
+        .updateMany({ company_id: null }, { $set: { company_id: companyId } })
+        .catch(() => null),
+    ),
   );
 }
