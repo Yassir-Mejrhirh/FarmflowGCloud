@@ -15,7 +15,7 @@ export function buildInputTotals(invoices = []) {
   return totals;
 }
 
-// On-hand quantity per input: purchases from invoices minus stock-out movements.
+// On-hand quantity per input: purchases from invoices, plus stock-in movements, minus stock-out movements.
 export function buildOnHand(invoices = [], movements = []) {
   const totals = buildInputTotals(invoices);
   const onHand = {};
@@ -23,9 +23,10 @@ export function buildOnHand(invoices = [], movements = []) {
     onHand[itemId] = { ...row };
   });
   movements.forEach((movement) => {
-    if (!movement.item_id || movement.kind !== 'out') return;
+    if (!movement.item_id) return;
+    const sign = movement.kind === 'out' ? -1 : 1;
     const row = onHand[movement.item_id] || { quantity: 0, cost: 0 };
-    row.quantity -= Number(movement.quantity) || 0;
+    row.quantity += sign * (Number(movement.quantity) || 0);
     onHand[movement.item_id] = row;
   });
   return onHand;

@@ -801,7 +801,8 @@ export const TRANSLATIONS = {
     'stockCount.required': 'Renseignez la date et au moins un intrant.',
     'stockCount.needResponsible': 'Indiquez le responsable de l’inventaire pour valider.',
     'stockCount.saved': 'Inventaire validé',
-    'stockCount.savedDesc': 'Le constat de stock a été enregistré.',
+    'stockCount.savedDesc': 'Le constat de stock a été enregistré et le stock ajusté.',
+    'stockCount.movementNote': 'Ajustement inventaire du {date}',
 
     'costs.eyebrow': 'Finance',
     'costs.title': 'Coûts',
@@ -1637,7 +1638,8 @@ export const TRANSLATIONS = {
     'stockCount.required': 'أدخل التاريخ ومدخلًا واحدًا على الأقل.',
     'stockCount.needResponsible': 'حدد مسؤول الجرد للتحقق.',
     'stockCount.saved': 'تم التحقق من الجرد',
-    'stockCount.savedDesc': 'تم تسجيل حصر المخزون.',
+    'stockCount.savedDesc': 'تم تسجيل حصر المخزون وتعديل المخزون.',
+    'stockCount.movementNote': 'تعديل الجرد بتاريخ {date}',
 
     'costs.eyebrow': 'المالية',
     'costs.title': 'التكاليف',

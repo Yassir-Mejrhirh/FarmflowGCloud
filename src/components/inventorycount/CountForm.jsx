@@ -20,7 +20,7 @@ const emptyForm = () => ({
   notes: '',
 });
 
-export default function CountForm({ items, storages, unitCostFor, onSaved, responsible = '' }) {
+export default function CountForm({ items, storages, unitCostFor, onHandFor, onSaved, responsible = '' }) {
   const { t } = useI18n();
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -76,19 +76,38 @@ export default function CountForm({ items, storages, unitCostFor, onSaved, respo
     }
     setError('');
     setSaving(true);
+    const lines = filledLines.map((line) => ({
+      item_id: line.item_id,
+      category: line.category.trim(),
+      unit: line.unit.trim(),
+      unit_price: Number(line.unit_price) || 0,
+      quantity: Number(line.quantity) || 0,
+    }));
     await base44.entities.InventoryCount.create({
       date: form.date,
       storage_id: form.storage_id,
       responsible: responsible.trim(),
-      lines: filledLines.map((line) => ({
-        item_id: line.item_id,
-        category: line.category.trim(),
-        unit: line.unit.trim(),
-        unit_price: Number(line.unit_price) || 0,
-        quantity: Number(line.quantity) || 0,
-      })),
+      lines,
       notes: form.notes.trim(),
     });
+
+    // Le constat ajuste le stock : un mouvement d'entrée ou de sortie par écart.
+    const adjustments = lines
+      .map((line) => {
+        const delta = line.quantity - (onHandFor(line.item_id) || 0);
+        if (Math.abs(delta) < 0.0001) return null;
+        return {
+          item_id: line.item_id,
+          kind: delta > 0 ? 'in' : 'out',
+          quantity: Math.abs(delta),
+          date: form.date,
+          cost: Math.abs(delta) * line.unit_price,
+          storage_id: form.storage_id,
+          notes: t('stockCount.movementNote', { date: form.date }),
+        };
+      })
+      .filter(Boolean);
+    if (adjustments.length) await base44.entities.StockMovement.bulkCreate(adjustments);
     setSaving(false);
     setForm(emptyForm());
     onSaved();
