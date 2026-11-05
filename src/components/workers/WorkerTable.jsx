@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { fmtMoney } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -15,6 +17,25 @@ const DOTS = {
   orange: 'bg-amber-500',
 };
 
+const SORT_VALUES = {
+  name: (worker) => (worker.name || '').toLowerCase(),
+  farm: (worker) => (worker.farm || '').toLowerCase(),
+  priority: (worker) => Number(worker.priority) || 9,
+  team: (worker) => (worker.team || '\uffff').toLowerCase(),
+  rate: (worker) => Number(worker.daily_rate) || 0,
+  declared: (worker) => (worker.declared ? 1 : 0),
+  transport: (worker) => (hasTransport(worker) ? 1 : 0),
+};
+
+const compare = (a, b, key, dir) => {
+  const valueA = SORT_VALUES[key](a);
+  const valueB = SORT_VALUES[key](b);
+  let result = 0;
+  if (valueA < valueB) result = -1;
+  if (valueA > valueB) result = 1;
+  return dir === 'desc' ? -result : result;
+};
+
 function Dot({ tone, label }) {
   return (
     <span className="inline-flex items-center gap-2">
@@ -26,19 +47,30 @@ function Dot({ tone, label }) {
 
 export default function WorkerTable({ workers, onEdit }) {
   const { t } = useI18n();
+  const [sort, setSort] = useState({ key: null, dir: 'asc' });
 
-  const rows = [...workers].sort(
-    (a, b) => definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || ''),
-  );
+  const toggleSort = (key) =>
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' },
+    );
+
+  const rows = [...workers].sort((a, b) => {
+    if (!sort.key) {
+      return definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || '');
+    }
+    return compare(a, b, sort.key, sort.dir) || (a.name || '').localeCompare(b.name || '');
+  });
 
   const columns = [
-    t('workers.colWorker'),
-    t('workers.colFarm'),
-    t('workers.colPriority'),
-    t('workers.colTeam'),
-    t('workers.colRate'),
-    t('workers.colDeclared'),
-    t('workers.colTransport'),
+    { key: 'name', label: t('workers.colWorker') },
+    { key: 'farm', label: t('workers.colFarm') },
+    { key: 'priority', label: t('workers.colPriority') },
+    { key: 'team', label: t('workers.colTeam') },
+    { key: 'rate', label: t('workers.colRate') },
+    { key: 'declared', label: t('workers.colDeclared') },
+    { key: 'transport', label: t('workers.colTransport') },
   ];
 
   return (
@@ -46,14 +78,25 @@ export default function WorkerTable({ workers, onEdit }) {
       <Table className="min-w-[760px]">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            {columns.map((column) => (
-              <TableHead
-                key={column}
-                className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
-              >
-                {column}
-              </TableHead>
-            ))}
+            {columns.map((column) => {
+              const active = sort.key === column.key;
+              const Icon = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown;
+              return (
+                <TableHead key={column.key} className="whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(column.key)}
+                    className={cn(
+                      'flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.14em] transition-colors',
+                      active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {column.label}
+                    <Icon className={cn('h-3 w-3', active ? 'opacity-100' : 'opacity-40')} />
+                  </button>
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
