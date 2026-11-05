@@ -6,6 +6,8 @@ import StatusPill from '@/components/StatusPill';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import UsageField from '@/components/dailyreport/UsageField';
+import InputStockNote from '@/components/dailyreport/InputStockNote';
+import { buildInputTotals } from '@/lib/inventory';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +26,7 @@ export default function DailyReport() {
   const [workers, setWorkers] = useState([]);
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [natures, setNatures] = useState([]);
   const [reports, setReports] = useState([]);
@@ -35,13 +38,14 @@ export default function DailyReport() {
   const [rangeError, setRangeError] = useState(null);
 
   const load = async () => {
-    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, reportRows, taskRows, natureRows] = await Promise.all([
+    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, reportRows, taskRows, natureRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
       fetchList(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+      fetchList(base44.entities.InputInvoice, {}),
       fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
       fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
       fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
@@ -52,6 +56,7 @@ export default function DailyReport() {
     setWorkers(workerRows);
     setMachines(machineRows);
     setItems(itemRows);
+    setInvoices(invoiceRows);
     setReports(reportRows);
     setTasks(taskRows);
     setNatures(natureRows);
@@ -85,6 +90,8 @@ export default function DailyReport() {
     );
   }, [visibleBlocks, crops, t]);
   const taskMap = useMemo(() => byId(tasks), [tasks]);
+  const itemMap = useMemo(() => byId(items), [items]);
+  const stockTotals = useMemo(() => buildInputTotals(invoices), [invoices]);
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
@@ -263,6 +270,13 @@ export default function DailyReport() {
               qtyLabel={t('report.qty')}
               addLabel={t('report.addInput')}
               emptyLabel={t('report.noInput')}
+              renderMeta={(line) => (
+                <InputStockNote
+                  item={itemMap[line.item_id]}
+                  stock={stockTotals[line.item_id]?.quantity || 0}
+                  used={line.quantity}
+                />
+              )}
             />
           </div>
 

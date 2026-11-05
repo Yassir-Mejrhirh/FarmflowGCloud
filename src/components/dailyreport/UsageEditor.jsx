@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function UsageEditor({
-  lines, onChange, options, idKey, qtyKey, qtyLabel, addLabel, emptyLabel,
+  lines, onChange, options, idKey, qtyKey, qtyLabel, addLabel, emptyLabel, renderMeta,
 }) {
   const { t } = useI18n();
   const update = (index, patch) => onChange(lines.map((line, i) => (i === index ? { ...line, ...patch } : line)));
@@ -19,12 +19,13 @@ export default function UsageEditor({
         <ul className="space-y-2">
           {lines.map((line, index) => (
             <li key={index} className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 space-y-1">
                 <SelectField
                   value={line[idKey]}
                   onChange={(value) => update(index, { [idKey]: value })}
                   options={options}
                 />
+                {renderMeta && renderMeta(line)}
               </div>
               <Input
                 type="number"
