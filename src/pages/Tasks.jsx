@@ -83,32 +83,30 @@ export default function Tasks() {
       ) : (
         <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
           {tasks.map((task) => (
-            <li key={task.id} className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40">
+            <li key={task.id} className="flex items-center gap-2 px-4 py-2 transition-colors hover:bg-muted/40">
               <button
                 type="button"
                 onClick={() => {
                   setEditing(task);
                   setDialogOpen(true);
                 }}
-                className="min-w-0 flex-1 text-start"
+                className="flex min-w-0 flex-1 items-center gap-2 text-start"
               >
-                <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                  {natureLabel(task.type, natures, t)}
-                  {task.machine_required && (
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                      {t('taskDialog.machineBadge')}
-                    </span>
-                  )}
-                </span>
+                <span className="truncate text-sm font-medium">{natureLabel(task.type, natures, t)}</span>
+                {task.machine_required && (
+                  <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                    {t('taskDialog.machineBadge')}
+                  </span>
+                )}
                 {task.description && (
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
+                  <span className="hidden truncate text-xs text-muted-foreground sm:inline">{task.description}</span>
                 )}
               </button>
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                 onClick={() => remove(task)}
                 aria-label={t('common.deleteTask')}
               >
