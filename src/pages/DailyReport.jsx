@@ -17,6 +17,8 @@ import { natureLabel } from '@/lib/taskNature';
 export default function DailyReport() {
   const { t } = useI18n();
   const [blocks, setBlocks] = useState([]);
+  const [farms, setFarms] = useState([]);
+  const [farmId, setFarmId] = useState('');
   const [workers, setWorkers] = useState([]);
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
@@ -31,8 +33,9 @@ export default function DailyReport() {
   const [rangeError, setRangeError] = useState(null);
 
   const load = async () => {
-    const [blockRows, workerRows, machineRows, itemRows, reportRows, taskRows, natureRows] = await Promise.all([
+    const [blockRows, farmRows, workerRows, machineRows, itemRows, reportRows, taskRows, natureRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
+      fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
@@ -41,6 +44,7 @@ export default function DailyReport() {
       fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
     ]);
     setBlocks(blockRows);
+    setFarms(farmRows);
     setWorkers(workerRows);
     setMachines(machineRows);
     setItems(itemRows);
@@ -54,6 +58,12 @@ export default function DailyReport() {
   }, []);
 
   const blockMap = useMemo(() => byId(blocks), [blocks]);
+
+  const farmName = farms.find((farm) => farm.id === farmId)?.name;
+  const farmBlocks = useMemo(
+    () => (farmName ? blocks.filter((block) => block.farm === farmName) : blocks),
+    [blocks, farmName],
+  );
   const taskMap = useMemo(() => byId(tasks), [tasks]);
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
@@ -136,17 +146,34 @@ export default function DailyReport() {
                 </p>
               )}
             </Field>
-            <Field label={t('report.block')}>
+            <Field label={t('report.farm')}>
               <SelectField
-                value={form.block_id}
+                value={farmId}
                 onChange={(value) => {
                   setRangeError(null);
-                  setForm({ ...form, block_id: value });
+                  setFarmId(value);
+                  const name = farms.find((farm) => farm.id === value)?.name;
+                  const stillVisible = blocks.some(
+                    (block) => block.id === form.block_id && (!name || block.farm === name),
+                  );
+                  if (!stillVisible) setForm({ ...form, block_id: '' });
                 }}
-                options={blocks.map((block) => ({ value: block.id, label: block.name }))}
+                options={farms.map((farm) => ({ value: farm.id, label: farm.name }))}
+                noneLabel={t('report.allFarms')}
               />
             </Field>
           </div>
+
+          <Field label={t('report.block')}>
+            <SelectField
+              value={form.block_id}
+              onChange={(value) => {
+                setRangeError(null);
+                setForm({ ...form, block_id: value });
+              }}
+              options={farmBlocks.map((block) => ({ value: block.id, label: block.name }))}
+            />
+          </Field>
 
           <Field label={t('report.task')}>
             <SelectField
