@@ -56,12 +56,12 @@ export default function OverviewGroups() {
             <h2 className="font-display text-sm leading-tight tracking-tight">{t(`ov.${group.key}`)}</h2>
           </div>
 
-          <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
             {group.items.map((item) => (
               <Link
                 key={`${group.key}-${item.label}`}
                 to={item.to}
-                className="group flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 px-2 py-1.5 text-xs transition-colors duration-200 hover:border-primary/40 hover:bg-accent"
+                className="group flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 px-2 py-1 text-[11px] transition-colors duration-200 hover:border-primary/40 hover:bg-accent"
               >
                 <item.icon className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={1.8} />
                 <span className="truncate">{item.label}</span>
