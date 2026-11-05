@@ -83,7 +83,7 @@ export default function CountForm({ items, storages, unitCostFor, onHandFor, onS
       unit_price: Number(line.unit_price) || 0,
       quantity: Number(line.quantity) || 0,
     }));
-    await base44.entities.InventoryCount.create({
+    const count = await base44.entities.InventoryCount.create({
       date: form.date,
       storage_id: form.storage_id,
       responsible: responsible.trim(),
@@ -103,6 +103,7 @@ export default function CountForm({ items, storages, unitCostFor, onHandFor, onS
           date: form.date,
           cost: Math.abs(delta) * line.unit_price,
           storage_id: form.storage_id,
+          count_id: count.id,
           notes: t('stockCount.movementNote', { date: form.date }),
         };
       })

@@ -7,6 +7,7 @@ import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
+import { TRANSLATIONS } from '@/lib/translations';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +23,32 @@ export default function CountList({ counts, storages, onDeleted }) {
   const { t } = useI18n();
   const { toast } = useToast();
   const [pending, setPending] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const storageName = (id) => storages.find((storage) => storage.id === id)?.name || '—';
+
+  // Le constat avait ajusté le stock : on retire les mouvements qu'il a créés.
+  const removeMovements = async (count) => {
+    const linked = await base44.entities.StockMovement.filter({ count_id: count.id });
+    if (linked.length) {
+      await base44.entities.StockMovement.deleteMany({ count_id: count.id });
+      return;
+    }
+    const legacyNotes = ['fr', 'ar'].map((lang) =>
+      TRANSLATIONS[lang]['stockCount.movementNote'].replace('{date}', count.date || ''),
+    );
+    await base44.entities.StockMovement.deleteMany({
+      date: count.date,
+      storage_id: count.storage_id,
+      notes: { $in: legacyNotes },
+    });
+  };
 
   const remove = async () => {
     if (!pending) return;
+    setDeleting(true);
+    await removeMovements(pending);
     await base44.entities.InventoryCount.delete(pending.id);
+    setDeleting(false);
     setPending(null);
     toast({ title: t('inv.countDeleted') });
     onDeleted?.();
@@ -100,7 +122,11 @@ export default function CountList({ counts, storages, onDeleted }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={remove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <AlertDialogAction
+            onClick={remove}
+            disabled={deleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
             {t('inv.deleteCountConfirm')}
           </AlertDialogAction>
         </AlertDialogFooter>

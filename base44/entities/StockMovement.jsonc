@@ -15,7 +15,11 @@
         "in",
         "out"
       ],
-      "default": "in"
+      "default": "in",
+      "enumColors": [
+        "green",
+        "red"
+      ]
     },
     "quantity": {
       "type": "number"
@@ -33,6 +37,10 @@
     },
     "block_id": {
       "type": "string"
+    },
+    "count_id": {
+      "type": "string",
+      "description": "Inventory count that generated this adjustment, if any"
     },
     "notes": {
       "type": "string"
