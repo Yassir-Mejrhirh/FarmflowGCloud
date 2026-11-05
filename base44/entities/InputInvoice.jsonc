@@ -14,21 +14,27 @@
     "supplier_id": {
       "type": "string"
     },
-    "item_id": {
-      "type": "string",
-      "description": "Input purchased"
-    },
-    "quantity": {
-      "type": "number",
-      "description": "Quantity purchased"
-    },
-    "unit": {
-      "type": "string",
-      "description": "Unit of the purchased quantity, e.g. L, KG, Flacon"
-    },
-    "unit_price": {
-      "type": "number",
-      "description": "Price per unit"
+    "lines": {
+      "type": "array",
+      "description": "Inputs purchased on this invoice",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of the quantity, e.g. L, KG, Flacon"
+          },
+          "unit_price": {
+            "type": "number"
+          }
+        }
+      }
     },
     "amount": {
       "type": "number",

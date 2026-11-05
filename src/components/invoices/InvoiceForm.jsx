@@ -1,27 +1,27 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Receipt } from 'lucide-react';
+import { Plus, Receipt, X } from 'lucide-react';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { todayISO } from '@/lib/format';
+import { todayISO, fmtMoney } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
 const UNIT_OPTIONS = ['L', 'KG', 'Flacon', 'Sac', 'Bidon', 'Tonne', 'Carton', 'Palette'];
+
+const emptyLine = () => ({ item_id: '', quantity: '', unit: '', unit_price: '' });
 
 const emptyForm = () => ({
   date: todayISO(),
   invoice_number: '',
   supplier_id: '',
-  item_id: '',
-  quantity: '',
-  unit: '',
-  unit_price: '',
-  amount: '',
+  lines: [emptyLine()],
   notes: '',
 });
+
+const lineTotal = (line) => (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
 
 export default function InvoiceForm({ suppliers, items, onSaved }) {
   const { t } = useI18n();
@@ -29,20 +29,25 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const set = (key, value) =>
-    setForm((prev) => {
-      const next = { ...prev, [key]: value };
-      if (key === 'quantity' || key === 'unit_price') {
-        const quantity = Number(next.quantity);
-        const unitPrice = Number(next.unit_price);
-        if (quantity > 0 && unitPrice > 0) next.amount = (quantity * unitPrice).toFixed(2);
-      }
-      return next;
-    });
+  const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const setLine = (index, key, value) =>
+    setForm((prev) => ({
+      ...prev,
+      lines: prev.lines.map((line, i) => (i === index ? { ...line, [key]: value } : line)),
+    }));
+
+  const addLine = () => setForm((prev) => ({ ...prev, lines: [...prev.lines, emptyLine()] }));
+
+  const removeLine = (index) =>
+    setForm((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== index) }));
+
+  const itemOptions = items.map((item) => ({ value: item.id, label: item.name }));
+  const total = form.lines.reduce((sum, line) => sum + lineTotal(line), 0);
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.date || !Number(form.amount)) {
+    if (!form.date || total <= 0) {
       setError(t('invInvoices.required'));
       return;
     }
@@ -52,11 +57,15 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
       date: form.date,
       invoice_number: form.invoice_number.trim(),
       supplier_id: form.supplier_id,
-      item_id: form.item_id,
-      quantity: Number(form.quantity) || 0,
-      unit: form.unit.trim(),
-      unit_price: Number(form.unit_price) || 0,
-      amount: Number(form.amount) || 0,
+      lines: form.lines
+        .filter((line) => line.item_id || Number(line.quantity) || Number(line.unit_price))
+        .map((line) => ({
+          item_id: line.item_id,
+          quantity: Number(line.quantity) || 0,
+          unit: line.unit.trim(),
+          unit_price: Number(line.unit_price) || 0,
+        })),
+      amount: total,
       notes: form.notes.trim(),
     });
     setSaving(false);
@@ -95,41 +104,77 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
             options={suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name }))}
           />
         </Field>
-        <Field label={t('invInvoices.item')}>
-          <SelectField
-            value={form.item_id}
-            onChange={(value) => set('item_id', value)}
-            noneLabel={t('invInvoices.noItem')}
-            options={items.map((item) => ({ value: item.id, label: item.name }))}
-          />
-        </Field>
-        <Field label={t('invInvoices.quantity')}>
-          <Input
-            type="number"
-            step="0.01"
-            value={form.quantity}
-            onChange={(e) => set('quantity', e.target.value)}
-          />
-        </Field>
-        <Field label={t('invInvoices.unit')}>
-          <Input
-            value={form.unit}
-            onChange={(e) => set('unit', e.target.value)}
-            list="invoice-units"
-            placeholder={t('invInvoices.unitPlaceholder')}
-          />
-          <datalist id="invoice-units">
-            {UNIT_OPTIONS.map((unit) => (
-              <option key={unit} value={unit} />
-            ))}
-          </datalist>
-        </Field>
-        <Field label={t('invInvoices.unitPrice')}>
-          <Input type="number" step="0.01" value={form.unit_price} onChange={(e) => set('unit_price', e.target.value)} />
-        </Field>
-        <Field label={t('invInvoices.amount')}>
-          <Input type="number" step="0.01" value={form.amount} onChange={(e) => set('amount', e.target.value)} required />
-        </Field>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          {t('invInvoices.lines')}
+        </p>
+        {form.lines.map((line, index) => (
+          <div key={index} className="rounded-xl border border-border/60 bg-secondary/20 p-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Field label={t('invInvoices.item')}>
+                <SelectField
+                  value={line.item_id}
+                  onChange={(value) => setLine(index, 'item_id', value)}
+                  noneLabel={t('invInvoices.noItem')}
+                  options={itemOptions}
+                />
+              </Field>
+              <Field label={t('invInvoices.quantity')}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={line.quantity}
+                  onChange={(e) => setLine(index, 'quantity', e.target.value)}
+                />
+              </Field>
+              <Field label={t('invInvoices.unit')}>
+                <Input
+                  value={line.unit}
+                  onChange={(e) => setLine(index, 'unit', e.target.value)}
+                  list="invoice-units"
+                  placeholder={t('invInvoices.unitPlaceholder')}
+                />
+              </Field>
+              <div className="flex items-end gap-2">
+                <Field label={t('invInvoices.unitPrice')} className="flex-1">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={line.unit_price}
+                    onChange={(e) => setLine(index, 'unit_price', e.target.value)}
+                  />
+                </Field>
+                {form.lines.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="mb-0.5 h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
+                    onClick={() => removeLine(index)}
+                    aria-label={t('invInvoices.removeLine')}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            {lineTotal(line) > 0 && (
+              <p className="mt-2 text-end text-[11px] tabular-nums text-muted-foreground">
+                {t('invInvoices.lineTotal')} {fmtMoney(lineTotal(line))}
+              </p>
+            )}
+          </div>
+        ))}
+        <datalist id="invoice-units">
+          {UNIT_OPTIONS.map((unit) => (
+            <option key={unit} value={unit} />
+          ))}
+        </datalist>
+        <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={addLine}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" /> {t('invInvoices.addLine')}
+        </Button>
       </div>
 
       <div className="mt-3">
@@ -140,7 +185,11 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
 
       {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{t('invInvoices.amount')}</p>
+          <p className="font-display text-xl leading-tight tabular-nums">{fmtMoney(total)}</p>
+        </div>
         <Button type="submit" className="rounded-xl" disabled={saving}>
           {t('invInvoices.save')}
         </Button>
