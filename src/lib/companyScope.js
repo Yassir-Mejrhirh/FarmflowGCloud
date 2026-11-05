@@ -16,6 +16,7 @@ const SCOPED_ENTITIES = [
   'WorkerFunction',
   'Worker',
   'Machine',
+  'MachineType',
   'MaintenanceLog',
   'Storage',
   'InputItem',

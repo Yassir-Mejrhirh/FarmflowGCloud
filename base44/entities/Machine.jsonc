@@ -11,21 +11,34 @@
     },
     "type": {
       "type": "string",
-      "enum": [
-        "tractor",
-        "harvester",
-        "sprayer",
-        "truck",
-        "implement",
-        "other"
-      ],
+      "description": "Machine type: tractor, harvester, sprayer, truck, implement, other, or a custom machine type name",
       "default": "tractor"
     },
-    "model": {
-      "type": "string"
+    "year": {
+      "type": "number",
+      "description": "Manufacturing year"
     },
     "plate": {
       "type": "string"
+    },
+    "spare_parts": {
+      "type": "array",
+      "description": "Spare part references for this machine",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Part kind: oil_filter, fuel_filter, air_filter, hydraulic_filter, belt, battery, spark_plug, other"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          }
+        }
+      }
     },
     "hourly_rate": {
       "type": "number"

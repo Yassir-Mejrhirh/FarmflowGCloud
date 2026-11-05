@@ -10,11 +10,11 @@ import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import MachineDialog, { machineTypeLabel } from '@/components/machinery/MachineDialog';
 import { fetchList, byId } from '@/lib/data';
 import { fmtDate, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
-const TYPES = ['tractor', 'harvester', 'sprayer', 'truck', 'implement', 'other'];
 const KINDS = ['service', 'repair', 'inspection'];
 const STATUS_TONE = { operational: 'moss', maintenance: 'amber', retired: 'stone' };
 
@@ -22,16 +22,23 @@ export default function Machinery() {
   const { t } = useI18n();
   const [machines, setMachines] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [machineDialog, setMachineDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [logDialog, setLogDialog] = useState(false);
   const [logMachine, setLogMachine] = useState(null);
 
+  const loadTypes = async () => {
+    const rows = await fetchList(base44.entities.MachineType, {}, { sort: 'name' });
+    setTypes(rows);
+  };
+
   const load = async () => {
     const [machineRows, logRows] = await Promise.all([
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.MaintenanceLog, {}, { sort: '-date' }),
+      loadTypes(),
     ]);
     setMachines(machineRows);
     setLogs(logRows);
@@ -97,7 +104,7 @@ export default function Machinery() {
                 <div className="min-w-0">
                   <p className="truncate font-display text-lg leading-tight">{machine.name}</p>
                   <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                    {t(`mt.${machine.type}`)}
+                    {machineTypeLabel(machine.type, types, t)}
                     {machine.plate ? ` · ${machine.plate}` : ''}
                   </p>
                 </div>
@@ -108,14 +115,12 @@ export default function Machinery() {
 
               <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <dt className="text-muted-foreground">{t('mach.hours')}</dt>
-                  <dd className="mt-0.5 tabular-nums text-sm">{fmtNum(machine.hours, 0)}</dd>
+                  <dt className="text-muted-foreground">{t('machDialog.year')}</dt>
+                  <dd className="mt-0.5 tabular-nums text-sm">{machine.year || '—'}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">{t('mach.rateHour')}</dt>
-                  <dd className="mt-0.5 tabular-nums text-sm">
-                    {machine.hourly_rate ? fmtMoney(machine.hourly_rate) : '—'}
-                  </dd>
+                  <dt className="text-muted-foreground">{t('mach.hours')}</dt>
+                  <dd className="mt-0.5 tabular-nums text-sm">{fmtNum(machine.hours, 0)}</dd>
                 </div>
               </dl>
 
@@ -174,7 +179,14 @@ export default function Machinery() {
         </section>
       )}
 
-      <MachineDialog open={machineDialog} onOpenChange={setMachineDialog} machine={editing} onSaved={load} />
+      <MachineDialog
+        open={machineDialog}
+        onOpenChange={setMachineDialog}
+        machine={editing}
+        types={types}
+        onTypesChanged={loadTypes}
+        onSaved={load}
+      />
       <MaintenanceDialog
         open={logDialog}
         onOpenChange={setLogDialog}
@@ -192,111 +204,6 @@ function MiniStat({ label, value }) {
       <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
       <p className="font-display text-lg leading-tight tabular-nums">{value}</p>
     </div>
-  );
-}
-
-function MachineDialog({ open, onOpenChange, machine, onSaved }) {
-  const { t } = useI18n();
-  const [form, setForm] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setForm({
-      name: machine?.name || '',
-      type: machine?.type || 'tractor',
-      model: machine?.model || '',
-      plate: machine?.plate || '',
-      hourly_rate: machine?.hourly_rate ?? '',
-      hours: machine?.hours ?? '',
-      status: machine?.status || 'operational',
-      notes: machine?.notes || '',
-    });
-  }, [open, machine]);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    if (!form.name?.trim()) return;
-    setSaving(true);
-    const payload = {
-      name: form.name.trim(),
-      type: form.type,
-      model: form.model || '',
-      plate: form.plate || '',
-      hourly_rate: Number(form.hourly_rate) || 0,
-      hours: Number(form.hours) || 0,
-      status: form.status,
-      notes: form.notes || '',
-    };
-    if (machine?.id) await base44.entities.Machine.update(machine.id, payload);
-    else await base44.entities.Machine.create(payload);
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
-  };
-
-  const remove = async () => {
-    if (!machine?.id) return;
-    setSaving(true);
-    await base44.entities.Machine.delete(machine.id);
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
-  };
-
-  return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={machine ? t('machDialog.editTitle') : t('machDialog.newTitle')}
-      onSubmit={submit}
-      saving={saving}
-      submitLabel={machine ? t('machDialog.save') : t('machDialog.add')}
-    >
-      <Field label={t('common.name')}>
-        <Input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="John Deere 5075" required />
-      </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('common.type')}>
-          <SelectField
-            value={form.type}
-            onChange={(value) => setForm({ ...form, type: value })}
-            options={TYPES.map((value) => ({ value, label: t(`mt.${value}`) }))}
-          />
-        </Field>
-        <Field label={t('machDialog.model')}>
-          <Input value={form.model || ''} onChange={(e) => setForm({ ...form, model: e.target.value })} />
-        </Field>
-        <Field label={t('machDialog.plate')}>
-          <Input value={form.plate || ''} onChange={(e) => setForm({ ...form, plate: e.target.value })} />
-        </Field>
-        <Field label={t('common.status')}>
-          <SelectField
-            value={form.status}
-            onChange={(value) => setForm({ ...form, status: value })}
-            options={['operational', 'maintenance', 'retired'].map((value) => ({ value, label: t(`mst.${value}`) }))}
-          />
-        </Field>
-        <Field label={t('machDialog.hours')}>
-          <Input type="number" value={form.hours ?? ''} onChange={(e) => setForm({ ...form, hours: e.target.value })} />
-        </Field>
-        <Field label={t('machDialog.costHour')}>
-          <Input
-            type="number"
-            value={form.hourly_rate ?? ''}
-            onChange={(e) => setForm({ ...form, hourly_rate: e.target.value })}
-          />
-        </Field>
-      </div>
-      <Field label={t('common.notes')}>
-        <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
-      </Field>
-      {machine?.id && (
-        <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
-          {t('machDialog.delete')}
-        </button>
-      )}
-    </FormDialog>
   );
 }
 
