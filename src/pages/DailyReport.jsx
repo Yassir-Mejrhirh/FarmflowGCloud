@@ -56,9 +56,14 @@ export default function DailyReport() {
   const blockMap = useMemo(() => byId(blocks), [blocks]);
   const taskMap = useMemo(() => byId(tasks), [tasks]);
 
+  const machineRequired = !!taskMap[form.task_id]?.machine_required;
+  const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
+  const canSubmit = !!form.block_id && !!form.task_id && (!machineRequired || machineryReady);
+
   const submit = async (event) => {
     event.preventDefault();
     if (!form.block_id || !form.task_id) return;
+    if (machineRequired && !machineryReady) return;
 
     const block = blockMap[form.block_id];
     if (block?.planting_date && form.date < block.planting_date) {
@@ -209,12 +214,15 @@ export default function DailyReport() {
             <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
           </Field>
 
-          <div className="flex items-center gap-3">
-            <Button type="submit" disabled={saving || !form.block_id || !form.task_id} className="rounded-xl">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" disabled={saving || !canSubmit} className="rounded-xl">
               {saving ? t('common.saving') : t('report.submit')}
             </Button>
             {(!form.block_id || !form.task_id) && (
               <span className="text-[11px] text-muted-foreground">{t('report.needBlock')}</span>
+            )}
+            {machineRequired && !machineryReady && (
+              <span className="text-[11px] font-medium text-destructive">{t('report.machineRequired')}</span>
             )}
           </div>
         </form>

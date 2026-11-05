@@ -53,6 +53,11 @@
       ],
       "default": "medium"
     },
+    "machine_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a machine must be selected to validate a daily report for this task"
+    },
     "estimated_cost": {
       "type": "number"
     },

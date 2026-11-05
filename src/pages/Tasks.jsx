@@ -8,6 +8,7 @@ import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
@@ -91,7 +92,14 @@ export default function Tasks() {
                 }}
                 className="min-w-0 flex-1 text-start"
               >
-                <span className="text-sm font-medium">{natureLabel(task.type, natures, t)}</span>
+                <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                  {natureLabel(task.type, natures, t)}
+                  {task.machine_required && (
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                      {t('taskDialog.machineBadge')}
+                    </span>
+                  )}
+                </span>
                 {task.description && (
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
                 )}
@@ -136,6 +144,7 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
     setForm({
       type: task?.type || 'other',
       description: task?.description || '',
+      machine_required: !!task?.machine_required,
     });
     setShowNewNature(false);
     setNewNature('');
@@ -166,6 +175,7 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
       title: natureLabel(form.type, natures, t),
       type: form.type,
       description: form.description || '',
+      machine_required: !!form.machine_required,
     };
 
     if (task?.id) {
@@ -235,6 +245,15 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
           rows={3}
           placeholder={t('taskDialog.descPlaceholder')}
         />
+      </Field>
+      <Field label={t('taskDialog.machineRequired')} hint={t('taskDialog.machineRequiredHint')}>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={!!form.machine_required}
+            onCheckedChange={(checked) => setForm({ ...form, machine_required: checked })}
+          />
+          <span className="text-sm">{form.machine_required ? t('common.yes') : t('common.no')}</span>
+        </div>
       </Field>
     </FormDialog>
   );
