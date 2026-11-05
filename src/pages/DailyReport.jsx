@@ -6,6 +6,7 @@ import StatusPill from '@/components/StatusPill';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import UsageEditor from '@/components/dailyreport/UsageEditor';
+import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +20,6 @@ export default function DailyReport() {
   const [blocks, setBlocks] = useState([]);
   const [farms, setFarms] = useState([]);
   const [farmId, setFarmId] = useState('');
-  const [cropId, setCropId] = useState('');
   const [crops, setCrops] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [machines, setMachines] = useState([]);
@@ -27,7 +27,7 @@ export default function DailyReport() {
   const [tasks, setTasks] = useState([]);
   const [natures, setNatures] = useState([]);
   const [reports, setReports] = useState([]);
-  const [form, setForm] = useState({ date: todayISO(), block_id: '', task_id: '', description: '', notes: '' });
+  const [form, setForm] = useState({ date: todayISO(), block_ids: [], task_id: '', description: '', notes: '' });
   const [labour, setLabour] = useState([]);
   const [machinery, setMachinery] = useState([]);
   const [inputs, setInputs] = useState([]);
@@ -65,40 +65,52 @@ export default function DailyReport() {
 
   const farmName = farms.find((farm) => farm.id === farmId)?.name;
   const visibleBlocks = useMemo(
-    () =>
-      blocks.filter(
-        (block) =>
-          (!farmName || block.farm === farmName) &&
-          (!cropId || block.crop_id === cropId),
-      ),
-    [blocks, farmName, cropId],
+    () => (farmName ? blocks.filter((block) => block.farm === farmName) : blocks),
+    [blocks, farmName],
   );
+
+  const blockGroups = useMemo(() => {
+    const cropMap = byId(crops);
+    const groups = new Map();
+    visibleBlocks.forEach((block) => {
+      const crop = cropMap[block.crop_id];
+      const key = crop ? crop.id : 'none';
+      if (!groups.has(key)) {
+        groups.set(key, { key, label: crop ? crop.name : t('report.noCrop'), blocks: [] });
+      }
+      groups.get(key).blocks.push(block);
+    });
+    return [...groups.values()].sort((a, b) =>
+      a.key === 'none' ? 1 : b.key === 'none' ? -1 : a.label.localeCompare(b.label),
+    );
+  }, [visibleBlocks, crops, t]);
   const taskMap = useMemo(() => byId(tasks), [tasks]);
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
-  const canSubmit = !!form.block_id && !!form.task_id && (!machineRequired || machineryReady);
+  const canSubmit = form.block_ids.length > 0 && !!form.task_id && (!machineRequired || machineryReady);
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.block_id || !form.task_id) return;
+    if (!form.block_ids.length || !form.task_id) return;
     if (machineRequired && !machineryReady) return;
 
-    const block = blockMap[form.block_id];
-    if (block?.planting_date && form.date < block.planting_date) {
-      setRangeError({ key: 'report.outOfRangeBefore', date: fmtDate(block.planting_date) });
-      return;
-    }
-    if (block?.crop_end_date && form.date > block.crop_end_date) {
-      setRangeError({ key: 'report.outOfRangeAfter', date: fmtDate(block.crop_end_date) });
-      return;
+    for (const id of form.block_ids) {
+      const block = blockMap[id];
+      if (block?.planting_date && form.date < block.planting_date) {
+        setRangeError({ key: 'report.outOfRangeBefore', date: fmtDate(block.planting_date) });
+        return;
+      }
+      if (block?.crop_end_date && form.date > block.crop_end_date) {
+        setRangeError({ key: 'report.outOfRangeAfter', date: fmtDate(block.crop_end_date) });
+        return;
+      }
     }
 
     setRangeError(null);
     setSaving(true);
-    await base44.entities.DailyReport.create({
+    const base = {
       date: form.date,
-      block_id: form.block_id,
       task_id: form.task_id,
       operation: taskMap[form.task_id]?.type || 'other',
       description: form.description.trim(),
@@ -112,9 +124,12 @@ export default function DailyReport() {
       inputs: inputs
         .filter((line) => line.item_id && Number(line.quantity) > 0)
         .map((line) => ({ item_id: line.item_id, quantity: Number(line.quantity) })),
-    });
+    };
+    await base44.entities.DailyReport.bulkCreate(
+      form.block_ids.map((blockId) => ({ ...base, block_id: blockId })),
+    );
     setSaving(false);
-    setForm({ ...form, description: '', notes: '' });
+    setForm({ ...form, block_ids: [], description: '', notes: '' });
     setLabour([]);
     setMachinery([]);
     setInputs([]);
@@ -162,13 +177,12 @@ export default function DailyReport() {
                   setRangeError(null);
                   setFarmId(value);
                   const name = farms.find((farm) => farm.id === value)?.name;
-                  const stillVisible = blocks.some(
-                    (block) =>
-                      block.id === form.block_id &&
-                      (!name || block.farm === name) &&
-                      (!cropId || block.crop_id === cropId),
-                  );
-                  if (!stillVisible) setForm({ ...form, block_id: '' });
+                  const kept = name
+                    ? form.block_ids.filter((id) => blockMap[id]?.farm === name)
+                    : form.block_ids;
+                  if (kept.length !== form.block_ids.length) {
+                    setForm({ ...form, block_ids: kept });
+                  }
                 }}
                 options={farms.map((farm) => ({ value: farm.id, label: farm.name }))}
                 noneLabel={t('report.allFarms')}
@@ -176,36 +190,19 @@ export default function DailyReport() {
             </Field>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={t('common.crop')}>
-              <SelectField
-                value={cropId}
-                onChange={(value) => {
-                  setRangeError(null);
-                  setCropId(value);
-                  const stillVisible = blocks.some(
-                    (block) =>
-                      block.id === form.block_id &&
-                      (!farmName || block.farm === farmName) &&
-                      (!value || block.crop_id === value),
-                  );
-                  if (!stillVisible) setForm({ ...form, block_id: '' });
-                }}
-                options={crops.map((crop) => ({ value: crop.id, label: crop.name }))}
-                noneLabel={t('report.allCrops')}
-              />
-            </Field>
-            <Field label={t('report.block')}>
-              <SelectField
-                value={form.block_id}
-                onChange={(value) => {
-                  setRangeError(null);
-                  setForm({ ...form, block_id: value });
-                }}
-                options={visibleBlocks.map((block) => ({ value: block.id, label: block.name }))}
-              />
-            </Field>
-          </div>
+          <Field
+            label={t('report.blocks')}
+            hint={form.block_ids.length > 0 ? t('report.blocksSelected', { n: form.block_ids.length }) : ''}
+          >
+            <BlockPicker
+              groups={blockGroups}
+              selected={form.block_ids}
+              onChange={(ids) => {
+                setRangeError(null);
+                setForm({ ...form, block_ids: ids });
+              }}
+            />
+          </Field>
 
           <Field label={t('report.task')}>
             <SelectField
@@ -277,7 +274,7 @@ export default function DailyReport() {
             <Button type="submit" disabled={saving || !canSubmit} className="rounded-xl">
               {saving ? t('common.saving') : t('report.submit')}
             </Button>
-            {(!form.block_id || !form.task_id) && (
+            {(!form.block_ids.length || !form.task_id) && (
               <span className="text-[11px] text-muted-foreground">{t('report.needBlock')}</span>
             )}
             {machineRequired && !machineryReady && (
