@@ -29,7 +29,16 @@ export default function InvoiceForm({ suppliers, items, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = (key, value) =>
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === 'quantity' || key === 'unit_price') {
+        const quantity = Number(next.quantity);
+        const unitPrice = Number(next.unit_price);
+        if (quantity > 0 && unitPrice > 0) next.amount = (quantity * unitPrice).toFixed(2);
+      }
+      return next;
+    });
 
   const submit = async (event) => {
     event.preventDefault();
