@@ -15,6 +15,41 @@
       ],
       "default": "field_worker"
     },
+    "worker_function": {
+      "type": "string",
+      "description": "Job function such as Tractoriste or Irrigueur, from the WorkerFunction list"
+    },
+    "farm": {
+      "type": "string",
+      "description": "Farm the worker is permanently assigned to; empty means the worker is mobile"
+    },
+    "team": {
+      "type": "string",
+      "description": "Team the worker belongs to"
+    },
+    "registration_number": {
+      "type": "string",
+      "description": "Registration / social security number"
+    },
+    "declared": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the worker is declared"
+    },
+    "transporter_name": {
+      "type": "string"
+    },
+    "transport_rate_type": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "per_person"
+      ],
+      "default": "fixed"
+    },
+    "transport_rate": {
+      "type": "number"
+    },
     "phone": {
       "type": "string"
     },
