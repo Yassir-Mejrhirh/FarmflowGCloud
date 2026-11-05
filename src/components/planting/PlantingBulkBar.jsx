@@ -6,10 +6,13 @@ import { useI18n } from '@/lib/I18nContext';
 export default function PlantingBulkBar({
   crops,
   varieties,
+  seasons,
   cropId,
   varietyId,
+  seasonId,
   onCropChange,
   onVarietyChange,
+  onSeasonChange,
   count,
   total,
   allSelected,
@@ -34,7 +37,7 @@ export default function PlantingBulkBar({
         </Button>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Field label={t('planting.crop')}>
           <SelectField
             value={cropId}
@@ -51,15 +54,28 @@ export default function PlantingBulkBar({
             options={varietyOptions}
           />
         </Field>
+        <Field label={t('planting.season')}>
+          <SelectField
+            value={seasonId}
+            onChange={onSeasonChange}
+            noneLabel={t('planting.noSeason')}
+            options={seasons.map((season) => ({ value: season.id, label: season.name }))}
+          />
+        </Field>
         <div className="flex items-end justify-between gap-3 sm:col-span-2">
           <p className="text-xs text-muted-foreground">
             {t('planting.selectedCount', { count, total })}
           </p>
-          <Button type="button" onClick={onApply} disabled={!cropId || count === 0 || applying}>
+          <Button
+            type="button"
+            onClick={onApply}
+            disabled={(!cropId && !seasonId) || count === 0 || applying}
+          >
             {applying ? t('planting.applying') : t('planting.apply')}
           </Button>
         </div>
       </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">{t('planting.bulkHint')}</p>
     </div>
   );
 }
