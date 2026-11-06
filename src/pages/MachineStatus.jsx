@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Fuel, Timer, Tractor } from 'lucide-react';
+import { Coins, Fuel, Timer, Tractor, Wrench } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
@@ -8,10 +8,20 @@ import Field from '@/components/Field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchList, byId } from '@/lib/data';
-import { currentMonthKey, fmtNum, todayISO } from '@/lib/format';
+import { buildMachineCosts } from '@/lib/machineryCosts';
+import { currentMonthKey, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
 const monthStart = () => `${currentMonthKey()}-01`;
+
+function Metric({ label, value }) {
+  return (
+    <div className="rounded-xl bg-secondary/50 px-2.5 py-2">
+      <dt className="truncate text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm tabular-nums">{value}</dd>
+    </div>
+  );
+}
 
 export default function MachineStatus() {
   const { t } = useI18n();
@@ -19,19 +29,24 @@ export default function MachineStatus() {
   const [to, setTo] = useState(todayISO());
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Catalogue and purchase history, needed to value gasoil and withdrawals.
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const [machineRows, itemRows] = await Promise.all([
+      const [machineRows, itemRows, invoiceRows] = await Promise.all([
         fetchList(base44.entities.Machine, {}, { sort: 'name' }),
         fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+        fetchList(base44.entities.InputInvoice, {}),
       ]);
       if (!active) return;
       setMachines(machineRows);
       setItems(itemRows);
+      setInvoices(invoiceRows);
     };
     load();
     return () => {
@@ -39,16 +54,21 @@ export default function MachineStatus() {
     };
   }, []);
 
+  // Hours, gasoil and maintenance operations of the selected period.
   useEffect(() => {
     let active = true;
     const load = async () => {
       setLoading(true);
-      const query = { date: {} };
-      if (from) query.date.$gte = from;
-      if (to) query.date.$lte = to;
-      const reportRows = await fetchList(base44.entities.DailyReport, query);
+      const range = {};
+      if (from) range.$gte = from;
+      if (to) range.$lte = to;
+      const [reportRows, logRows] = await Promise.all([
+        fetchList(base44.entities.DailyReport, { date: range }),
+        fetchList(base44.entities.MaintenanceLog, { date: { ...range } }, { sort: '-date' }),
+      ]);
       if (!active) return;
       setReports(reportRows);
+      setLogs(logRows);
       setLoading(false);
     };
     load();
@@ -60,41 +80,56 @@ export default function MachineStatus() {
   const machineMap = useMemo(() => byId(machines), [machines]);
   const itemMap = useMemo(() => byId(items), [items]);
 
+  const machineCosts = useMemo(
+    () => buildMachineCosts({ machines, logs, reports, items, invoices }),
+    [machines, logs, reports, items, invoices],
+  );
+
   const rows = useMemo(() => {
-    const acc = new Map();
+    const quantities = new Map();
 
     reports.forEach((report) => {
       (report.machinery || []).forEach((line) => {
         const hours = Number(line.hours) || 0;
         const fuel = Number(line.fuel_quantity) || 0;
-        if (!line.machine_id || (hours <= 0 && fuel <= 0)) return;
-
-        const entry = acc.get(line.machine_id) || { id: line.machine_id, hours: 0, fuel: {} };
+        if (!line.machine_id) return;
+        const entry = quantities.get(line.machine_id) || { hours: 0, fuel: {} };
         entry.hours += hours;
-        if (line.fuel_item_id && fuel > 0) entry.fuel[line.fuel_item_id] = (entry.fuel[line.fuel_item_id] || 0) + fuel;
-        acc.set(line.machine_id, entry);
+        if (line.fuel_item_id && fuel > 0) {
+          entry.fuel[line.fuel_item_id] = (entry.fuel[line.fuel_item_id] || 0) + fuel;
+        }
+        quantities.set(line.machine_id, entry);
       });
     });
 
-    return [...acc.values()]
-      .map((entry) => {
-        const machine = machineMap[entry.id];
-        const fuels = Object.entries(entry.fuel).map(([itemId, quantity]) => {
+    return Object.entries(machineCosts)
+      .map(([id, costs]) => {
+        const counted = quantities.get(id) || { hours: 0, fuel: {} };
+        const machine = machineMap[id];
+        const fuels = Object.entries(counted.fuel).map(([itemId, quantity]) => {
           const item = itemMap[itemId];
           return { key: itemId, name: item?.name || t('inv.unknownInput'), unit: item?.unit || '', quantity };
         });
         return {
-          ...entry,
+          id,
           name: machine?.name || t('ms.unknown'),
+          hours: costs.hours || counted.hours,
           fuels,
           fuelTotal: fuels.reduce((sum, line) => sum + line.quantity, 0),
+          fuelCost: costs.fuel,
+          maintenanceCost: costs.maintenance,
+          totalCost: costs.total,
+          chmp: costs.hourly,
         };
       })
-      .sort((a, b) => b.hours - a.hours);
-  }, [reports, machineMap, itemMap, t]);
+      .filter((row) => row.hours > 0 || row.fuelTotal > 0 || row.maintenanceCost > 0)
+      .sort((a, b) => b.totalCost - a.totalCost || b.hours - a.hours);
+  }, [reports, machineCosts, machineMap, itemMap, t]);
 
   const totalHours = rows.reduce((sum, row) => sum + row.hours, 0);
   const totalFuel = rows.reduce((sum, row) => sum + row.fuelTotal, 0);
+  const totalCost = rows.reduce((sum, row) => sum + row.totalCost, 0);
+  const averageChmp = totalHours > 0 ? totalCost / totalHours : null;
 
   return (
     <div className="space-y-8">
@@ -127,6 +162,14 @@ export default function MachineStatus() {
         <StatCard icon={Tractor} label={t('ms.machines')} value={rows.length} tone="moss" />
         <StatCard icon={Timer} label={t('ms.hours')} value={fmtNum(totalHours, 1)} tone="sand" />
         <StatCard icon={Fuel} label={t('ms.fuel')} value={fmtNum(totalFuel, 1)} tone="clay" />
+        <StatCard icon={Coins} label={t('ms.totalCost')} value={fmtMoney(totalCost)} tone="clay" />
+        <StatCard
+          icon={Wrench}
+          label={t('ms.avgChmp')}
+          value={averageChmp === null ? '—' : fmtMoney(averageChmp)}
+          hint={t('ms.chmpHint')}
+          tone="moss"
+        />
       </section>
 
       {loading ? (
@@ -135,27 +178,32 @@ export default function MachineStatus() {
         <EmptyState icon={Tractor} title={t('ms.emptyTitle')} description={t('ms.emptyDesc')} />
       ) : (
         <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
-          <li className="hidden bg-secondary/40 px-4 py-2.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground sm:flex sm:gap-3">
-            <span className="flex-1">{t('common.machine')}</span>
-            <span className="w-24 text-end">{t('ms.hours')}</span>
-            <span className="w-40 text-end">{t('ms.fuel')}</span>
-          </li>
           {rows.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-center gap-3 px-4 py-3.5">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{row.name}</p>
-                {row.fuels.length > 0 && (
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {row.fuels.map((line) => `${line.name} · ${fmtNum(line.quantity, 1)} ${line.unit}`).join(' · ')}
+            <li key={row.id} className="px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{row.name}</p>
+                  {row.fuels.length > 0 && (
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      {row.fuels
+                        .map((line) => `${line.name} · ${fmtNum(line.quantity, 1)} ${line.unit}`)
+                        .join(' · ')}
+                    </p>
+                  )}
+                </div>
+                <div className="shrink-0 text-end">
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{t('ms.chmp')}</p>
+                  <p className="text-sm font-medium tabular-nums">
+                    {row.chmp === null ? '—' : fmtMoney(row.chmp)}
                   </p>
-                )}
+                </div>
               </div>
-              <span className="w-24 text-end text-sm tabular-nums">
-                {fmtNum(row.hours, 1)} <span className="text-xs text-muted-foreground">h</span>
-              </span>
-              <span className="w-40 text-end text-sm tabular-nums">
-                {row.fuelTotal ? fmtNum(row.fuelTotal, 1) : '—'}
-              </span>
+              <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Metric label={t('ms.hoursShort')} value={`${fmtNum(row.hours, 1)} h`} />
+                <Metric label={t('ms.fuel')} value={`${fmtNum(row.fuelTotal, 1)}`} />
+                <Metric label={t('ms.fuelCost')} value={fmtMoney(row.fuelCost)} />
+                <Metric label={t('ms.maintenanceCost')} value={fmtMoney(row.maintenanceCost)} />
+              </dl>
             </li>
           ))}
         </ul>
