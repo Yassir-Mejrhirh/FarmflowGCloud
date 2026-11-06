@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Boxes, Warehouse } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
@@ -76,30 +75,22 @@ export default function Inventory() {
         title={t('inv.title')}
         description={t('inv.description')}
         action={
-          <Button
-            className="rounded-xl"
-            onClick={() => {
-              if (tab === 'counts') return;
-              if (tab === 'storages') {
-                setEditingStorage(null);
-                setStorageDialog(true);
-              } else {
-                setEditingItem(null);
-                setItemDialog(true);
-              }
-            }}
-            asChild={tab === 'counts'}
-          >
-            {tab === 'counts' ? (
-              <Link to="/stock-count">
-                <Plus className="mr-1.5 h-4 w-4" /> {t('inv.newCount')}
-              </Link>
-            ) : (
-              <span>
-                <Plus className="mr-1.5 h-4 w-4" /> {tab === 'storages' ? t('inv.newStorage') : t('inv.newInput')}
-              </span>
-            )}
-          </Button>
+          tab === 'counts' ? null : (
+            <Button
+              className="rounded-xl"
+              onClick={() => {
+                if (tab === 'storages') {
+                  setEditingStorage(null);
+                  setStorageDialog(true);
+                } else {
+                  setEditingItem(null);
+                  setItemDialog(true);
+                }
+              }}
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> {tab === 'storages' ? t('inv.newStorage') : t('inv.newInput')}
+            </Button>
+          )
         }
       />
 

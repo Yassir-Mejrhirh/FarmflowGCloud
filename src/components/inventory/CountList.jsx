@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { ClipboardCheck, Trash2 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { base44 } from '@/api/base44Client';
@@ -60,11 +58,6 @@ export default function CountList({ counts, storages, onDeleted }) {
         icon={ClipboardCheck}
         title={t('inv.emptyCountsTitle')}
         description={t('inv.emptyCountsDesc')}
-        action={
-          <Button asChild>
-            <Link to="/stock-count">{t('inv.newCount')}</Link>
-          </Button>
-        }
       />
     );
   }
