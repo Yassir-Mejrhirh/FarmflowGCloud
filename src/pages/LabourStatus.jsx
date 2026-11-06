@@ -1,23 +1,27 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
+import Field from '@/components/Field';
+import FarmFilter from '@/components/labour/FarmFilter';
+import LabourDailyDetail from '@/components/labour/LabourDailyDetail';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { fetchList } from '@/lib/data';
-import { currentMonthKey, fmtMoney, fmtNum, monthLabel, monthRange } from '@/lib/format';
+import { currentMonthKey, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
-const shiftMonth = (month, delta) => {
-  const [year, monthNumber] = month.split('-').map(Number);
-  const date = new Date(year, monthNumber - 1 + delta, 1);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-};
+const monthStart = () => `${currentMonthKey()}-01`;
 
 export default function LabourStatus() {
   const { t } = useI18n();
-  const [month, setMonth] = useState(currentMonthKey());
+  const [from, setFrom] = useState(monthStart());
+  const [to, setTo] = useState(todayISO());
+  const [blocks, setBlocks] = useState([]);
+  const [farmNames, setFarmNames] = useState([]);
+  const [selectedFarms, setSelectedFarms] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,11 +29,36 @@ export default function LabourStatus() {
   useEffect(() => {
     let active = true;
     const load = async () => {
+      const [blockRows, farmRows] = await Promise.all([
+        fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
+        fetchList(base44.entities.Farm, {}, { sort: 'name' }),
+      ]);
+      if (!active) return;
+      setBlocks(blockRows);
+      const names = new Set();
+      farmRows.forEach((farm) => farm.name && names.add(farm.name));
+      blockRows.forEach((block) => block.farm && names.add(block.farm));
+      setFarmNames([...names].sort((a, b) => a.localeCompare(b)));
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
       setLoading(true);
-      const { start, end } = monthRange(month);
+      const query = {};
+      if (from || to) {
+        query.date = {};
+        if (from) query.date.$gte = from;
+        if (to) query.date.$lte = to;
+      }
       const [workerRows, reportRows] = await Promise.all([
         fetchList(base44.entities.Worker, {}, { sort: 'name' }),
-        fetchList(base44.entities.DailyReport, { date: { $gte: start, $lt: end } }),
+        fetchList(base44.entities.DailyReport, query),
       ]);
       if (!active) return;
       setWorkers(workerRows);
@@ -40,11 +69,21 @@ export default function LabourStatus() {
     return () => {
       active = false;
     };
-  }, [month]);
+  }, [from, to]);
 
-  const workerMap = new Map(workers.map((worker) => [worker.id, worker]));
+  const blockMap = useMemo(() => new Map(blocks.map((block) => [block.id, block])), [blocks]);
+  const workerMap = useMemo(() => new Map(workers.map((worker) => [worker.id, worker])), [workers]);
+
+  const filteredReports = useMemo(() => {
+    if (!selectedFarms.length || !blocks.length) return reports;
+    return reports.filter((report) => {
+      const farm = blockMap.get(report.block_id)?.farm;
+      return farm ? selectedFarms.includes(farm) : false;
+    });
+  }, [reports, selectedFarms, blocks.length, blockMap]);
+
   const rowsByWorker = {};
-  reports.forEach((report) => {
+  filteredReports.forEach((report) => {
     (report.labour || []).forEach((line) => {
       if (!line.worker_id) return;
       rowsByWorker[line.worker_id] = (rowsByWorker[line.worker_id] || 0) + (Number(line.days) || 0);
@@ -68,39 +107,77 @@ export default function LabourStatus() {
   const totalDays = rows.reduce((sum, row) => sum + row.days, 0);
   const totalCost = rows.reduce((sum, row) => sum + row.cost, 0);
 
+  const dayGroups = useMemo(() => {
+    const byDate = new Map();
+    filteredReports.forEach((report) => {
+      const block = blockMap.get(report.block_id);
+      (report.labour || []).forEach((line) => {
+        const days = Number(line.days) || 0;
+        if (!line.worker_id || days <= 0) return;
+        const worker = workerMap.get(line.worker_id);
+        if (!byDate.has(report.date)) {
+          byDate.set(report.date, { date: report.date, entries: new Map(), days: 0, cost: 0 });
+        }
+        const group = byDate.get(report.date);
+        const entry = group.entries.get(line.worker_id) || {
+          key: line.worker_id,
+          worker: worker?.name || t('workers.unknown'),
+          days: 0,
+          places: new Set(),
+          blocks: new Set(),
+        };
+        entry.days += days;
+        if (block?.farm) entry.places.add(block.farm);
+        if (block?.name) entry.blocks.add(block.name);
+        group.entries.set(line.worker_id, entry);
+        group.days += days;
+        group.cost += days * (Number(worker?.daily_rate) || 0);
+      });
+    });
+
+    return [...byDate.values()]
+      .map((group) => ({
+        ...group,
+        entries: [...group.entries.values()]
+          .map((entry) => ({
+            ...entry,
+            place: [...entry.places].join(', '),
+            block: [...entry.blocks].join(', '),
+          }))
+          .sort((a, b) => a.worker.localeCompare(b.worker)),
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [filteredReports, blockMap, workerMap, t]);
+
   return (
     <div className="space-y-8">
-      <PageHeader
-        eyebrow={t('lab.eyebrow')}
-        title={t('lab.title')}
-        description={t('lab.description')}
-        action={
-          <div className="flex items-center gap-2">
+      <PageHeader eyebrow={t('lab.eyebrow')} title={t('lab.title')} description={t('lab.description')} />
+
+      <section className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label={t('lab.from')}>
+            <Input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+          </Field>
+          <Field label={t('lab.to')}>
+            <Input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+          </Field>
+          <Field label={t('lab.farms')}>
+            <FarmFilter options={farmNames} selected={selectedFarms} onChange={setSelectedFarms} />
+          </Field>
+          <div className="flex items-end">
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-lg"
-              onClick={() => setMonth(shiftMonth(month, -1))}
+              className="w-full rounded-xl"
+              onClick={() => {
+                setFrom(monthStart());
+                setTo(todayISO());
+              }}
             >
-              <ChevronLeft className="h-4 w-4" />
+              {t('lab.thisMonth')}
             </Button>
-            <span className="min-w-[140px] text-center text-sm font-medium">{monthLabel(month)}</span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-lg"
-              onClick={() => setMonth(shiftMonth(month, 1))}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            {month !== currentMonthKey() && (
-              <Button variant="ghost" size="sm" onClick={() => setMonth(currentMonthKey())}>
-                {t('lab.thisMonth')}
-              </Button>
-            )}
           </div>
-        }
-      />
+        </div>
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
         <StatCard icon={Users} label={t('lab.workers')} value={rows.length} tone="moss" />
@@ -111,11 +188,7 @@ export default function LabourStatus() {
       {loading ? (
         <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
       ) : rows.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={t('lab.emptyTitle')}
-          description={t('lab.emptyDesc')}
-        />
+        <EmptyState icon={Users} title={t('lab.emptyTitle')} description={t('lab.emptyDesc')} />
       ) : (
         <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
           <li className="hidden bg-secondary/40 px-4 py-2.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground sm:flex sm:gap-3">
@@ -141,6 +214,8 @@ export default function LabourStatus() {
           ))}
         </ul>
       )}
+
+      <LabourDailyDetail groups={dayGroups} loading={loading} />
     </div>
   );
 }
