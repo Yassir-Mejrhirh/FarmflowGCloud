@@ -8,7 +8,7 @@ import Field from '@/components/Field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchList, byId } from '@/lib/data';
-import { buildMachineCosts } from '@/lib/machineryCosts';
+import { buildMachineCosts, isMachineConsumableItem } from '@/lib/machineryCosts';
 import { avgCostOf, buildCountTotals, buildInputTotals, mergeTotals } from '@/lib/inventory';
 import MachineStatusDetail from '@/components/machinery/MachineStatusDetail';
 import { currentMonthKey, fmtMoney, fmtNum, todayISO } from '@/lib/format';
@@ -35,6 +35,7 @@ export default function MachineStatus() {
   const [counts, setCounts] = useState([]);
   const [logs, setLogs] = useState([]);
   const [reports, setReports] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
 
@@ -68,13 +69,15 @@ export default function MachineStatus() {
       const range = {};
       if (from) range.$gte = from;
       if (to) range.$lte = to;
-      const [reportRows, logRows] = await Promise.all([
+      const [reportRows, logRows, movementRows] = await Promise.all([
         fetchList(base44.entities.DailyReport, { date: range }),
         fetchList(base44.entities.MaintenanceLog, { date: { ...range } }, { sort: '-date' }),
+        fetchList(base44.entities.StockMovement, { date: { ...range } }),
       ]);
       if (!active) return;
       setReports(reportRows);
       setLogs(logRows);
+      setMovements(movementRows);
       setLoading(false);
     };
     load();
@@ -87,8 +90,13 @@ export default function MachineStatus() {
   const itemMap = useMemo(() => byId(items), [items]);
 
   const machineCosts = useMemo(
-    () => buildMachineCosts({ machines, logs, reports, items, invoices, counts }),
-    [machines, logs, reports, items, invoices, counts],
+    () => buildMachineCosts({ machines, logs, reports, items, invoices, counts, movements }),
+    [machines, logs, reports, items, invoices, counts, movements],
+  );
+
+  const consumableIds = useMemo(
+    () => new Set(items.filter(isMachineConsumableItem).map((item) => item.id)),
+    [items],
   );
 
   // Weighted average unit price, as used for the machine costs.
@@ -102,16 +110,19 @@ export default function MachineStatus() {
 
     reports.forEach((report) => {
       (report.machinery || []).forEach((line) => {
-        const hours = Number(line.hours) || 0;
-        const fuel = Number(line.fuel_quantity) || 0;
         if (!line.machine_id) return;
         const entry = quantities.get(line.machine_id) || { hours: 0, fuel: {} };
-        entry.hours += hours;
-        if (line.fuel_item_id && fuel > 0) {
-          entry.fuel[line.fuel_item_id] = (entry.fuel[line.fuel_item_id] || 0) + fuel;
-        }
+        entry.hours += Number(line.hours) || 0;
         quantities.set(line.machine_id, entry);
       });
+    });
+
+    // Fuel and lubricants are drawn from stock for the machine itself.
+    movements.forEach((movement) => {
+      if (movement.kind !== 'out' || !movement.machine_id || !consumableIds.has(movement.item_id)) return;
+      const entry = quantities.get(movement.machine_id) || { hours: 0, fuel: {} };
+      entry.fuel[movement.item_id] = (entry.fuel[movement.item_id] || 0) + (Number(movement.quantity) || 0);
+      quantities.set(movement.machine_id, entry);
     });
 
     return Object.entries(machineCosts)
@@ -136,7 +147,7 @@ export default function MachineStatus() {
       })
       .filter((row) => row.hours > 0 || row.fuelTotal > 0 || row.maintenanceCost > 0)
       .sort((a, b) => b.totalCost - a.totalCost || b.hours - a.hours);
-  }, [reports, machineCosts, machineMap, itemMap, t]);
+  }, [reports, movements, consumableIds, machineCosts, machineMap, itemMap, t]);
 
   const totalHours = rows.reduce((sum, row) => sum + row.hours, 0);
   const totalFuel = rows.reduce((sum, row) => sum + row.fuelTotal, 0);
@@ -230,7 +241,7 @@ export default function MachineStatus() {
 
       <MachineStatusDetail
         row={rows.find((row) => row.id === selectedId) || null}
-        reports={reports}
+        movements={movements}
         logs={logs}
         items={items}
         itemCost={itemCost}

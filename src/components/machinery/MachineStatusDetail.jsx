@@ -4,7 +4,7 @@ import EmptyState from '@/components/EmptyState';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { byId } from '@/lib/data';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
-import { logTotalCost } from '@/lib/machineryCosts';
+import { isMachineConsumableItem, logTotalCost } from '@/lib/machineryCosts';
 import { useI18n } from '@/lib/I18nContext';
 
 function Tile({ label, value }) {
@@ -25,32 +25,30 @@ function SectionTitle({ icon: Icon, children }) {
   );
 }
 
-export default function MachineStatusDetail({ row, reports, logs, items, itemCost, onClose }) {
+export default function MachineStatusDetail({ row, movements, logs, items, itemCost, onClose }) {
   const { t } = useI18n();
   const itemMap = useMemo(() => byId(items), [items]);
 
-  // One line per date: the gasoil drawn that day is added up.
+  // One line per date: the gasoil drawn for the machine that day is added up.
   const fuelLines = useMemo(() => {
     if (!row) return [];
     const byDate = new Map();
-    reports.forEach((report) => {
-      (report.machinery || []).forEach((line) => {
-        if (line.machine_id !== row.id) return;
-        const quantity = Number(line.fuel_quantity) || 0;
-        if (!line.fuel_item_id || quantity <= 0) return;
-        const item = itemMap[line.fuel_item_id];
-        const entry = byDate.get(report.date) || { key: report.date, date: report.date, names: new Set(), unit: '', quantity: 0, cost: 0 };
-        entry.names.add(item?.name || t('inv.unknownInput'));
-        entry.unit = item?.unit || entry.unit;
-        entry.quantity += quantity;
-        entry.cost += quantity * itemCost(line.fuel_item_id);
-        byDate.set(report.date, entry);
-      });
+    movements.forEach((movement) => {
+      if (movement.machine_id !== row.id || movement.kind !== 'out') return;
+      const quantity = Number(movement.quantity) || 0;
+      const item = itemMap[movement.item_id];
+      if (!(quantity > 0) || !item || !isMachineConsumableItem(item)) return;
+      const entry = byDate.get(movement.date) || { key: movement.date, date: movement.date, names: new Set(), unit: '', quantity: 0, cost: 0 };
+      entry.names.add(item.name || t('inv.unknownInput'));
+      entry.unit = item.unit || entry.unit;
+      entry.quantity += quantity;
+      entry.cost += quantity * itemCost(movement.item_id);
+      byDate.set(movement.date, entry);
     });
     return [...byDate.values()]
       .map((entry) => ({ ...entry, name: [...entry.names].join(' · ') }))
       .sort((a, b) => String(b.date).localeCompare(String(a.date)));
-  }, [row, reports, itemMap, itemCost, t]);
+  }, [row, movements, itemMap, itemCost, t]);
 
   const logRows = useMemo(
     () => (row ? logs.filter((log) => log.machine_id === row.id) : []),

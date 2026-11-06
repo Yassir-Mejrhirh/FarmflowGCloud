@@ -34,13 +34,14 @@ export default function BlockItinerary() {
   const [counts, setCounts] = useState([]);
   const [natures, setNatures] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [costReports, setCostReports] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [blockRows, farmRows, workerRows, machineRows, itemRows, invoiceRows, countRows, natureRows, logRows, costReportRows] =
+      const [blockRows, farmRows, workerRows, machineRows, itemRows, invoiceRows, countRows, natureRows, logRows, costReportRows, movementRows] =
         await Promise.all([
           fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
           fetchList(base44.entities.Farm, {}, { sort: 'name' }),
@@ -52,6 +53,7 @@ export default function BlockItinerary() {
           fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
           fetchList(base44.entities.MaintenanceLog, {}, { sort: '-date' }),
           fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
+          fetchList(base44.entities.StockMovement, {}),
         ]);
       setBlocks(blockRows);
       setFarms(farmRows);
@@ -63,6 +65,7 @@ export default function BlockItinerary() {
       setNatures(natureRows);
       setLogs(logRows);
       setCostReports(costReportRows);
+      setMovements(movementRows);
     };
     load();
   }, []);
@@ -93,8 +96,8 @@ export default function BlockItinerary() {
   }, [reports, farmName, blocks]);
 
   const machineCosts = useMemo(
-    () => buildMachineCosts({ machines, logs, reports: costReports, items, invoices, counts }),
-    [machines, logs, costReports, items, invoices, counts],
+    () => buildMachineCosts({ machines, logs, reports: costReports, items, invoices, counts, movements }),
+    [machines, logs, costReports, items, invoices, counts, movements],
   );
 
   const entries = useMemo(

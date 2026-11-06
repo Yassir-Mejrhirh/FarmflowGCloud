@@ -74,10 +74,10 @@ export function buildMachineCosts({
   items = [],
   invoices = [],
   counts = [],
+  movements = [],
 }) {
   // Weighted average price, as shown in the stock status: purchases plus validated counts.
   const purchaseTotals = mergeTotals(buildInputTotals(invoices), buildCountTotals(counts));
-  const fuelIds = new Set(items.filter(isFuelItem).map((item) => item.id));
   const consumableIds = new Set(items.filter(isMachineConsumableItem).map((item) => item.id));
 
   const rows = {};
@@ -90,33 +90,33 @@ export function buildMachineCosts({
     if (row) row.maintenance += logTotalCost(log);
   });
 
+  // Fuel and lubricants are withdrawn from stock once, in full, for the machine that
+  // consumed them: they are charged to the machine, never split between parcels.
+  const machineDrawnIds = new Set();
+  movements.forEach((movement) => {
+    const row = rows[movement.machine_id];
+    if (!row || movement.kind !== 'out' || !consumableIds.has(movement.item_id)) return;
+    machineDrawnIds.add(movement.item_id);
+    row.fuel += (Number(movement.quantity) || 0) * avgCostOf(purchaseTotals, movement.item_id);
+  });
+
+  // Only the working hours are shared between the parcels of a report, by area.
   reports.forEach((report) => {
     const used = (report.machinery || [])
       .filter((line) => rows[line.machine_id] && Number(line.hours) > 0)
-      .map((line) => ({
-        machine_id: line.machine_id,
-        hours: Number(line.hours),
-        fuel_item_id: line.fuel_item_id,
-        fuel_quantity: Number(line.fuel_quantity) || 0,
-      }));
+      .map((line) => ({ machine_id: line.machine_id, hours: Number(line.hours) }));
 
     const reportHours = used.reduce((sum, line) => sum + line.hours, 0);
-    // Fuel and lubricants of the report are charged to the machines by hours worked.
-    // Fuel already drawn per machine is valued directly, so it is skipped here to
-    // avoid counting it twice.
-    const explicitFuel = used.some((line) => line.fuel_item_id && line.fuel_quantity > 0);
+    // Consumables entered directly as inputs are spread over the machines by hours,
+    // except those already drawn per machine through a stock movement.
     const sharedCost = (report.inputs || []).reduce((sum, line) => {
-      if (!consumableIds.has(line.item_id)) return sum;
-      if (explicitFuel && fuelIds.has(line.item_id)) return sum;
+      if (!consumableIds.has(line.item_id) || machineDrawnIds.has(line.item_id)) return sum;
       return sum + (Number(line.quantity) || 0) * avgCostOf(purchaseTotals, line.item_id);
     }, 0);
 
     used.forEach((line) => {
       const row = rows[line.machine_id];
       row.hours += line.hours;
-      if (line.fuel_item_id && line.fuel_quantity > 0) {
-        row.fuel += line.fuel_quantity * avgCostOf(purchaseTotals, line.fuel_item_id);
-      }
       if (sharedCost && reportHours) {
         row.fuel += sharedCost * (line.hours / reportHours);
       }

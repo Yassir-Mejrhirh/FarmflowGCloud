@@ -154,8 +154,9 @@ export default function DailyReport() {
 
     setRangeError(null);
     setSaving(true);
-    // The hours, fuel, days and inputs are entered once for the whole report:
-    // they are shared between the parcels in proportion to their area in hectares.
+    // The hours, days and inputs are entered once for the whole report: they are
+    // shared between the parcels in proportion to their area in hectares. The fuel
+    // stays whole on the machine, which the hourly cost then spreads by hours.
     const payloadFor = (weight) => {
       const share = (value) => Math.round((Number(value) || 0) * weight * 1000) / 1000;
       return {
@@ -169,15 +170,7 @@ export default function DailyReport() {
           .map((line) => ({ worker_id: line.worker_id, days: share(line.days) })),
         machinery: machinery
           .filter((line) => line.machine_id && Number(line.hours) > 0)
-          .map((line) => {
-            const fuel = Number(line.fuel_quantity) || 0;
-            const entry = { machine_id: line.machine_id, hours: share(line.hours) };
-            if (line.fuel_item_id && fuel > 0) {
-              entry.fuel_item_id = line.fuel_item_id;
-              entry.fuel_quantity = share(fuel);
-            }
-            return entry;
-          }),
+          .map((line) => ({ machine_id: line.machine_id, hours: share(line.hours) })),
         inputs: inputs
           .filter((line) => line.item_id && Number(line.quantity) > 0)
           .map((line) => ({ item_id: line.item_id, quantity: share(line.quantity) })),
@@ -189,25 +182,41 @@ export default function DailyReport() {
       ),
     );
     if (outflow.length) {
-      await base44.entities.StockMovement.bulkCreate(
-        createdRows.flatMap((report, index) => {
-          const blockFarm = blockMap[report.block_id]?.farm;
-          const farmStorages = blockFarm
-            ? storages.filter((storage) => storage.farm === blockFarm)
-            : [];
-          return outflow.map((line) => ({
+      const round = (value) => Math.round(value * 1000) / 1000;
+      const storagesOf = (report) => {
+        const blockFarm = blockMap[report.block_id]?.farm;
+        return blockFarm ? storages.filter((storage) => storage.farm === blockFarm) : [];
+      };
+      // Inputs are charged to each parcel in proportion to its area in hectares.
+      const inputRows = createdRows.flatMap((report, index) =>
+        outflow
+          .filter((line) => !line.machine_id)
+          .map((line) => ({
             item_id: line.item_id,
             kind: 'out',
-            quantity: Math.round(line.quantity * shares[index].weight * 1000) / 1000,
+            quantity: round(line.quantity * shares[index].weight),
             date: form.date,
-            storage_id: pickStorageFor(farmStorages, invoices, line.item_id),
+            storage_id: pickStorageFor(storagesOf(report), invoices, line.item_id),
             block_id: report.block_id,
-            machine_id: line.machine_id || '',
             report_id: report.id,
             notes: form.description.trim(),
-          }));
-        }),
+          })),
       );
+      // The fuel leaves the store once, in full, for the machine that burnt it: the
+      // hourly cost of the machine then charges the parcels by their working hours.
+      const fuelRows = outflow
+        .filter((line) => line.machine_id)
+        .map((line) => ({
+          item_id: line.item_id,
+          kind: 'out',
+          quantity: round(line.quantity),
+          date: form.date,
+          storage_id: pickStorageFor(storagesOf(createdRows[0]), invoices, line.item_id),
+          machine_id: line.machine_id,
+          report_id: createdRows[0].id,
+          notes: form.description.trim(),
+        }));
+      await base44.entities.StockMovement.bulkCreate([...inputRows, ...fuelRows]);
     }
     setSaving(false);
     setForm({ ...form, block_ids: [], description: '', notes: '' });
