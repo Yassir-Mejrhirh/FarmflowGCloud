@@ -106,9 +106,10 @@ export default function BlockItinerary() {
         machines,
         items,
         invoices,
+        counts,
         machineCosts,
       }),
-    [scopedReports, blocks, workers, machines, items, invoices, machineCosts],
+    [scopedReports, blocks, workers, machines, items, invoices, counts, machineCosts],
   );
 
   const activeEntry = entries.find((entry) => entry.block.id === blockId) || entries[0];

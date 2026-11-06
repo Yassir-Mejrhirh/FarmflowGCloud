@@ -1,4 +1,5 @@
-import { avgCostOf, buildInputTotals } from '@/lib/inventory';
+import { avgCostOf, buildCountTotals, buildInputTotals, mergeTotals } from '@/lib/inventory';
+import { isMachineConsumableItem } from '@/lib/machineryCosts';
 
 const num = (value) => Number(value) || 0;
 
@@ -12,9 +13,12 @@ export function buildBlockItinerary({
   machines = [],
   items = [],
   invoices = [],
+  counts = [],
   machineCosts = {},
 }) {
-  const purchaseTotals = buildInputTotals(invoices);
+  // Same weighted average price as the stock status: purchases plus validated counts.
+  const purchaseTotals = mergeTotals(buildInputTotals(invoices), buildCountTotals(counts));
+  const consumableIds = new Set(items.filter(isMachineConsumableItem).map((item) => item.id));
   const blockMap = new Map(blocks.map((block) => [block.id, block]));
   const workerMap = new Map(workers.map((worker) => [worker.id, worker]));
   const machineMap = new Map(machines.map((machine) => [machine.id, machine]));
@@ -63,8 +67,13 @@ export function buildBlockItinerary({
         };
       });
 
+    // Fuels and lubricants are already inside the machine cost (hours × hourly cost),
+    // so they are not charged again as a direct input of the parcel.
+    const machineHours = machinery.reduce((sum, line) => sum + line.hours, 0);
+
     const inputs = (report.inputs || [])
       .filter((line) => line.item_id && num(line.quantity) > 0)
+      .filter((line) => !(machineHours > 0 && consumableIds.has(line.item_id)))
       .map((line) => {
         const item = itemMap.get(line.item_id);
         const quantity = num(line.quantity);

@@ -20,10 +20,36 @@ const normalize = (value = '') =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
+const LUBRICANT_WORDS = [
+  'lubrifiant',
+  'lubricant',
+  'huile',
+  'oil',
+  'graisse',
+  'grease',
+  'زيت',
+  'شحم',
+  'شحوم',
+];
+
+const matches = (item, words) => {
+  const haystack = `${normalize(item?.category)} ${normalize(item?.name)}`;
+  return words.some((word) => haystack.includes(word));
+};
+
 // Fuel is recognised from the input category or its name (free-text catalogue).
 export function isFuelItem(item) {
-  const haystack = `${normalize(item?.category)} ${normalize(item?.name)}`;
-  return FUEL_WORDS.some((word) => haystack.includes(word));
+  return matches(item, FUEL_WORDS);
+}
+
+export function isLubricantItem(item) {
+  return matches(item, LUBRICANT_WORDS);
+}
+
+// Fuels and lubricants are charged to the machine that consumed them, and reach the
+// parcel through its hours × hourly cost, never as a direct parcel input.
+export function isMachineConsumableItem(item) {
+  return isFuelItem(item) || isLubricantItem(item);
 }
 
 // Value of the lubricants and spare parts withdrawn from stock for an operation.
@@ -51,7 +77,8 @@ export function buildMachineCosts({
 }) {
   // Weighted average price, as shown in the stock status: purchases plus validated counts.
   const purchaseTotals = mergeTotals(buildInputTotals(invoices), buildCountTotals(counts));
-  const fuelItemIds = new Set(items.filter(isFuelItem).map((item) => item.id));
+  const fuelIds = new Set(items.filter(isFuelItem).map((item) => item.id));
+  const consumableIds = new Set(items.filter(isMachineConsumableItem).map((item) => item.id));
 
   const rows = {};
   machines.forEach((machine) => {
@@ -74,26 +101,24 @@ export function buildMachineCosts({
       }));
 
     const reportHours = used.reduce((sum, line) => sum + line.hours, 0);
-    // Fuel taken from stock for a machine is valued directly; without it, fuel
-    // inputs of the report are shared between the machines by hours worked.
+    // Fuel and lubricants of the report are charged to the machines by hours worked.
+    // Fuel already drawn per machine is valued directly, so it is skipped here to
+    // avoid counting it twice.
     const explicitFuel = used.some((line) => line.fuel_item_id && line.fuel_quantity > 0);
-    const fuelCost = explicitFuel
-      ? 0
-      : (report.inputs || []).reduce(
-          (sum, line) =>
-            fuelItemIds.has(line.item_id)
-              ? sum + (Number(line.quantity) || 0) * avgCostOf(purchaseTotals, line.item_id)
-              : sum,
-          0,
-        );
+    const sharedCost = (report.inputs || []).reduce((sum, line) => {
+      if (!consumableIds.has(line.item_id)) return sum;
+      if (explicitFuel && fuelIds.has(line.item_id)) return sum;
+      return sum + (Number(line.quantity) || 0) * avgCostOf(purchaseTotals, line.item_id);
+    }, 0);
 
     used.forEach((line) => {
       const row = rows[line.machine_id];
       row.hours += line.hours;
       if (line.fuel_item_id && line.fuel_quantity > 0) {
         row.fuel += line.fuel_quantity * avgCostOf(purchaseTotals, line.fuel_item_id);
-      } else if (fuelCost && reportHours) {
-        row.fuel += fuelCost * (line.hours / reportHours);
+      }
+      if (sharedCost && reportHours) {
+        row.fuel += sharedCost * (line.hours / reportHours);
       }
     });
   });
