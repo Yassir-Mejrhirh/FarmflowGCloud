@@ -40,7 +40,7 @@
     },
     "machine_id": {
       "type": "string",
-      "description": "Machine that consumed the input, when the movement comes from machine fuel"
+      "description": "Machine that consumed the input, when the movement comes from machine fuel or maintenance"
     },
     "report_id": {
       "type": "string",
@@ -49,6 +49,10 @@
     "count_id": {
       "type": "string",
       "description": "Inventory count that generated this adjustment, if any"
+    },
+    "maintenance_id": {
+      "type": "string",
+      "description": "Maintenance operation that withdrew the parts and lubricants, if any"
     },
     "notes": {
       "type": "string"

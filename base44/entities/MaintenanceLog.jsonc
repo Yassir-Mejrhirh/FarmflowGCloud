@@ -26,7 +26,34 @@
       "type": "string"
     },
     "cost": {
-      "type": "number"
+      "type": "number",
+      "description": "Other costs of the operation (labour, travel, outside work), excluding stock withdrawals"
+    },
+    "storage_id": {
+      "type": "string",
+      "description": "Storage the lubricants and spare parts were taken from"
+    },
+    "parts": {
+      "type": "array",
+      "description": "Lubricants and spare parts withdrawn from stock for this operation",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number",
+            "description": "Weighted average unit price of the item at the time of the withdrawal"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      }
     },
     "hours_reading": {
       "type": "number"

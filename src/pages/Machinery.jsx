@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import MachineDialog, { machineTypeLabel } from '@/components/machinery/MachineDialog';
 import MachinePhoto from '@/components/machinery/MachinePhoto';
 import { fetchList } from '@/lib/data';
-import { buildMachineCosts } from '@/lib/machineryCosts';
+import { buildMachineCosts, logTotalCost } from '@/lib/machineryCosts';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 const STATUS_TONE = { operational: 'moss', maintenance: 'amber', retired: 'stone' };
@@ -51,7 +51,7 @@ export default function Machinery() {
     load();
   }, []);
 
-  const serviceCost = logs.reduce((sum, log) => sum + (Number(log.cost) || 0), 0);
+  const serviceCost = logs.reduce((sum, log) => sum + logTotalCost(log), 0);
   const costRows = useMemo(
     () => buildMachineCosts({ machines, logs, reports, items, invoices }),
     [machines, logs, reports, items, invoices],

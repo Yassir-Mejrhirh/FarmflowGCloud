@@ -7,6 +7,9 @@ import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import MaintenanceLogDialog from '@/components/machinery/MaintenanceLogDialog';
 import { fetchList, byId } from '@/lib/data';
+import { avgCostOf, buildCountTotals, buildInputTotals, buildOnHand, mergeTotals } from '@/lib/inventory';
+import { logTotalCost, partsCostOf } from '@/lib/machineryCosts';
+import { clearMaintenanceMovements } from '@/lib/maintenanceStock';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -14,17 +17,32 @@ export default function MachineMaintenance() {
   const { t } = useI18n();
   const [machines, setMachines] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [items, setItems] = useState([]);
+  const [storages, setStorages] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [counts, setCounts] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState(null);
 
   const load = async () => {
-    const [machineRows, logRows] = await Promise.all([
+    const [machineRows, logRows, itemRows, storageRows, invoiceRows, countRows, movementRows] = await Promise.all([
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.MaintenanceLog, {}, { sort: '-date' }),
+      fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+      fetchList(base44.entities.Storage, {}, { sort: 'name' }),
+      fetchList(base44.entities.InputInvoice, {}),
+      fetchList(base44.entities.InventoryCount, {}),
+      fetchList(base44.entities.StockMovement, {}),
     ]);
     setMachines(machineRows);
     setLogs(logRows);
+    setItems(itemRows);
+    setStorages(storageRows);
+    setInvoices(invoiceRows);
+    setCounts(countRows);
+    setMovements(movementRows);
     setLoading(false);
   };
 
@@ -33,10 +51,21 @@ export default function MachineMaintenance() {
   }, []);
 
   const machineMap = useMemo(() => byId(machines), [machines]);
-  const totalCost = logs.reduce((sum, log) => sum + (Number(log.cost) || 0), 0);
+  const storageMap = useMemo(() => byId(storages), [storages]);
+  const purchases = useMemo(
+    () => mergeTotals(buildInputTotals(invoices), buildCountTotals(counts)),
+    [invoices, counts],
+  );
+  const onHand = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
+
+  const unitCostFor = (itemId) => avgCostOf(purchases, itemId);
+  const onHandFor = (itemId) => onHand[itemId]?.quantity || 0;
+
+  const totalCost = logs.reduce((sum, log) => sum + logTotalCost(log), 0);
 
   const remove = async (log) => {
     setLogs((prev) => prev.filter((row) => row.id !== log.id));
+    await clearMaintenanceMovements(log.id);
     await base44.entities.MaintenanceLog.delete(log.id);
   };
 
@@ -87,15 +116,21 @@ export default function MachineMaintenance() {
                 </p>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
                   {fmtDate(log.date)} · {t(`mk.${log.kind}`)}
+                  {storageMap[log.storage_id] ? ` · ${storageMap[log.storage_id].name}` : ''}
                   {log.description ? ` · ${log.description}` : ''}
                 </p>
+                {log.parts?.length > 0 && (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {t('maint.partsBadge')} : {log.parts.length} · {fmtMoney(partsCostOf(log))}
+                  </p>
+                )}
                 {Number(log.hours_reading) > 0 && (
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {t('maintDialog.hoursReading')} : {fmtNum(log.hours_reading, 0)} h
                   </p>
                 )}
               </div>
-              <span className="text-sm tabular-nums">{fmtMoney(log.cost)}</span>
+              <span className="text-sm tabular-nums">{fmtMoney(logTotalCost(log))}</span>
               <div className="flex items-center gap-0.5">
                 <Button
                   variant="ghost"
@@ -126,6 +161,10 @@ export default function MachineMaintenance() {
         onOpenChange={setDialog}
         log={editing}
         machines={machines}
+        items={items}
+        storages={storages}
+        unitCostFor={unitCostFor}
+        onHandFor={onHandFor}
         onSaved={load}
       />
     </div>

@@ -26,6 +26,19 @@ export function isFuelItem(item) {
   return FUEL_WORDS.some((word) => haystack.includes(word));
 }
 
+// Value of the lubricants and spare parts withdrawn from stock for an operation.
+export function partsCostOf(log) {
+  return (log?.parts || []).reduce(
+    (sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unit_price) || 0),
+    0,
+  );
+}
+
+// What the operation really cost: its other costs plus the stock it consumed.
+export function logTotalCost(log) {
+  return (Number(log?.cost) || 0) + partsCostOf(log);
+}
+
 // Weighted hourly cost per machine: maintenance/repair costs plus the fuel burnt
 // during the machine's hours, divided by the hours logged in daily reports.
 export function buildMachineCosts({ machines = [], logs = [], reports = [], items = [], invoices = [] }) {
@@ -39,7 +52,7 @@ export function buildMachineCosts({ machines = [], logs = [], reports = [], item
 
   logs.forEach((log) => {
     const row = rows[log.machine_id];
-    if (row) row.maintenance += Number(log.cost) || 0;
+    if (row) row.maintenance += logTotalCost(log);
   });
 
   reports.forEach((report) => {
