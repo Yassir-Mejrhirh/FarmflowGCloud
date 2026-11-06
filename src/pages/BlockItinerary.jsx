@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchList } from '@/lib/data';
 import { buildBlockItinerary } from '@/lib/blockItinerary';
+import { buildMachineCosts } from '@/lib/machineryCosts';
 import { currentMonthKey, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -31,20 +32,25 @@ export default function BlockItinerary() {
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [natures, setNatures] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [costReports, setCostReports] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [blockRows, farmRows, workerRows, machineRows, itemRows, invoiceRows, natureRows] = await Promise.all([
-        fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
-        fetchList(base44.entities.Farm, {}, { sort: 'name' }),
-        fetchList(base44.entities.Worker, {}, { sort: 'name' }),
-        fetchList(base44.entities.Machine, {}, { sort: 'name' }),
-        fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
-        fetchList(base44.entities.InputInvoice, {}),
-        fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
-      ]);
+      const [blockRows, farmRows, workerRows, machineRows, itemRows, invoiceRows, natureRows, logRows, costReportRows] =
+        await Promise.all([
+          fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
+          fetchList(base44.entities.Farm, {}, { sort: 'name' }),
+          fetchList(base44.entities.Worker, {}, { sort: 'name' }),
+          fetchList(base44.entities.Machine, {}, { sort: 'name' }),
+          fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+          fetchList(base44.entities.InputInvoice, {}),
+          fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
+          fetchList(base44.entities.MaintenanceLog, {}, { sort: '-date' }),
+          fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
+        ]);
       setBlocks(blockRows);
       setFarms(farmRows);
       setWorkers(workerRows);
@@ -52,6 +58,8 @@ export default function BlockItinerary() {
       setItems(itemRows);
       setInvoices(invoiceRows);
       setNatures(natureRows);
+      setLogs(logRows);
+      setCostReports(costReportRows);
     };
     load();
   }, []);
@@ -81,9 +89,23 @@ export default function BlockItinerary() {
     return reports.filter((report) => ids.has(report.block_id));
   }, [reports, farmName, blocks]);
 
+  const machineCosts = useMemo(
+    () => buildMachineCosts({ machines, logs, reports: costReports, items, invoices }),
+    [machines, logs, costReports, items, invoices],
+  );
+
   const entries = useMemo(
-    () => buildBlockItinerary({ reports: scopedReports, blocks, workers, machines, items, invoices }),
-    [scopedReports, blocks, workers, machines, items, invoices],
+    () =>
+      buildBlockItinerary({
+        reports: scopedReports,
+        blocks,
+        workers,
+        machines,
+        items,
+        invoices,
+        machineCosts,
+      }),
+    [scopedReports, blocks, workers, machines, items, invoices, machineCosts],
   );
 
   const activeEntry = entries.find((entry) => entry.block.id === blockId) || entries[0];

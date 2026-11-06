@@ -19,7 +19,7 @@ export default function OperationCard({ operation, natures = [] }) {
     label: line.fuel
       ? `${line.name || t('ms.unknown')} · ${fmtNum(line.fuel.quantity, 1)} ${line.fuel.unit} ${line.fuel.name}`
       : line.name || t('ms.unknown'),
-    meta: `${fmtNum(line.hours, 1)} h`,
+    meta: `${fmtNum(line.hours, 1)} h × ${fmtMoney(line.rate)}`,
   }));
 
   const inputRows = operation.inputs.map((line) => ({

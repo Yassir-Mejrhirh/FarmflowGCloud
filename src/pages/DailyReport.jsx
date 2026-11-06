@@ -79,6 +79,18 @@ export default function DailyReport() {
 
   const blockMap = useMemo(() => byId(blocks), [blocks]);
 
+  // The resources are entered once for the whole report and shared between the
+  // selected parcels in proportion to their area in hectares.
+  const shares = useMemo(() => {
+    const selected = form.block_ids.map((id) => blockMap[id]).filter(Boolean);
+    const areas = selected.map((block) => Number(block.area_ha) || 0);
+    const totalArea = areas.reduce((sum, area) => sum + area, 0);
+    return selected.map((block, index) => ({
+      block,
+      weight: totalArea > 0 ? areas[index] / totalArea : 1 / (selected.length || 1),
+    }));
+  }, [form.block_ids, blockMap]);
+
   const farmName = farms.find((farm) => farm.id === farmId)?.name;
   const visibleBlocks = useMemo(
     () => (farmName ? blocks.filter((block) => block.farm === farmName) : blocks),
@@ -143,39 +155,42 @@ export default function DailyReport() {
     setRangeError(null);
     setSaving(true);
     // The hours, fuel, days and inputs are entered once for the whole report:
-    // they are shared between the parcels instead of being copied on each one.
-    const share = form.block_ids.length || 1;
-    const split = (value) => Math.round((Number(value) / share) * 1000) / 1000;
-    const base = {
-      date: form.date,
-      task_id: form.task_id,
-      operation: taskMap[form.task_id]?.type || 'other',
-      description: form.description.trim(),
-      notes: form.notes,
-      labour: labour
-        .filter((line) => line.worker_id && Number(line.days) > 0)
-        .map((line) => ({ worker_id: line.worker_id, days: split(line.days) })),
-      machinery: machinery
-        .filter((line) => line.machine_id && Number(line.hours) > 0)
-        .map((line) => {
-          const fuel = Number(line.fuel_quantity) || 0;
-          const entry = { machine_id: line.machine_id, hours: split(line.hours) };
-          if (line.fuel_item_id && fuel > 0) {
-            entry.fuel_item_id = line.fuel_item_id;
-            entry.fuel_quantity = split(fuel);
-          }
-          return entry;
-        }),
-      inputs: inputs
-        .filter((line) => line.item_id && Number(line.quantity) > 0)
-        .map((line) => ({ item_id: line.item_id, quantity: Number(line.quantity) })),
+    // they are shared between the parcels in proportion to their area in hectares.
+    const payloadFor = (weight) => {
+      const share = (value) => Math.round((Number(value) || 0) * weight * 1000) / 1000;
+      return {
+        date: form.date,
+        task_id: form.task_id,
+        operation: taskMap[form.task_id]?.type || 'other',
+        description: form.description.trim(),
+        notes: form.notes,
+        labour: labour
+          .filter((line) => line.worker_id && Number(line.days) > 0)
+          .map((line) => ({ worker_id: line.worker_id, days: share(line.days) })),
+        machinery: machinery
+          .filter((line) => line.machine_id && Number(line.hours) > 0)
+          .map((line) => {
+            const fuel = Number(line.fuel_quantity) || 0;
+            const entry = { machine_id: line.machine_id, hours: share(line.hours) };
+            if (line.fuel_item_id && fuel > 0) {
+              entry.fuel_item_id = line.fuel_item_id;
+              entry.fuel_quantity = share(fuel);
+            }
+            return entry;
+          }),
+        inputs: inputs
+          .filter((line) => line.item_id && Number(line.quantity) > 0)
+          .map((line) => ({ item_id: line.item_id, quantity: share(line.quantity) })),
+      };
     };
     const createdRows = await Promise.all(
-      form.block_ids.map((blockId) => base44.entities.DailyReport.create({ ...base, block_id: blockId })),
+      shares.map((row) =>
+        base44.entities.DailyReport.create({ ...payloadFor(row.weight), block_id: row.block.id }),
+      ),
     );
     if (outflow.length) {
       await base44.entities.StockMovement.bulkCreate(
-        createdRows.flatMap((report) => {
+        createdRows.flatMap((report, index) => {
           const blockFarm = blockMap[report.block_id]?.farm;
           const farmStorages = blockFarm
             ? storages.filter((storage) => storage.farm === blockFarm)
@@ -183,13 +198,13 @@ export default function DailyReport() {
           return outflow.map((line) => ({
             item_id: line.item_id,
             kind: 'out',
-            quantity: split(line.quantity),
+            quantity: Math.round(line.quantity * shares[index].weight * 1000) / 1000,
             date: form.date,
             storage_id: pickStorageFor(farmStorages, invoices, line.item_id),
             block_id: report.block_id,
             machine_id: line.machine_id || '',
             report_id: report.id,
-            notes: base.description,
+            notes: form.description.trim(),
           }));
         }),
       );
@@ -273,6 +288,14 @@ export default function DailyReport() {
                 setForm({ ...form, block_ids: ids });
               }}
             />
+            {shares.length > 1 && (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                {t('report.areaShare')} ·{' '}
+                {shares
+                  .map((row) => `${row.block.name} ${Math.round(row.weight * 100)}%`)
+                  .join(' · ')}
+              </p>
+            )}
           </Field>
 
           <Field label={t('report.task')}>

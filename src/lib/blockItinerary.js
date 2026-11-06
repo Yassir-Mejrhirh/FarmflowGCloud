@@ -12,6 +12,7 @@ export function buildBlockItinerary({
   machines = [],
   items = [],
   invoices = [],
+  machineCosts = {},
 }) {
   const purchaseTotals = buildInputTotals(invoices);
   const blockMap = new Map(blocks.map((block) => [block.id, block]));
@@ -40,15 +41,15 @@ export function buildBlockItinerary({
         const machine = machineMap.get(line.machine_id);
         const fuelItem = itemMap.get(line.fuel_item_id);
         const hours = num(line.hours);
-        const rate = num(machine?.hourly_rate);
+        // Weighted hourly cost of the machine (maintenance, repairs and fuel spread
+        // over its logged hours), the same basis as the machinery page.
+        const rate = num(machineCosts[line.machine_id]?.hourly) || num(machine?.hourly_rate);
         const quantity = num(line.fuel_quantity);
-        const fuelCost = quantity * avgCostOf(purchaseTotals, line.fuel_item_id);
         return {
           key: `${line.machine_id}-${index}`,
           name: machine?.name || '',
           hours,
           rate,
-          hoursCost: hours * rate,
           fuel:
             line.fuel_item_id && quantity > 0
               ? {
@@ -56,10 +57,9 @@ export function buildBlockItinerary({
                   name: fuelItem?.name || '',
                   unit: fuelItem?.unit || '',
                   quantity,
-                  cost: fuelCost,
                 }
               : null,
-          cost: hours * rate + fuelCost,
+          cost: hours * rate,
         };
       });
 
