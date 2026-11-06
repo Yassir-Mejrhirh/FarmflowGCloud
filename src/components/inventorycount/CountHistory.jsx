@@ -1,12 +1,7 @@
 import { History } from 'lucide-react';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
-
-export const countValue = (count) =>
-  (count.lines || []).reduce(
-    (sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unit_price) || 0),
-    0,
-  );
+import { countValue } from '@/lib/countStock';
 
 export default function CountHistory({ counts, storages, onOpen }) {
   const { t } = useI18n();

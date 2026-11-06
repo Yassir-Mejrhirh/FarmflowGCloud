@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import CountForm from '@/components/inventorycount/CountForm';
@@ -7,6 +7,7 @@ import CountDetailDialog from '@/components/inventorycount/CountDetailDialog';
 import { useToast } from '@/components/ui/use-toast';
 import { fetchList } from '@/lib/data';
 import { avgCostOf, buildInputTotals, buildOnHand } from '@/lib/inventory';
+import { deleteInventoryCount } from '@/lib/countStock';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function StockCount() {
@@ -20,6 +21,8 @@ export default function StockCount() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     const [itemRows, storageRows, invoiceRows, movementRows, countRows, user] = await Promise.all([
@@ -44,12 +47,35 @@ export default function StockCount() {
   }, []);
 
   const totals = buildInputTotals(invoices);
-  const onHand = buildOnHand(invoices, movements);
-  const onHandFor = (itemId) => onHand[itemId]?.quantity || 0;
+  const onHand = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
+  // En modification, le stock de référence exclut les ajustements du constat en cours.
+  const onHandWithoutEditing = useMemo(
+    () => (editing ? buildOnHand(invoices, movements.filter((row) => row.count_id !== editing.id)) : null),
+    [invoices, movements, editing],
+  );
+  const onHandFor = (itemId, excludeCountId) => {
+    const map = excludeCountId && onHandWithoutEditing ? onHandWithoutEditing : onHand;
+    return map[itemId]?.quantity || 0;
+  };
 
-  const onSaved = () => {
+  const onSaved = (mode) => {
+    setEditing(null);
     load();
-    toast({ title: t('stockCount.saved'), description: t('stockCount.savedDesc') });
+    toast({
+      title: mode === 'edit' ? t('stockCount.updated') : t('stockCount.saved'),
+      description: mode === 'edit' ? t('stockCount.updatedDesc') : t('stockCount.savedDesc'),
+    });
+  };
+
+  const remove = async (count) => {
+    if (!count) return;
+    setDeleting(true);
+    await deleteInventoryCount(count);
+    setDeleting(false);
+    setDetail(null);
+    if (editing?.id === count.id) setEditing(null);
+    load();
+    toast({ title: t('inv.countDeleted') });
   };
 
   return (
@@ -65,8 +91,11 @@ export default function StockCount() {
       ) : (
         <>
           <CountForm
+            key={editing?.id || 'new'}
             items={items}
             storages={storages}
+            count={editing}
+            onCancel={() => setEditing(null)}
             unitCostFor={(itemId) => Math.round(avgCostOf(totals, itemId) * 100) / 100}
             onHandFor={onHandFor}
             responsible={currentUser?.full_name || ''}
@@ -83,6 +112,12 @@ export default function StockCount() {
         count={detail}
         items={items}
         storages={storages}
+        deleting={deleting}
+        onEdit={(count) => {
+          setDetail(null);
+          setEditing(count);
+        }}
+        onDelete={remove}
       />
     </div>
   );

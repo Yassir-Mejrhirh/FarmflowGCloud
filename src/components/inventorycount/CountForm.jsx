@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { todayISO, fmtMoney } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import { syncCountMovements } from '@/lib/countStock';
 
 const UNIT_OPTIONS = ['L', 'KG', 'Flacon', 'Sac', 'Bidon', 'Tonne', 'Carton', 'Palette'];
 
@@ -20,9 +21,35 @@ const emptyForm = () => ({
   notes: '',
 });
 
-export default function CountForm({ items, storages, unitCostFor, onHandFor, onSaved, responsible = '' }) {
+const formFromCount = (count) => ({
+  date: count.date || todayISO(),
+  storage_id: count.storage_id || '',
+  lines: (count.lines || []).length
+    ? count.lines.map((line) => ({
+        item_id: line.item_id || '',
+        category: line.category || '',
+        unit: line.unit || '',
+        unit_price: line.unit_price ?? '',
+        quantity: line.quantity ?? '',
+      }))
+    : [emptyLine()],
+  notes: count.notes || '',
+});
+
+export default function CountForm({
+  items,
+  storages,
+  unitCostFor,
+  onHandFor,
+  onSaved,
+  responsible = '',
+  count = null,
+  onCancel,
+}) {
   const { t } = useI18n();
-  const [form, setForm] = useState(emptyForm);
+  const editing = Boolean(count?.id);
+  const responsibleName = editing ? count.responsible || responsible : responsible;
+  const [form, setForm] = useState(() => (editing ? formFromCount(count) : emptyForm()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -70,7 +97,7 @@ export default function CountForm({ items, storages, unitCostFor, onHandFor, onS
       setError(t('stockCount.required'));
       return;
     }
-    if (!responsible.trim()) {
+    if (!responsibleName.trim()) {
       setError(t('stockCount.needResponsible'));
       return;
     }
@@ -83,35 +110,36 @@ export default function CountForm({ items, storages, unitCostFor, onHandFor, onS
       unit_price: Number(line.unit_price) || 0,
       quantity: Number(line.quantity) || 0,
     }));
-    const count = await base44.entities.InventoryCount.create({
+    const payload = {
       date: form.date,
       storage_id: form.storage_id,
-      responsible: responsible.trim(),
+      responsible: responsibleName.trim(),
       lines,
       notes: form.notes.trim(),
-    });
+    };
+    const note = t('stockCount.movementNote', { date: form.date });
 
     // Le constat ajuste le stock : un mouvement d'entrée ou de sortie par écart.
-    const adjustments = lines
-      .map((line) => {
-        const delta = line.quantity - (onHandFor(line.item_id) || 0);
-        if (Math.abs(delta) < 0.0001) return null;
-        return {
-          item_id: line.item_id,
-          kind: delta > 0 ? 'in' : 'out',
-          quantity: Math.abs(delta),
-          date: form.date,
-          cost: Math.abs(delta) * line.unit_price,
-          storage_id: form.storage_id,
-          count_id: count.id,
-          notes: t('stockCount.movementNote', { date: form.date }),
-        };
-      })
-      .filter(Boolean);
-    if (adjustments.length) await base44.entities.StockMovement.bulkCreate(adjustments);
+    if (editing) {
+      await base44.entities.InventoryCount.update(count.id, payload);
+      await syncCountMovements({
+        count: { ...count, ...payload },
+        lines,
+        note,
+        onHandFor: (itemId) => onHandFor(itemId, count.id),
+      });
+    } else {
+      const created = await base44.entities.InventoryCount.create(payload);
+      await syncCountMovements({
+        count: created,
+        lines,
+        note,
+        onHandFor: (itemId) => onHandFor(itemId),
+      });
+      setForm(emptyForm());
+    }
     setSaving(false);
-    setForm(emptyForm());
-    onSaved();
+    onSaved(editing ? 'edit' : 'create');
   };
 
   return (
@@ -121,8 +149,12 @@ export default function CountForm({ items, storages, unitCostFor, onHandFor, onS
           <ClipboardCheck className="h-3.5 w-3.5" strokeWidth={1.9} />
         </span>
         <div>
-          <h2 className="font-display text-base leading-tight tracking-tight">{t('stockCount.formTitle')}</h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">{t('stockCount.formHint')}</p>
+          <h2 className="font-display text-base leading-tight tracking-tight">
+            {editing ? t('stockCount.editTitle') : t('stockCount.formTitle')}
+          </h2>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {editing ? t('stockCount.editHint', { date: count.date || '' }) : t('stockCount.formHint')}
+          </p>
         </div>
       </div>
 
@@ -241,12 +273,21 @@ export default function CountForm({ items, storages, unitCostFor, onHandFor, onS
                   <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                     {t('stockCount.responsible')}
                   </p>
-                  <p className="mt-0.5 text-sm font-medium">{responsible || t('stockCount.responsibleUnknown')}</p>
+                  <p className="mt-0.5 text-sm font-medium">
+                    {responsibleName || t('stockCount.responsibleUnknown')}
+                  </p>
                 </td>
-                <td colSpan={3} className="px-2.5 py-3 text-end">
-                  <Button type="submit" className="rounded-xl" disabled={saving}>
-                    {t('stockCount.validate')}
-                  </Button>
+                <td colSpan={3} className="px-2.5 py-3">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {editing && (
+                      <Button type="button" variant="outline" className="rounded-xl" onClick={onCancel}>
+                        {t('common.cancel')}
+                      </Button>
+                    )}
+                    <Button type="submit" className="rounded-xl" disabled={saving}>
+                      {editing ? t('stockCount.update') : t('stockCount.validate')}
+                    </Button>
+                  </div>
                 </td>
               </tr>
             </tfoot>
