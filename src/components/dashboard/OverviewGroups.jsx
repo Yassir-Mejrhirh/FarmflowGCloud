@@ -43,6 +43,7 @@ export default function OverviewGroups() {
       items: [
         { to: '/labour-status', label: t('ov.reportLabour'), icon: Users },
         { to: '/stock-status', label: t('ov.reportStocks'), icon: Boxes },
+        { to: '/machine-status', label: t('ov.reportMachinery'), icon: Tractor },
       ],
     },
   ];

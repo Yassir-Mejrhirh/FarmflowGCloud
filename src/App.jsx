@@ -28,6 +28,7 @@ import InputInvoicesList from '@/pages/InputInvoicesList';
 import StockCount from '@/pages/StockCount';
 import LabourStatus from '@/pages/LabourStatus';
 import StockStatus from '@/pages/StockStatus';
+import MachineStatus from '@/pages/MachineStatus';
 import ImportCsv from '@/pages/ImportCsv';
 import { I18nProvider } from '@/lib/I18nContext';
 
@@ -79,6 +80,7 @@ const AuthenticatedApp = () => {
         <Route path="/stock-count" element={<StockCount />} />
         <Route path="/labour-status" element={<LabourStatus />} />
         <Route path="/stock-status" element={<StockStatus />} />
+        <Route path="/machine-status" element={<MachineStatus />} />
         <Route path="/import" element={<ImportCsv />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

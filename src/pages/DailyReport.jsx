@@ -7,7 +7,10 @@ import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import UsageField from '@/components/dailyreport/UsageField';
 import InputStockNote from '@/components/dailyreport/InputStockNote';
+import FuelLine from '@/components/dailyreport/FuelLine';
 import { buildOnHand, pickStorageFor } from '@/lib/inventory';
+import { buildReportOutflow } from '@/lib/reportStock';
+import { isFuelItem } from '@/lib/machineryCosts';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,14 +101,20 @@ export default function DailyReport() {
   const taskMap = useMemo(() => byId(tasks), [tasks]);
   const itemMap = useMemo(() => byId(items), [items]);
   const stockTotals = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
+  const outflow = useMemo(() => buildReportOutflow(inputs, machinery), [inputs, machinery]);
+  const fuelOptions = useMemo(
+    () =>
+      [...items]
+        .sort((a, b) => Number(isFuelItem(b)) - Number(isFuelItem(a)))
+        .map((item) => ({ value: item.id, label: `${item.name}${item.unit ? ` (${item.unit})` : ''}` })),
+    [items],
+  );
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
   const blockCount = form.block_ids.length || 1;
-  const stockExceeded = inputs.some(
-    (line) =>
-      line.item_id &&
-      Number(line.quantity) * blockCount > (stockTotals[line.item_id]?.quantity || 0),
+  const stockExceeded = outflow.some(
+    (line) => line.quantity * blockCount > (stockTotals[line.item_id]?.quantity || 0),
   );
   const canSubmit =
     form.block_ids.length > 0 && !!form.task_id && (!machineRequired || machineryReady) && !stockExceeded;
@@ -141,28 +150,39 @@ export default function DailyReport() {
         .map((line) => ({ worker_id: line.worker_id, days: Number(line.days) })),
       machinery: machinery
         .filter((line) => line.machine_id && Number(line.hours) > 0)
-        .map((line) => ({ machine_id: line.machine_id, hours: Number(line.hours) })),
+        .map((line) => {
+          const fuel = Number(line.fuel_quantity) || 0;
+          const entry = { machine_id: line.machine_id, hours: Number(line.hours) };
+          if (line.fuel_item_id && fuel > 0) {
+            entry.fuel_item_id = line.fuel_item_id;
+            entry.fuel_quantity = fuel;
+          }
+          return entry;
+        }),
       inputs: inputs
         .filter((line) => line.item_id && Number(line.quantity) > 0)
         .map((line) => ({ item_id: line.item_id, quantity: Number(line.quantity) })),
     };
-    await base44.entities.DailyReport.bulkCreate(
+    const created = await base44.entities.DailyReport.bulkCreate(
       form.block_ids.map((blockId) => ({ ...base, block_id: blockId })),
     );
-    if (base.inputs.length) {
+    const createdRows = Array.isArray(created) ? created : [];
+    if (outflow.length) {
       await base44.entities.StockMovement.bulkCreate(
-        form.block_ids.flatMap((blockId) => {
-          const farmName = blockMap[blockId]?.farm;
-          const farmStorages = farmName
-            ? storages.filter((storage) => storage.farm === farmName)
+        form.block_ids.flatMap((blockId, index) => {
+          const blockFarm = blockMap[blockId]?.farm;
+          const farmStorages = blockFarm
+            ? storages.filter((storage) => storage.farm === blockFarm)
             : [];
-          return base.inputs.map((line) => ({
+          return outflow.map((line) => ({
             item_id: line.item_id,
             kind: 'out',
             quantity: line.quantity,
             date: form.date,
             storage_id: pickStorageFor(farmStorages, invoices, line.item_id),
             block_id: blockId,
+            machine_id: line.machine_id || '',
+            report_id: createdRows[index]?.id || '',
             notes: base.description,
           }));
         }),
@@ -178,6 +198,8 @@ export default function DailyReport() {
 
   const remove = async (report) => {
     setReports((prev) => prev.filter((row) => row.id !== report.id));
+    setMovements((prev) => prev.filter((row) => row.report_id !== report.id));
+    await base44.entities.StockMovement.deleteMany({ report_id: report.id });
     await base44.entities.DailyReport.delete(report.id);
   };
 
@@ -290,7 +312,13 @@ export default function DailyReport() {
               qtyLabel={t('report.hours')}
               addLabel={t('report.addMachine')}
               emptyLabel={t('report.noMachine')}
+              renderMeta={(line, patch) => (
+                <FuelLine line={line} patch={patch} options={fuelOptions} />
+              )}
             />
+            {machineryReady && (
+              <p className="ps-1 text-[11px] text-muted-foreground">{t('report.fuelHint')}</p>
+            )}
             <UsageField
               icon={Boxes}
               title={t('report.inputs')}

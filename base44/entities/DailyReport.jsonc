@@ -52,7 +52,7 @@
     },
     "machinery": {
       "type": "array",
-      "description": "Machines used and their hours",
+      "description": "Machines used, their hours, and the fuel drawn from stock for each machine",
       "items": {
         "type": "object",
         "properties": {
@@ -61,6 +61,14 @@
           },
           "hours": {
             "type": "number"
+          },
+          "fuel_item_id": {
+            "type": "string",
+            "description": "Fuel input taken from stock for this machine"
+          },
+          "fuel_quantity": {
+            "type": "number",
+            "description": "Quantity of fuel consumed by this machine"
           }
         }
       }

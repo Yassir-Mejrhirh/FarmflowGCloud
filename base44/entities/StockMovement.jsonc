@@ -38,6 +38,14 @@
     "block_id": {
       "type": "string"
     },
+    "machine_id": {
+      "type": "string",
+      "description": "Machine that consumed the input, when the movement comes from machine fuel"
+    },
+    "report_id": {
+      "type": "string",
+      "description": "Daily report that generated this movement"
+    },
     "count_id": {
       "type": "string",
       "description": "Inventory count that generated this adjustment, if any"

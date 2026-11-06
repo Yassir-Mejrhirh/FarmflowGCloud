@@ -45,19 +45,35 @@ export function buildMachineCosts({ machines = [], logs = [], reports = [], item
   reports.forEach((report) => {
     const used = (report.machinery || [])
       .filter((line) => rows[line.machine_id] && Number(line.hours) > 0)
-      .map((line) => ({ machine_id: line.machine_id, hours: Number(line.hours) }));
+      .map((line) => ({
+        machine_id: line.machine_id,
+        hours: Number(line.hours),
+        fuel_item_id: line.fuel_item_id,
+        fuel_quantity: Number(line.fuel_quantity) || 0,
+      }));
 
     const reportHours = used.reduce((sum, line) => sum + line.hours, 0);
-    const fuelCost = (report.inputs || []).reduce(
-      (sum, line) =>
-        fuelItemIds.has(line.item_id) ? sum + (Number(line.quantity) || 0) * avgCostOf(purchaseTotals, line.item_id) : sum,
-      0,
-    );
+    // Fuel taken from stock for a machine is valued directly; without it, fuel
+    // inputs of the report are shared between the machines by hours worked.
+    const explicitFuel = used.some((line) => line.fuel_item_id && line.fuel_quantity > 0);
+    const fuelCost = explicitFuel
+      ? 0
+      : (report.inputs || []).reduce(
+          (sum, line) =>
+            fuelItemIds.has(line.item_id)
+              ? sum + (Number(line.quantity) || 0) * avgCostOf(purchaseTotals, line.item_id)
+              : sum,
+          0,
+        );
 
     used.forEach((line) => {
       const row = rows[line.machine_id];
       row.hours += line.hours;
-      if (fuelCost && reportHours) row.fuel += fuelCost * (line.hours / reportHours);
+      if (line.fuel_item_id && line.fuel_quantity > 0) {
+        row.fuel += line.fuel_quantity * avgCostOf(purchaseTotals, line.fuel_item_id);
+      } else if (fuelCost && reportHours) {
+        row.fuel += fuelCost * (line.hours / reportHours);
+      }
     });
   });
 

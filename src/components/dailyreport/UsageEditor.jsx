@@ -25,7 +25,7 @@ export default function UsageEditor({
                   onChange={(value) => update(index, { [idKey]: value })}
                   options={options}
                 />
-                {renderMeta && renderMeta(line)}
+                {renderMeta && renderMeta(line, (patch) => update(index, patch))}
               </div>
               <Input
                 type="number"
