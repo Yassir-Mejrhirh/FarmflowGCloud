@@ -114,15 +114,9 @@ export default function DailyReport() {
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
-  const blockCount = form.block_ids.length || 1;
   const shortages = useMemo(
-    () =>
-      findShortages(
-        aggregateQuantities(outflow),
-        (itemId) => stockTotals[itemId]?.quantity || 0,
-        blockCount,
-      ),
-    [outflow, stockTotals, blockCount],
+    () => findShortages(aggregateQuantities(outflow), (itemId) => stockTotals[itemId]?.quantity || 0),
+    [outflow, stockTotals],
   );
   const stockExceeded = shortages.length > 0;
   const canSubmit =
@@ -148,6 +142,10 @@ export default function DailyReport() {
 
     setRangeError(null);
     setSaving(true);
+    // The hours, fuel, days and inputs are entered once for the whole report:
+    // they are shared between the parcels instead of being copied on each one.
+    const share = form.block_ids.length || 1;
+    const split = (value) => Math.round((Number(value) / share) * 1000) / 1000;
     const base = {
       date: form.date,
       task_id: form.task_id,
@@ -156,15 +154,15 @@ export default function DailyReport() {
       notes: form.notes,
       labour: labour
         .filter((line) => line.worker_id && Number(line.days) > 0)
-        .map((line) => ({ worker_id: line.worker_id, days: Number(line.days) })),
+        .map((line) => ({ worker_id: line.worker_id, days: split(line.days) })),
       machinery: machinery
         .filter((line) => line.machine_id && Number(line.hours) > 0)
         .map((line) => {
           const fuel = Number(line.fuel_quantity) || 0;
-          const entry = { machine_id: line.machine_id, hours: Number(line.hours) };
+          const entry = { machine_id: line.machine_id, hours: split(line.hours) };
           if (line.fuel_item_id && fuel > 0) {
             entry.fuel_item_id = line.fuel_item_id;
-            entry.fuel_quantity = fuel;
+            entry.fuel_quantity = split(fuel);
           }
           return entry;
         }),
@@ -185,7 +183,7 @@ export default function DailyReport() {
           return outflow.map((line) => ({
             item_id: line.item_id,
             kind: 'out',
-            quantity: line.quantity,
+            quantity: split(line.quantity),
             date: form.date,
             storage_id: pickStorageFor(farmStorages, invoices, line.item_id),
             block_id: report.block_id,
@@ -349,7 +347,7 @@ export default function DailyReport() {
                 <InputStockNote
                   item={itemMap[line.item_id]}
                   stock={stockTotals[line.item_id]?.quantity || 0}
-                  used={Number(line.quantity) * blockCount}
+                  used={Number(line.quantity) || 0}
                 />
               )}
             />
