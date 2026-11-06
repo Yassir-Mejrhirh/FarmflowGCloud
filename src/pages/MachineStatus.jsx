@@ -117,9 +117,11 @@ export default function MachineStatus() {
       });
     });
 
-    // Fuel and lubricants are drawn from stock for the machine itself.
+    // Fuel and lubricants are drawn from stock for the machine itself; the inputs
+    // withdrawn for a maintenance operation belong to the maintenance, not to the gasoil.
     movements.forEach((movement) => {
-      if (movement.kind !== 'out' || !movement.machine_id || !consumableIds.has(movement.item_id)) return;
+      if (movement.kind !== 'out' || !movement.machine_id || movement.maintenance_id) return;
+      if (!consumableIds.has(movement.item_id)) return;
       const entry = quantities.get(movement.machine_id) || { hours: 0, fuel: {} };
       entry.fuel[movement.item_id] = (entry.fuel[movement.item_id] || 0) + (Number(movement.quantity) || 0);
       quantities.set(movement.machine_id, entry);

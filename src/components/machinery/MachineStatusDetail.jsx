@@ -31,12 +31,13 @@ export default function MachineStatusDetail({ row, movements, logs, items, itemC
   const itemMap = useMemo(() => byId(items), [items]);
 
   // One line per date and per nature: gasoil on one side, lubricants on the other.
+  // Inputs withdrawn for a maintenance operation are kept apart, in their own section.
   const grouped = useMemo(() => {
     const build = (matches) => {
       if (!row) return [];
       const byDate = new Map();
       movements.forEach((movement) => {
-        if (movement.machine_id !== row.id || movement.kind !== 'out') return;
+        if (movement.machine_id !== row.id || movement.kind !== 'out' || movement.maintenance_id) return;
         const quantity = Number(movement.quantity) || 0;
         const item = itemMap[movement.item_id];
         if (!(quantity > 0) || !item || !matches(item)) return;
@@ -52,7 +53,35 @@ export default function MachineStatusDetail({ row, movements, logs, items, itemC
         .sort((a, b) => String(b.date).localeCompare(String(a.date)));
     };
 
-    return { fuel: build(isFuelItem), lubricants: build(isLubricantItem) };
+    const maintenance = () => {
+      if (!row) return [];
+      const byKey = new Map();
+      movements.forEach((movement) => {
+        if (movement.machine_id !== row.id || movement.kind !== 'out' || !movement.maintenance_id) return;
+        const quantity = Number(movement.quantity) || 0;
+        const item = itemMap[movement.item_id];
+        if (!(quantity > 0) || !item) return;
+        const key = `${movement.date}|${movement.item_id}`;
+        const entry = byKey.get(key) || {
+          key,
+          date: movement.date,
+          name: item.name || t('inv.unknownInput'),
+          unit: item.unit || '',
+          quantity: 0,
+          cost: 0,
+        };
+        entry.quantity += quantity;
+        entry.cost += quantity * itemCost(movement.item_id);
+        byKey.set(key, entry);
+      });
+      return [...byKey.values()].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    };
+
+    return {
+      fuel: build(isFuelItem),
+      lubricants: build(isLubricantItem),
+      maintenance: maintenance(),
+    };
   }, [row, movements, itemMap, itemCost, t]);
 
   const logRows = useMemo(
@@ -96,6 +125,12 @@ export default function MachineStatusDetail({ row, movements, logs, items, itemC
               empty={t('msd.lubricantsEmpty')}
               lines={grouped.lubricants}
               tone="sage"
+            />
+
+            <ConsumptionSection
+              title={t('msd.maintenance')}
+              empty={t('msd.maintenanceEmpty')}
+              lines={grouped.maintenance}
             />
 
             <section className="space-y-2">

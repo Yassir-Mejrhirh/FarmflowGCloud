@@ -92,10 +92,12 @@ export function buildMachineCosts({
 
   // Fuel and lubricants are withdrawn from stock once, in full, for the machine that
   // consumed them: they are charged to the machine, never split between parcels.
+  // Inputs withdrawn for a maintenance operation are already part of that operation's cost.
   const machineDrawnIds = new Set();
   movements.forEach((movement) => {
     const row = rows[movement.machine_id];
-    if (!row || movement.kind !== 'out' || !consumableIds.has(movement.item_id)) return;
+    if (!row || movement.kind !== 'out' || movement.maintenance_id) return;
+    if (!consumableIds.has(movement.item_id)) return;
     machineDrawnIds.add(movement.item_id);
     row.fuel += (Number(movement.quantity) || 0) * avgCostOf(purchaseTotals, movement.item_id);
   });
