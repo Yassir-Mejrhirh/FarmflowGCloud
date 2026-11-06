@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   BarChart3, Boxes, CalendarRange, ChevronRight, ClipboardList, Layers, ListChecks, MapPin,
-  Settings2, Sprout, Tractor, Truck, Users, Leaf, ClipboardCheck, Receipt, House, Warehouse, Upload,
+  Settings2, Sprout, Tractor, Truck, Users, Leaf, ClipboardCheck, Receipt, House, Warehouse, Upload, Wrench,
 } from 'lucide-react';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -33,6 +33,7 @@ export default function OverviewGroups() {
         { to: '/planting', label: t('ov.entryCrops'), icon: Layers },
         { to: '/daily-report', label: t('ov.entryReport'), icon: ClipboardList },
         { to: '/input-invoices', label: t('ov.entryInvoices'), icon: Receipt },
+        { to: '/machine-maintenance', label: t('ov.entryMaintenance'), icon: Wrench },
         { to: '/stock-count', label: t('ov.entryStockCount'), icon: Warehouse },
         { to: '/import', label: t('ov.entryCsv'), icon: Upload },
       ],

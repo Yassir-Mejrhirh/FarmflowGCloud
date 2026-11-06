@@ -1,23 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Tractor, Wrench, Trash2 } from 'lucide-react';
+import { Plus, Tractor } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
-import FormDialog from '@/components/FormDialog';
-import Field from '@/components/Field';
-import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import MachineDialog, { machineTypeLabel } from '@/components/machinery/MachineDialog';
 import MachinePhoto from '@/components/machinery/MachinePhoto';
-import { fetchList, byId } from '@/lib/data';
+import { fetchList } from '@/lib/data';
 import { buildMachineCosts } from '@/lib/machineryCosts';
-import { fmtDate, fmtMoney, fmtNum, todayISO } from '@/lib/format';
+import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
-
-const KINDS = ['service', 'repair', 'inspection'];
 const STATUS_TONE = { operational: 'moss', maintenance: 'amber', retired: 'stone' };
 
 export default function Machinery() {
@@ -31,8 +24,6 @@ export default function Machinery() {
   const [loading, setLoading] = useState(true);
   const [machineDialog, setMachineDialog] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [logDialog, setLogDialog] = useState(false);
-  const [logMachine, setLogMachine] = useState(null);
 
   const loadTypes = async () => {
     const rows = await fetchList(base44.entities.MachineType, {}, { sort: 'name' });
@@ -60,22 +51,11 @@ export default function Machinery() {
     load();
   }, []);
 
-  const machineMap = useMemo(() => byId(machines), [machines]);
   const serviceCost = logs.reduce((sum, log) => sum + (Number(log.cost) || 0), 0);
   const costRows = useMemo(
     () => buildMachineCosts({ machines, logs, reports, items, invoices }),
     [machines, logs, reports, items, invoices],
   );
-
-  const openLog = (machine) => {
-    setLogMachine(machine);
-    setLogDialog(true);
-  };
-
-  const removeLog = async (log) => {
-    setLogs((prev) => prev.filter((row) => row.id !== log.id));
-    await base44.entities.MaintenanceLog.delete(log.id);
-  };
 
   return (
     <div className="space-y-8">
@@ -165,14 +145,7 @@ export default function Machinery() {
                 </p>
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3">
-                <button
-                  type="button"
-                  onClick={() => openLog(machine)}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-                >
-                  <Wrench className="h-3.5 w-3.5" /> {t('mach.logMaintenance')}
-                </button>
+              <div className="mt-4 flex items-center justify-end border-t border-border/60 pt-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -189,50 +162,12 @@ export default function Machinery() {
         </div>
       )}
 
-      {logs.length > 0 && (
-        <section>
-          <h2 className="mb-3 font-display text-2xl tracking-tight">{t('mach.serviceHistory')}</h2>
-          <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
-            {logs.map((log) => (
-              <li key={log.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {machineMap[log.machine_id]?.name || t('mach.unknown')}
-                  </p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {fmtDate(log.date)} · {t(`mk.${log.kind}`)}
-                    {log.description ? ` · ${log.description}` : ''}
-                  </p>
-                </div>
-                <span className="text-sm tabular-nums">{fmtMoney(log.cost)}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => removeLog(log)}
-                  aria-label={t('common.deleteEntry')}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       <MachineDialog
         open={machineDialog}
         onOpenChange={setMachineDialog}
         machine={editing}
         types={types}
         onTypesChanged={loadTypes}
-        onSaved={load}
-      />
-      <MaintenanceDialog
-        open={logDialog}
-        onOpenChange={setLogDialog}
-        machine={logMachine}
-        machines={machines}
         onSaved={load}
       />
     </div>
@@ -245,100 +180,5 @@ function MiniStat({ label, value }) {
       <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
       <p className="font-display text-lg leading-tight tabular-nums">{value}</p>
     </div>
-  );
-}
-
-function MaintenanceDialog({ open, onOpenChange, machine, machines, onSaved }) {
-  const { t } = useI18n();
-  const [form, setForm] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setForm({
-      machine_id: machine?.id || '',
-      date: todayISO(),
-      kind: 'service',
-      description: '',
-      cost: '',
-      hours_reading: machine?.hours ?? '',
-    });
-  }, [open, machine]);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    if (!form.machine_id) return;
-    setSaving(true);
-    await base44.entities.MaintenanceLog.create({
-      machine_id: form.machine_id,
-      date: form.date || todayISO(),
-      kind: form.kind,
-      description: form.description || '',
-      cost: Number(form.cost) || 0,
-      hours_reading: Number(form.hours_reading) || 0,
-    });
-
-    const target = machines.find((row) => row.id === form.machine_id);
-    const reading = Number(form.hours_reading) || 0;
-    if (target && reading > (Number(target.hours) || 0)) {
-      await base44.entities.Machine.update(target.id, { hours: reading });
-    }
-
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
-  };
-
-  return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t('maintDialog.title')}
-      onSubmit={submit}
-      saving={saving}
-      submitLabel={t('maintDialog.save')}
-    >
-      <Field label={t('common.machine')}>
-        <SelectField
-          value={form.machine_id}
-          onChange={(value) => {
-            const target = machines.find((row) => row.id === value);
-            setForm((prev) => ({ ...prev, machine_id: value, hours_reading: target?.hours ?? prev.hours_reading }));
-          }}
-          options={machines.map((row) => ({ value: row.id, label: row.name }))}
-          placeholder={t('maintDialog.pickMachine')}
-        />
-      </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('common.date')}>
-          <Input type="date" value={form.date || ''} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-        </Field>
-        <Field label={t('common.type')}>
-          <SelectField
-            value={form.kind}
-            onChange={(value) => setForm({ ...form, kind: value })}
-            options={KINDS.map((value) => ({ value, label: t(`mk.${value}`) }))}
-          />
-        </Field>
-        <Field label={t('common.cost')}>
-          <Input type="number" value={form.cost ?? ''} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
-        </Field>
-        <Field label={t('maintDialog.hoursReading')}>
-          <Input
-            type="number"
-            value={form.hours_reading ?? ''}
-            onChange={(e) => setForm({ ...form, hours_reading: e.target.value })}
-          />
-        </Field>
-      </div>
-      <Field label={t('maintDialog.doneLabel')}>
-        <Textarea
-          value={form.description || ''}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          rows={2}
-          placeholder={t('maintDialog.donePlaceholder')}
-        />
-      </Field>
-    </FormDialog>
   );
 }
