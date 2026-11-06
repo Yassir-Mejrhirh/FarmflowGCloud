@@ -163,14 +163,13 @@ export default function DailyReport() {
         .filter((line) => line.item_id && Number(line.quantity) > 0)
         .map((line) => ({ item_id: line.item_id, quantity: Number(line.quantity) })),
     };
-    const created = await base44.entities.DailyReport.bulkCreate(
-      form.block_ids.map((blockId) => ({ ...base, block_id: blockId })),
+    const createdRows = await Promise.all(
+      form.block_ids.map((blockId) => base44.entities.DailyReport.create({ ...base, block_id: blockId })),
     );
-    const createdRows = Array.isArray(created) ? created : [];
     if (outflow.length) {
       await base44.entities.StockMovement.bulkCreate(
-        form.block_ids.flatMap((blockId, index) => {
-          const blockFarm = blockMap[blockId]?.farm;
+        createdRows.flatMap((report) => {
+          const blockFarm = blockMap[report.block_id]?.farm;
           const farmStorages = blockFarm
             ? storages.filter((storage) => storage.farm === blockFarm)
             : [];
@@ -180,9 +179,9 @@ export default function DailyReport() {
             quantity: line.quantity,
             date: form.date,
             storage_id: pickStorageFor(farmStorages, invoices, line.item_id),
-            block_id: blockId,
+            block_id: report.block_id,
             machine_id: line.machine_id || '',
-            report_id: createdRows[index]?.id || '',
+            report_id: report.id,
             notes: base.description,
           }));
         }),
@@ -201,6 +200,12 @@ export default function DailyReport() {
     setMovements((prev) => prev.filter((row) => row.report_id !== report.id));
     await base44.entities.StockMovement.deleteMany({ report_id: report.id });
     await base44.entities.DailyReport.delete(report.id);
+    const [movementRows, reportRows] = await Promise.all([
+      fetchList(base44.entities.StockMovement, {}),
+      fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
+    ]);
+    setMovements(movementRows);
+    setReports(reportRows);
   };
 
   return (
