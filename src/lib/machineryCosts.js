@@ -1,4 +1,4 @@
-import { avgCostOf, buildInputTotals } from '@/lib/inventory';
+import { avgCostOf, buildCountTotals, buildInputTotals, mergeTotals } from '@/lib/inventory';
 
 const FUEL_WORDS = [
   'fuel',
@@ -41,8 +41,16 @@ export function logTotalCost(log) {
 
 // Weighted hourly cost per machine: maintenance/repair costs plus the fuel burnt
 // during the machine's hours, divided by the hours logged in daily reports.
-export function buildMachineCosts({ machines = [], logs = [], reports = [], items = [], invoices = [] }) {
-  const purchaseTotals = buildInputTotals(invoices);
+export function buildMachineCosts({
+  machines = [],
+  logs = [],
+  reports = [],
+  items = [],
+  invoices = [],
+  counts = [],
+}) {
+  // Weighted average price, as shown in the stock status: purchases plus validated counts.
+  const purchaseTotals = mergeTotals(buildInputTotals(invoices), buildCountTotals(counts));
   const fuelItemIds = new Set(items.filter(isFuelItem).map((item) => item.id));
 
   const rows = {};

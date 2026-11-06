@@ -31,6 +31,7 @@ export default function BlockItinerary() {
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [counts, setCounts] = useState([]);
   const [natures, setNatures] = useState([]);
   const [logs, setLogs] = useState([]);
   const [costReports, setCostReports] = useState([]);
@@ -39,7 +40,7 @@ export default function BlockItinerary() {
 
   useEffect(() => {
     const load = async () => {
-      const [blockRows, farmRows, workerRows, machineRows, itemRows, invoiceRows, natureRows, logRows, costReportRows] =
+      const [blockRows, farmRows, workerRows, machineRows, itemRows, invoiceRows, countRows, natureRows, logRows, costReportRows] =
         await Promise.all([
           fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
           fetchList(base44.entities.Farm, {}, { sort: 'name' }),
@@ -47,6 +48,7 @@ export default function BlockItinerary() {
           fetchList(base44.entities.Machine, {}, { sort: 'name' }),
           fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
           fetchList(base44.entities.InputInvoice, {}),
+          fetchList(base44.entities.InventoryCount, {}),
           fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
           fetchList(base44.entities.MaintenanceLog, {}, { sort: '-date' }),
           fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
@@ -57,6 +59,7 @@ export default function BlockItinerary() {
       setMachines(machineRows);
       setItems(itemRows);
       setInvoices(invoiceRows);
+      setCounts(countRows);
       setNatures(natureRows);
       setLogs(logRows);
       setCostReports(costReportRows);
@@ -90,8 +93,8 @@ export default function BlockItinerary() {
   }, [reports, farmName, blocks]);
 
   const machineCosts = useMemo(
-    () => buildMachineCosts({ machines, logs, reports: costReports, items, invoices }),
-    [machines, logs, costReports, items, invoices],
+    () => buildMachineCosts({ machines, logs, reports: costReports, items, invoices, counts }),
+    [machines, logs, costReports, items, invoices, counts],
   );
 
   const entries = useMemo(

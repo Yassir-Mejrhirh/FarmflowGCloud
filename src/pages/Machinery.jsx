@@ -21,6 +21,7 @@ export default function Machinery() {
   const [reports, setReports] = useState([]);
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [counts, setCounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [machineDialog, setMachineDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -31,12 +32,13 @@ export default function Machinery() {
   };
 
   const load = async () => {
-    const [machineRows, logRows, reportRows, itemRows, invoiceRows] = await Promise.all([
+    const [machineRows, logRows, reportRows, itemRows, invoiceRows, countRows] = await Promise.all([
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.MaintenanceLog, {}, { sort: '-date' }),
       fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}, { sort: '-date' }),
+      fetchList(base44.entities.InventoryCount, {}),
       loadTypes(),
     ]);
     setMachines(machineRows);
@@ -44,6 +46,7 @@ export default function Machinery() {
     setReports(reportRows);
     setItems(itemRows);
     setInvoices(invoiceRows);
+    setCounts(countRows);
     setLoading(false);
   };
 
@@ -53,8 +56,8 @@ export default function Machinery() {
 
   const serviceCost = logs.reduce((sum, log) => sum + logTotalCost(log), 0);
   const costRows = useMemo(
-    () => buildMachineCosts({ machines, logs, reports, items, invoices }),
-    [machines, logs, reports, items, invoices],
+    () => buildMachineCosts({ machines, logs, reports, items, invoices, counts }),
+    [machines, logs, reports, items, invoices, counts],
   );
 
   return (

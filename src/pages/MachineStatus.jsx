@@ -30,6 +30,7 @@ export default function MachineStatus() {
   const [machines, setMachines] = useState([]);
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [counts, setCounts] = useState([]);
   const [logs, setLogs] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,15 +39,17 @@ export default function MachineStatus() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const [machineRows, itemRows, invoiceRows] = await Promise.all([
+      const [machineRows, itemRows, invoiceRows, countRows] = await Promise.all([
         fetchList(base44.entities.Machine, {}, { sort: 'name' }),
         fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
         fetchList(base44.entities.InputInvoice, {}),
+        fetchList(base44.entities.InventoryCount, {}),
       ]);
       if (!active) return;
       setMachines(machineRows);
       setItems(itemRows);
       setInvoices(invoiceRows);
+      setCounts(countRows);
     };
     load();
     return () => {
@@ -81,8 +84,8 @@ export default function MachineStatus() {
   const itemMap = useMemo(() => byId(items), [items]);
 
   const machineCosts = useMemo(
-    () => buildMachineCosts({ machines, logs, reports, items, invoices }),
-    [machines, logs, reports, items, invoices],
+    () => buildMachineCosts({ machines, logs, reports, items, invoices, counts }),
+    [machines, logs, reports, items, invoices, counts],
   );
 
   const rows = useMemo(() => {
