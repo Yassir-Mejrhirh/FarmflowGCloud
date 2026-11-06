@@ -29,26 +29,27 @@ export default function MachineStatusDetail({ row, reports, logs, items, itemCos
   const { t } = useI18n();
   const itemMap = useMemo(() => byId(items), [items]);
 
+  // One line per date: the gasoil drawn that day is added up.
   const fuelLines = useMemo(() => {
     if (!row) return [];
-    const lines = [];
+    const byDate = new Map();
     reports.forEach((report) => {
       (report.machinery || []).forEach((line) => {
         if (line.machine_id !== row.id) return;
         const quantity = Number(line.fuel_quantity) || 0;
         if (!line.fuel_item_id || quantity <= 0) return;
         const item = itemMap[line.fuel_item_id];
-        lines.push({
-          key: `${report.id}-${line.fuel_item_id}`,
-          date: report.date,
-          name: item?.name || t('inv.unknownInput'),
-          unit: item?.unit || '',
-          quantity,
-          cost: quantity * itemCost(line.fuel_item_id),
-        });
+        const entry = byDate.get(report.date) || { key: report.date, date: report.date, names: new Set(), unit: '', quantity: 0, cost: 0 };
+        entry.names.add(item?.name || t('inv.unknownInput'));
+        entry.unit = item?.unit || entry.unit;
+        entry.quantity += quantity;
+        entry.cost += quantity * itemCost(line.fuel_item_id);
+        byDate.set(report.date, entry);
       });
     });
-    return lines.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    return [...byDate.values()]
+      .map((entry) => ({ ...entry, name: [...entry.names].join(' · ') }))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
   }, [row, reports, itemMap, itemCost, t]);
 
   const logRows = useMemo(
