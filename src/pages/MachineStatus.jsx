@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchList, byId } from '@/lib/data';
 import { buildMachineCosts } from '@/lib/machineryCosts';
+import { avgCostOf, buildCountTotals, buildInputTotals, mergeTotals } from '@/lib/inventory';
+import MachineStatusDetail from '@/components/machinery/MachineStatusDetail';
 import { currentMonthKey, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -34,6 +36,7 @@ export default function MachineStatus() {
   const [logs, setLogs] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
 
   // Catalogue and purchase history, needed to value gasoil and withdrawals.
   useEffect(() => {
@@ -87,6 +90,12 @@ export default function MachineStatus() {
     () => buildMachineCosts({ machines, logs, reports, items, invoices, counts }),
     [machines, logs, reports, items, invoices, counts],
   );
+
+  // Weighted average unit price, as used for the machine costs.
+  const itemCost = useMemo(() => {
+    const totals = mergeTotals(buildInputTotals(invoices), buildCountTotals(counts));
+    return (itemId) => avgCostOf(totals, itemId);
+  }, [invoices, counts]);
 
   const rows = useMemo(() => {
     const quantities = new Map();
@@ -180,37 +189,53 @@ export default function MachineStatus() {
       ) : rows.length === 0 ? (
         <EmptyState icon={Tractor} title={t('ms.emptyTitle')} description={t('ms.emptyDesc')} />
       ) : (
-        <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
-          {rows.map((row) => (
-            <li key={row.id} className="px-4 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{row.name}</p>
-                  {row.fuels.length > 0 && (
-                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                      {row.fuels
-                        .map((line) => `${line.name} · ${fmtNum(line.quantity, 1)} ${line.unit}`)
-                        .join(' · ')}
+        <>
+          <p className="px-1 text-[11px] text-muted-foreground">{t('msd.hint')}</p>
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
+            {rows.map((row) => (
+              <li
+                key={row.id}
+                onDoubleClick={() => setSelectedId(row.id)}
+                className="cursor-pointer px-4 py-4 transition-colors hover:bg-secondary/30"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{row.name}</p>
+                    {row.fuels.length > 0 && (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {row.fuels
+                          .map((line) => `${line.name} · ${fmtNum(line.quantity, 1)} ${line.unit}`)
+                          .join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-end">
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{t('ms.chmp')}</p>
+                    <p className="text-sm font-medium tabular-nums">
+                      {row.chmp === null ? '—' : fmtMoney(row.chmp)}
                     </p>
-                  )}
+                  </div>
                 </div>
-                <div className="shrink-0 text-end">
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{t('ms.chmp')}</p>
-                  <p className="text-sm font-medium tabular-nums">
-                    {row.chmp === null ? '—' : fmtMoney(row.chmp)}
-                  </p>
-                </div>
-              </div>
-              <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Metric label={t('ms.hoursShort')} value={`${fmtNum(row.hours, 1)} h`} />
-                <Metric label={t('ms.fuel')} value={`${fmtNum(row.fuelTotal, 1)}`} />
-                <Metric label={t('ms.fuelCost')} value={fmtMoney(row.fuelCost)} />
-                <Metric label={t('ms.maintenanceCost')} value={fmtMoney(row.maintenanceCost)} />
-              </dl>
-            </li>
-          ))}
-        </ul>
+                <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <Metric label={t('ms.hoursShort')} value={`${fmtNum(row.hours, 1)} h`} />
+                  <Metric label={t('ms.fuel')} value={`${fmtNum(row.fuelTotal, 1)}`} />
+                  <Metric label={t('ms.fuelCost')} value={fmtMoney(row.fuelCost)} />
+                  <Metric label={t('ms.maintenanceCost')} value={fmtMoney(row.maintenanceCost)} />
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
+
+      <MachineStatusDetail
+        row={rows.find((row) => row.id === selectedId) || null}
+        reports={reports}
+        logs={logs}
+        items={items}
+        itemCost={itemCost}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
   );
 }
