@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Company this record belongs to"
     },
+    "group_id": {
+      "type": "string",
+      "description": "Entry that wrote this report together with the other parcels of the same day"
+    },
     "date": {
       "type": "string",
       "format": "date"

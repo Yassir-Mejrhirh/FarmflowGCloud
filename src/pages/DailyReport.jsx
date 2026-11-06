@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ClipboardList, Tractor, Trash2, Users } from 'lucide-react';
+import { ClipboardList, Pencil, Tractor, Trash2, Users } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import Field from '@/components/Field';
@@ -11,8 +11,10 @@ import FuelLine from '@/components/dailyreport/FuelLine';
 import OtherInputsPanel from '@/components/dailyreport/OtherInputsPanel';
 import StockShortageAlert from '@/components/stock/StockShortageAlert';
 import { aggregateQuantities, findShortages } from '@/lib/stockGuard';
-import { buildOnHand, pickStorageFor } from '@/lib/inventory';
-import { buildReportOutflow } from '@/lib/reportStock';
+import { buildOnHand } from '@/lib/inventory';
+import { buildReportMovements, buildReportOutflow } from '@/lib/reportStock';
+import { buildEditDraft, entryReports } from '@/lib/reportDraft';
+import ReportEditDialog from '@/components/dailyreport/ReportEditDialog';
 import { isFuelItem, isLubricantItem, isMachineConsumableItem } from '@/lib/machineryCosts';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
@@ -44,6 +46,8 @@ export default function DailyReport() {
   const [inputs, setInputs] = useState([]);
   const [saving, setSaving] = useState(false);
   const [rangeError, setRangeError] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editChoice, setEditChoice] = useState(null);
 
   const load = async () => {
     const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, storageRows, reportRows, taskRows, natureRows] = await Promise.all([
@@ -134,9 +138,26 @@ export default function DailyReport() {
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
+  // A reopened report replaces its own movements: those quantities come back into
+  // the available stock before the new amounts are checked against it.
+  const replaced = useMemo(() => {
+    const totals = new Map();
+    if (!editing) return totals;
+    const ids = new Set(editing.rows.map((row) => row.id));
+    movements
+      .filter((movement) => ids.has(movement.report_id) && movement.kind !== 'in')
+      .forEach((movement) => {
+        totals.set(movement.item_id, (totals.get(movement.item_id) || 0) + (Number(movement.quantity) || 0));
+      });
+    return totals;
+  }, [editing, movements]);
   const shortages = useMemo(
-    () => findShortages(aggregateQuantities(outflow), (itemId) => stockTotals[itemId]?.quantity || 0),
-    [outflow, stockTotals],
+    () =>
+      findShortages(
+        aggregateQuantities(outflow),
+        (itemId) => (stockTotals[itemId]?.quantity || 0) + (replaced.get(itemId) || 0),
+      ),
+    [outflow, stockTotals, replaced],
   );
   const stockExceeded = shortages.length > 0;
   const canSubmit =
@@ -184,54 +205,91 @@ export default function DailyReport() {
           .map((line) => ({ item_id: line.item_id, quantity: share(line.quantity) })),
       };
     };
-    const createdRows = await Promise.all(
-      shares.map((row) =>
-        base44.entities.DailyReport.create({ ...payloadFor(row.weight), block_id: row.block.id }),
-      ),
-    );
-    if (outflow.length) {
-      const round = (value) => Math.round(value * 1000) / 1000;
-      const storagesOf = (report) => {
-        const blockFarm = blockMap[report.block_id]?.farm;
-        return blockFarm ? storages.filter((storage) => storage.farm === blockFarm) : [];
-      };
-      // Inputs are charged to each parcel in proportion to its area in hectares.
-      const inputRows = createdRows.flatMap((report, index) =>
-        outflow
-          .filter((line) => !line.machine_id)
-          .map((line) => ({
-            item_id: line.item_id,
-            kind: 'out',
-            quantity: round(line.quantity * shares[index].weight),
-            date: form.date,
-            storage_id: pickStorageFor(storagesOf(report), invoices, line.item_id),
-            block_id: report.block_id,
-            report_id: report.id,
-            notes: form.description.trim(),
-          })),
+    const weights = new Map(shares.map((row) => [row.block.id, row.weight]));
+    const entryId = `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+    const writtenRows = editing
+      ? await Promise.all(
+          editing.rows.map((report) =>
+            base44.entities.DailyReport.update(report.id, {
+              ...payloadFor(weights.get(report.block_id) ?? 1),
+              block_id: report.block_id,
+            }),
+          ),
+        )
+      : await Promise.all(
+          shares.map((row) =>
+            base44.entities.DailyReport.create({
+              ...payloadFor(row.weight),
+              block_id: row.block.id,
+              group_id: entryId,
+            }),
+          ),
+        );
+
+    if (editing) {
+      // The movements generated by the reopened reports are replaced, never added to.
+      await Promise.all(
+        editing.rows.map((report) => base44.entities.StockMovement.deleteMany({ report_id: report.id })),
       );
-      // The fuel leaves the store once, in full, for the machine that burnt it: the
-      // hourly cost of the machine then charges the parcels by their working hours.
-      const fuelRows = outflow
-        .filter((line) => line.machine_id)
-        .map((line) => ({
-          item_id: line.item_id,
-          kind: 'out',
-          quantity: round(line.quantity),
-          date: form.date,
-          storage_id: pickStorageFor(storagesOf(createdRows[0]), invoices, line.item_id),
-          machine_id: line.machine_id,
-          report_id: createdRows[0].id,
-          notes: form.description.trim(),
-        }));
-      await base44.entities.StockMovement.bulkCreate([...inputRows, ...fuelRows]);
     }
+
+    if (outflow.length) {
+      // A reopened report keeps its identity, so its movements point at the same rows.
+      const movementRows = editing ? editing.rows : writtenRows;
+      await base44.entities.StockMovement.bulkCreate(
+        buildReportMovements({
+          rows: movementRows,
+          outflow,
+          weights,
+          farmOf: (blockId) => blockMap[blockId]?.farm,
+          storages,
+          invoices,
+          date: form.date,
+          notes: form.description.trim(),
+        }),
+      );
+    }
+
     setSaving(false);
-    setForm({ ...form, block_ids: [], description: '', notes: '' });
+    cancelEdit();
+    load();
+  };
+
+  const startEdit = (rows) => {
+    const draft = buildEditDraft(rows, movements, items);
+    setForm({
+      date: draft.date,
+      task_id: draft.task_id,
+      description: draft.description,
+      notes: draft.notes,
+      block_ids: rows.map((row) => row.block_id),
+    });
+    setLabour(draft.labour);
+    setMachinery(draft.machinery);
+    setInputs(draft.inputs);
+    setEditing({ rows });
+    setEditChoice(null);
+    setRangeError(null);
+  };
+
+  const cancelEdit = () => {
+    setEditing(null);
+    setForm({ date: todayISO(), block_ids: [], task_id: '', description: '', notes: '' });
     setLabour([]);
     setMachinery([]);
     setInputs([]);
-    load();
+    setRangeError(null);
+  };
+
+  // One report can stand for a whole entry: the scope is chosen before the form fills.
+  const openEdit = (report) => {
+    const group = entryReports(reports, report);
+    if (group.length > 1) {
+      setEditChoice({ report, group });
+      return;
+    }
+    startEdit([report]);
   };
 
   const remove = async (report) => {
@@ -257,7 +315,20 @@ export default function DailyReport() {
 
       <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
-          <h2 className="font-display text-lg tracking-tight">{t('report.formTitle')}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-lg tracking-tight">
+              {editing ? t('report.editTitle') : t('report.formTitle')}
+            </h2>
+            {editing && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="text-[11px] text-muted-foreground hover:underline"
+              >
+                {t('report.cancelEdit')}
+              </button>
+            )}
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label={t('report.date')}>
@@ -276,42 +347,53 @@ export default function DailyReport() {
                 </p>
               )}
             </Field>
-            <Field label={t('report.farm')}>
-              <SelectField
-                value={farmId}
-                onChange={(value) => {
-                  setRangeError(null);
-                  setFarmId(value);
-                  const name = farms.find((farm) => farm.id === value)?.name;
-                  const kept = name
-                    ? form.block_ids.filter((id) => blockMap[id]?.farm === name)
-                    : form.block_ids;
-                  if (kept.length !== form.block_ids.length) {
-                    setForm({ ...form, block_ids: kept });
-                  }
-                }}
-                options={farms.map((farm) => ({ value: farm.id, label: farm.name }))}
-                noneLabel={t('report.allFarms')}
-              />
-            </Field>
+            {!editing && (
+              <Field label={t('report.farm')}>
+                <SelectField
+                  value={farmId}
+                  onChange={(value) => {
+                    setRangeError(null);
+                    setFarmId(value);
+                    const name = farms.find((farm) => farm.id === value)?.name;
+                    const kept = name
+                      ? form.block_ids.filter((id) => blockMap[id]?.farm === name)
+                      : form.block_ids;
+                    if (kept.length !== form.block_ids.length) {
+                      setForm({ ...form, block_ids: kept });
+                    }
+                  }}
+                  options={farms.map((farm) => ({ value: farm.id, label: farm.name }))}
+                  noneLabel={t('report.allFarms')}
+                />
+              </Field>
+            )}
           </div>
 
           <Field label={t('report.blocks')}>
-            <BlockPicker
-              groups={blockGroups}
-              selected={form.block_ids}
-              onChange={(ids) => {
-                setRangeError(null);
-                setForm({ ...form, block_ids: ids });
-              }}
-            />
-            {shares.length > 1 && (
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                {t('report.areaShare')} ·{' '}
-                {shares
-                  .map((row) => `${row.block.name} ${Math.round(row.weight * 100)}%`)
-                  .join(' · ')}
-              </p>
+            {editing ? (
+              <>
+                <div className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-sm">
+                  {shares.map((row) => row.block.name).join(' · ') || '—'}
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">{t('report.blocksLocked')}</p>
+              </>
+            ) : (
+              <>
+                <BlockPicker
+                  groups={blockGroups}
+                  selected={form.block_ids}
+                  onChange={(ids) => {
+                    setRangeError(null);
+                    setForm({ ...form, block_ids: ids });
+                  }}
+                />
+                {shares.length > 1 && (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    {t('report.areaShare')} ·{' '}
+                    {shares.map((row) => `${row.block.name} ${Math.round(row.weight * 100)}%`).join(' · ')}
+                  </p>
+                )}
+              </>
             )}
           </Field>
 
@@ -393,7 +475,7 @@ export default function DailyReport() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={saving || !canSubmit} className="rounded-xl">
-              {saving ? t('common.saving') : t('report.submit')}
+              {saving ? t('common.saving') : editing ? t('report.update') : t('report.submit')}
             </Button>
             {(!form.block_ids.length || !form.task_id) && (
               <span className="text-[11px] text-muted-foreground">{t('report.needBlock')}</span>
@@ -430,8 +512,15 @@ export default function DailyReport() {
                     <span>{t('report.inputCount', { n: report.inputs?.length || 0 })}</span>
                     <button
                       type="button"
+                      onClick={() => openEdit(report)}
+                      className="ms-auto inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      <Pencil className="h-3 w-3" /> {t('common.edit')}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => remove(report)}
-                      className="ms-auto inline-flex items-center gap-1 text-destructive hover:underline"
+                      className="inline-flex items-center gap-1 text-destructive hover:underline"
                     >
                       <Trash2 className="h-3 w-3" /> {t('common.delete')}
                     </button>
@@ -445,6 +534,14 @@ export default function DailyReport() {
           </p>
         </section>
       </div>
+
+      <ReportEditDialog
+        open={!!editChoice}
+        count={editChoice?.group.length || 0}
+        onClose={() => setEditChoice(null)}
+        onSingle={() => startEdit(editChoice.group.filter((row) => row.id === editChoice.report.id))}
+        onGroup={() => startEdit(editChoice.group)}
+      />
     </div>
   );
 }
