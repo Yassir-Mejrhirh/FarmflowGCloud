@@ -52,7 +52,7 @@
     },
     "machinery": {
       "type": "array",
-      "description": "Machines used, their hours, and the fuel drawn from stock for each machine",
+      "description": "Machines used, their hours, and the fuel and lubricant drawn from stock for each machine",
       "items": {
         "type": "object",
         "properties": {
@@ -69,13 +69,21 @@
           "fuel_quantity": {
             "type": "number",
             "description": "Quantity of fuel consumed by this machine"
+          },
+          "lubricant_item_id": {
+            "type": "string",
+            "description": "Lubricant input taken from stock for this machine"
+          },
+          "lubricant_quantity": {
+            "type": "number",
+            "description": "Quantity of lubricant consumed by this machine"
           }
         }
       }
     },
     "inputs": {
       "type": "array",
-      "description": "Inputs consumed and their quantities",
+      "description": "Other inputs consumed and their quantities",
       "items": {
         "type": "object",
         "properties": {

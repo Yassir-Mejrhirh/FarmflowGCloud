@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Boxes, ClipboardList, Tractor, Trash2, Users } from 'lucide-react';
+import { ClipboardList, Tractor, Trash2, Users } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import Field from '@/components/Field';
@@ -8,11 +8,12 @@ import SelectField from '@/components/SelectField';
 import UsageField from '@/components/dailyreport/UsageField';
 import InputStockNote from '@/components/dailyreport/InputStockNote';
 import FuelLine from '@/components/dailyreport/FuelLine';
+import OtherInputsPanel from '@/components/dailyreport/OtherInputsPanel';
 import StockShortageAlert from '@/components/stock/StockShortageAlert';
 import { aggregateQuantities, findShortages } from '@/lib/stockGuard';
 import { buildOnHand, pickStorageFor } from '@/lib/inventory';
 import { buildReportOutflow } from '@/lib/reportStock';
-import { isFuelItem } from '@/lib/machineryCosts';
+import { isFuelItem, isLubricantItem, isMachineConsumableItem } from '@/lib/machineryCosts';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,11 +117,18 @@ export default function DailyReport() {
   const itemMap = useMemo(() => byId(items), [items]);
   const stockTotals = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
   const outflow = useMemo(() => buildReportOutflow(inputs, machinery), [inputs, machinery]);
+  const itemOption = (item) => ({ value: item.id, label: `${item.name}${item.unit ? ` (${item.unit})` : ''}` });
   const fuelOptions = useMemo(
-    () =>
-      [...items]
-        .sort((a, b) => Number(isFuelItem(b)) - Number(isFuelItem(a)))
-        .map((item) => ({ value: item.id, label: `${item.name}${item.unit ? ` (${item.unit})` : ''}` })),
+    () => [...items].sort((a, b) => Number(isFuelItem(b)) - Number(isFuelItem(a))).map(itemOption),
+    [items],
+  );
+  const lubricantOptions = useMemo(
+    () => [...items].sort((a, b) => Number(isLubricantItem(b)) - Number(isLubricantItem(a))).map(itemOption),
+    [items],
+  );
+  // Fuel and lubricants are entered on the machine that consumed them, never here.
+  const otherInputOptions = useMemo(
+    () => items.filter((item) => !isMachineConsumableItem(item)).map(itemOption),
     [items],
   );
 
@@ -357,24 +365,16 @@ export default function DailyReport() {
               addLabel={t('report.addMachine')}
               emptyLabel={t('report.noMachine')}
               renderMeta={(line, patch) => (
-                <FuelLine line={line} patch={patch} options={fuelOptions} />
+                <FuelLine line={line} patch={patch} fuelOptions={fuelOptions} lubricantOptions={lubricantOptions} />
               )}
             />
             {machineryReady && (
               <p className="ps-1 text-[11px] text-muted-foreground">{t('report.fuelHint')}</p>
             )}
-            <UsageField
-              icon={Boxes}
-              title={t('report.inputs')}
-              placeholder={t('report.chooseInputs')}
+            <OtherInputsPanel
               lines={inputs}
               onChange={setInputs}
-              options={items.map((item) => ({ value: item.id, label: `${item.name}${item.unit ? ` (${item.unit})` : ''}` }))}
-              idKey="item_id"
-              qtyKey="quantity"
-              qtyLabel={t('report.qty')}
-              addLabel={t('report.addInput')}
-              emptyLabel={t('report.noInput')}
+              options={otherInputOptions}
               renderMeta={(line) => (
                 <InputStockNote
                   item={itemMap[line.item_id]}
