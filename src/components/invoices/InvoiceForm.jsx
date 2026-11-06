@@ -6,10 +6,9 @@ import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { todayISO, fmtMoney } from '@/lib/format';
+import { todayISO, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
-
-const UNIT_OPTIONS = ['L', 'KG', 'Flacon', 'Sac', 'Bidon', 'Tonne', 'Carton', 'Palette'];
+import { priceToPrimary, toPrimary, unitOptionsFor } from '@/lib/units';
 
 const emptyLine = () => ({ item_id: '', quantity: '', unit: '', unit_price: '' });
 
@@ -35,7 +34,13 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
   const setLine = (index, key, value) =>
     setForm((prev) => ({
       ...prev,
-      lines: prev.lines.map((line, i) => (i === index ? { ...line, [key]: value } : line)),
+      lines: prev.lines.map((line, i) => {
+        if (i !== index) return line;
+        if (key !== 'item_id') return { ...line, [key]: value };
+        // À la sélection de l'intrant, l'unité principale devient l'unité de saisie.
+        const item = items.find((row) => row.id === value);
+        return { ...line, item_id: value, unit: item?.unit || '' };
+      }),
     }));
 
   const addLine = () => setForm((prev) => ({ ...prev, lines: [...prev.lines, emptyLine()] }));
@@ -61,12 +66,16 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
       storage_id: form.storage_id,
       lines: form.lines
         .filter((line) => line.item_id || Number(line.quantity) || Number(line.unit_price))
-        .map((line) => ({
-          item_id: line.item_id,
-          quantity: Number(line.quantity) || 0,
-          unit: line.unit.trim(),
-          unit_price: Number(line.unit_price) || 0,
-        })),
+        .map((line) => {
+          const item = items.find((row) => row.id === line.item_id);
+          // La quantité et le prix sont enregistrés dans l'unité principale de l'intrant.
+          return {
+            item_id: line.item_id,
+            quantity: toPrimary(line.quantity, line.unit, item),
+            unit: item?.unit || line.unit.trim(),
+            unit_price: priceToPrimary(line.unit_price, line.unit, item),
+          };
+        }),
       amount: total,
       notes: form.notes.trim(),
     });
@@ -120,7 +129,11 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {t('invInvoices.lines')}
         </p>
-        {form.lines.map((line, index) => (
+        {form.lines.map((line, index) => {
+          const lineItem = items.find((row) => row.id === line.item_id);
+          const converted = toPrimary(line.quantity, line.unit, lineItem);
+          const showConversion = lineItem && line.unit && line.unit !== lineItem.unit && converted > 0;
+          return (
           <div key={index} className="rounded-xl border border-border/60 bg-secondary/20 p-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <Field label={t('invInvoices.item')}>
@@ -140,11 +153,11 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
                 />
               </Field>
               <Field label={t('invInvoices.unit')}>
-                <Input
+                <SelectField
                   value={line.unit}
-                  onChange={(e) => setLine(index, 'unit', e.target.value)}
-                  list="invoice-units"
-                  placeholder={t('invInvoices.unitPlaceholder')}
+                  onChange={(value) => setLine(index, 'unit', value)}
+                  noneLabel={t('itemDialog.noUnit')}
+                  options={unitOptionsFor(lineItem)}
                 />
               </Field>
               <div className="flex items-end gap-2">
@@ -170,18 +183,21 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
                 )}
               </div>
             </div>
-            {lineTotal(line) > 0 && (
-              <p className="mt-2 text-end text-[11px] tabular-nums text-muted-foreground">
-                {t('invInvoices.lineTotal')} {fmtMoney(lineTotal(line))}
-              </p>
-            )}
+            <div className="mt-2 flex flex-wrap items-center justify-end gap-x-3 text-[11px] tabular-nums text-muted-foreground">
+              {showConversion && (
+                <span>
+                  = {fmtNum(converted, 2)} {lineItem.unit}
+                </span>
+              )}
+              {lineTotal(line) > 0 && (
+                <span>
+                  {t('invInvoices.lineTotal')} {fmtMoney(lineTotal(line))}
+                </span>
+              )}
+            </div>
           </div>
-        ))}
-        <datalist id="invoice-units">
-          {UNIT_OPTIONS.map((unit) => (
-            <option key={unit} value={unit} />
-          ))}
-        </datalist>
+          );
+        })}
         <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={addLine}>
           <Plus className="mr-1.5 h-3.5 w-3.5" /> {t('invInvoices.addLine')}
         </Button>

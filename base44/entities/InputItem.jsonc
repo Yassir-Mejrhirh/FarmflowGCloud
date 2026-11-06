@@ -19,7 +19,15 @@
     },
     "unit": {
       "type": "string",
-      "description": "Unit of measure, e.g. L, KG, Sac"
+      "description": "Primary unit of measure, in which stock is stored and computed (e.g. L, KG, Sac)"
+    },
+    "secondary_unit": {
+      "type": "string",
+      "description": "Secondary predefined unit used for entry, e.g. baril or hl"
+    },
+    "secondary_factor": {
+      "type": "number",
+      "description": "How many primary units one secondary unit contains, e.g. 45 for 1 baril = 45 L"
     },
     "supplier_ids": {
       "type": "array",

@@ -10,16 +10,18 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
+import { UNIT_OPTIONS, suggestedFactor } from '@/lib/units';
 import { cn } from '@/lib/utils';
 
 const FORMULATIONS = ['Liquide', 'Poudre', 'Granulé', 'Suspension', 'Émulsion', 'Gel', 'Appât'];
-const UNITS = ['L', 'KG', 'Sac', 'Bidon', 'Flacon', 'Tonne', 'Carton', 'Unité'];
 
 const emptyForm = () => ({
   name: '',
   category: '',
   formulation: '',
   unit: '',
+  secondary_unit: '',
+  secondary_factor: '',
   supplier_ids: [],
   min_stock_enabled: false,
   min_stock: '',
@@ -42,6 +44,8 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
       category: item?.category || '',
       formulation: item?.formulation || '',
       unit: item?.unit || '',
+      secondary_unit: item?.secondary_unit || '',
+      secondary_factor: item?.secondary_factor ?? '',
       supplier_ids: item?.supplier_ids || [],
       min_stock_enabled: Boolean(item?.min_stock_enabled),
       min_stock: item?.min_stock ?? '',
@@ -59,6 +63,29 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
   }, [open, item]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  // Le choix d'une unité prédéfinie met à jour l'équivalence automatiquement.
+  const setUnit = (key, value) =>
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === 'unit' && prev.secondary_unit === value) next.secondary_unit = '';
+      if (key === 'secondary_unit' && prev.unit === value) next.unit = '';
+      const suggestion = suggestedFactor(next.unit, next.secondary_unit);
+      if (suggestion) next.secondary_factor = String(suggestion);
+      else if (!next.secondary_unit) next.secondary_factor = '';
+      return next;
+    });
+
+  // Unités proposées : les prédéfinies, plus la valeur déjà enregistrée si elle est libre.
+  const unitOptions = (exclude) => {
+    const options = UNIT_OPTIONS.filter((option) => option.value !== exclude);
+    [form.unit, form.secondary_unit].forEach((value) => {
+      if (value && !options.some((option) => option.value === value)) {
+        options.push({ value, label: value });
+      }
+    });
+    return options;
+  };
 
   const toggleSupplier = (id) =>
     setForm((prev) => ({
@@ -88,6 +115,8 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
       category: form.category,
       formulation: form.formulation.trim(),
       unit: form.unit.trim(),
+      secondary_unit: form.secondary_unit.trim(),
+      secondary_factor: Number(form.secondary_factor) || 0,
       supplier_ids: form.supplier_ids,
       min_stock_enabled: form.min_stock_enabled,
       min_stock: Number(form.min_stock) || 0,
@@ -151,13 +180,43 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
         </Field>
 
         <Field label={t('itemDialog.unit')}>
-          <Input
+          <SelectField
             value={form.unit}
-            onChange={(e) => set('unit', e.target.value)}
-            list="input-units"
-            placeholder="L, KG, Sac…"
+            onChange={(value) => setUnit('unit', value)}
+            noneLabel={t('itemDialog.noUnit')}
+            options={unitOptions()}
           />
         </Field>
+
+        <Field label={t('itemDialog.secondaryUnit')} hint={t('itemDialog.secondaryUnitHint')}>
+          <SelectField
+            value={form.secondary_unit}
+            onChange={(value) => setUnit('secondary_unit', value)}
+            noneLabel={t('itemDialog.noSecondaryUnit')}
+            options={unitOptions(form.unit)}
+          />
+        </Field>
+
+        {form.secondary_unit && (
+          <div className="sm:col-span-2">
+            <Field label={t('itemDialog.equivalence')} hint={t('itemDialog.equivalenceHint')}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                  1 {form.secondary_unit} =
+                </span>
+                <Input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  value={form.secondary_factor ?? ''}
+                  onChange={(e) => set('secondary_factor', e.target.value)}
+                  className="w-24"
+                />
+                <span className="text-xs text-muted-foreground">{form.unit || t('itemDialog.unit')}</span>
+              </div>
+            </Field>
+          </div>
+        )}
 
         <Field label={t('itemDialog.formulation')}>
           <Input
@@ -225,11 +284,6 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
         <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={2} />
       </Field>
 
-      <datalist id="input-units">
-        {UNITS.map((unit) => (
-          <option key={unit} value={unit} />
-        ))}
-      </datalist>
       <datalist id="input-formulations">
         {FORMULATIONS.map((formulation) => (
           <option key={formulation} value={formulation} />

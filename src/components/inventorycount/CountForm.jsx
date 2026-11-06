@@ -10,9 +10,8 @@ import { todayISO, fmtMoney } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { syncCountMovements } from '@/lib/countStock';
 import { findStockUsages } from '@/lib/stockUsage';
+import { priceToPrimary, toPrimary, unitOptionsFor } from '@/lib/units';
 import StockUsageBlockedDialog from '@/components/inventorycount/StockUsageBlockedDialog';
-
-const UNIT_OPTIONS = ['L', 'KG', 'Flacon', 'Sac', 'Bidon', 'Tonne', 'Carton', 'Palette'];
 
 const emptyLine = () => ({ item_id: '', category: '', unit: '', unit_price: '', quantity: '' });
 
@@ -105,13 +104,17 @@ export default function CountForm({
       return;
     }
     setError('');
-    const lines = filledLines.map((line) => ({
-      item_id: line.item_id,
-      category: line.category.trim(),
-      unit: line.unit.trim(),
-      unit_price: Number(line.unit_price) || 0,
-      quantity: Number(line.quantity) || 0,
-    }));
+    // La quantité constatée et le prix sont ramenés dans l'unité principale de l'intrant.
+    const lines = filledLines.map((line) => {
+      const item = items.find((row) => row.id === line.item_id);
+      return {
+        item_id: line.item_id,
+        category: line.category.trim(),
+        unit: item?.unit || line.unit.trim(),
+        unit_price: priceToPrimary(line.unit_price, line.unit, item),
+        quantity: toPrimary(line.quantity, line.unit, item),
+      };
+    });
     const payload = {
       date: form.date,
       storage_id: form.storage_id,
@@ -225,11 +228,12 @@ export default function CountForm({
                     />
                   </td>
                   <td className="px-2.5 py-2">
-                    <Input
+                    <SelectField
                       value={line.unit}
-                      onChange={(e) => setLine(index, 'unit', e.target.value)}
-                      list="count-units"
-                      className="h-9 w-[90px]"
+                      onChange={(value) => setLine(index, 'unit', value)}
+                      noneLabel={t('itemDialog.noUnit')}
+                      options={unitOptionsFor(items.find((row) => row.id === line.item_id))}
+                      className="h-9 w-[110px]"
                     />
                   </td>
                   <td className="px-2.5 py-2">
@@ -306,11 +310,6 @@ export default function CountForm({
           </table>
         </div>
 
-        <datalist id="count-units">
-          {UNIT_OPTIONS.map((unit) => (
-            <option key={unit} value={unit} />
-          ))}
-        </datalist>
       </div>
 
       <div className="mt-3">
