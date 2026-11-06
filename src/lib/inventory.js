@@ -61,6 +61,27 @@ export function buildOnHand(invoices = [], movements = []) {
   return onHand;
 }
 
+// On-hand quantity per input, broken down by storage: invoices and movements of that storage.
+export function buildStorageOnHand(invoices = [], movements = []) {
+  const totals = {};
+  const add = (storageId, itemId, quantity) => {
+    if (!storageId || !itemId || !quantity) return;
+    const byStorage = totals[storageId] || {};
+    byStorage[itemId] = (byStorage[itemId] || 0) + quantity;
+    totals[storageId] = byStorage;
+  };
+  invoices.forEach((invoice) => {
+    (invoice.lines || []).forEach((line) => {
+      add(invoice.storage_id, line.item_id, Number(line.quantity) || 0);
+    });
+  });
+  movements.forEach((movement) => {
+    const sign = movement.kind === 'out' ? -1 : 1;
+    add(movement.storage_id, movement.item_id, sign * (Number(movement.quantity) || 0));
+  });
+  return totals;
+}
+
 // Storage of a farm that holds the most of this input, so stock-outs leave the right depot.
 export function pickStorageFor(storages = [], invoices = [], itemId) {
   if (!storages.length || !itemId) return '';

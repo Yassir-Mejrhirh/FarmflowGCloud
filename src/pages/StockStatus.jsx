@@ -5,8 +5,9 @@ import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
 import ItemOperationsDialog from '@/components/stock/ItemOperationsDialog';
+import StockFilters from '@/components/stock/StockFilters';
 import { fetchList } from '@/lib/data';
-import { avgCostOf, buildCountTotals, buildInputTotals, buildOnHand, mergeTotals } from '@/lib/inventory';
+import { avgCostOf, buildCountTotals, buildInputTotals, buildOnHand, buildStorageOnHand, mergeTotals } from '@/lib/inventory';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -15,9 +16,12 @@ export default function StockStatus() {
   const [items, setItems] = useState([]);
   const [purchases, setPurchases] = useState({});
   const [onHand, setOnHand] = useState({});
+  const [storageOnHand, setStorageOnHand] = useState({});
   const [invoices, setInvoices] = useState([]);
   const [movements, setMovements] = useState([]);
   const [storages, setStorages] = useState([]);
+  const [storageFilter, setStorageFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,26 +40,42 @@ export default function StockStatus() {
       setStorages(storageRows);
       setPurchases(mergeTotals(buildInputTotals(invoiceRows), buildCountTotals(countRows)));
       setOnHand(buildOnHand(invoiceRows, movementRows));
+      setStorageOnHand(buildStorageOnHand(invoiceRows, movementRows));
       setLoading(false);
     };
     load();
   }, []);
 
-  const rows = items.map((item) => {
-    const quantity = onHand[item.id]?.quantity || 0;
-    const price = avgCostOf(purchases, item.id);
-    const minimum = Number(item.min_stock) || 0;
-    return {
-      id: item.id,
-      name: item.name,
-      unit: item.unit || '',
-      quantity,
-      price,
-      value: quantity * price,
-      low: item.min_stock_enabled && quantity <= minimum,
-      minimum,
-    };
-  });
+  const categories = useMemo(
+    () => [...new Set(items.map((item) => (item.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [items],
+  );
+
+  const rows = useMemo(
+    () =>
+      items
+        .filter((item) => !categoryFilter || (item.category || '').trim() === categoryFilter)
+        .map((item) => {
+          const quantity = storageFilter
+            ? storageOnHand[storageFilter]?.[item.id] || 0
+            : onHand[item.id]?.quantity || 0;
+          const price = avgCostOf(purchases, item.id);
+          const minimum = Number(item.min_stock) || 0;
+          return {
+            id: item.id,
+            name: item.name,
+            category: item.category || '',
+            unit: item.unit || '',
+            quantity,
+            price,
+            value: quantity * price,
+            low: item.min_stock_enabled && quantity <= minimum,
+            minimum,
+          };
+        })
+        .filter((row) => !storageFilter || row.quantity !== 0),
+    [items, onHand, storageOnHand, purchases, storageFilter, categoryFilter],
+  );
 
   const totalValue = rows.reduce((sum, row) => sum + row.value, 0);
   const lowRows = rows.filter((row) => row.low);
@@ -116,11 +136,21 @@ export default function StockStatus() {
 
       {loading ? (
         <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-      ) : rows.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState icon={Boxes} title={t('stock.emptyTitle')} description={t('stock.emptyDesc')} />
       ) : (
         <div>
-          <p className="mb-2 text-[11px] text-muted-foreground">{t('stock.hint')}</p>
+          <div className="mb-4 space-y-2">
+            <StockFilters
+              storages={storages}
+              categories={categories}
+              storage={storageFilter}
+              category={categoryFilter}
+              onStorage={setStorageFilter}
+              onCategory={setCategoryFilter}
+            />
+            <p className="text-[11px] text-muted-foreground">{t('stock.hint')}</p>
+          </div>
           <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
             <li className="hidden bg-secondary/40 px-4 py-2.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground sm:flex sm:gap-3">
               <span className="flex-1">{t('param.inputs')}</span>
@@ -128,6 +158,9 @@ export default function StockStatus() {
               <span className="w-28 text-end">{t('stock.unitPrice')}</span>
               <span className="w-32 text-end">{t('inv.stockValue')}</span>
             </li>
+            {rows.length === 0 && (
+              <li className="px-4 py-8 text-center text-sm text-muted-foreground">{t('stock.emptyFiltered')}</li>
+            )}
             {rows.map((row) => (
               <li
                 key={row.id}
