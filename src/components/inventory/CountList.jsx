@@ -6,6 +6,8 @@ import { useI18n } from '@/lib/I18nContext';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 import { TRANSLATIONS } from '@/lib/translations';
+import { findStockUsages } from '@/lib/stockUsage';
+import StockUsageBlockedDialog from '@/components/inventorycount/StockUsageBlockedDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +24,7 @@ export default function CountList({ counts, storages, onDeleted }) {
   const { toast } = useToast();
   const [pending, setPending] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [blocked, setBlocked] = useState([]);
   const storageName = (id) => storages.find((storage) => storage.id === id)?.name || '—';
 
   // Le constat avait ajusté le stock : on retire les mouvements qu'il a créés.
@@ -43,6 +46,13 @@ export default function CountList({ counts, storages, onDeleted }) {
 
   const remove = async () => {
     if (!pending) return;
+    // Un intrant déjà consommé doit d'abord être retiré des interventions liées.
+    const used = await findStockUsages((pending.lines || []).map((line) => line.item_id));
+    if (used.length) {
+      setPending(null);
+      setBlocked(used);
+      return;
+    }
     setDeleting(true);
     await removeMovements(pending);
     await base44.entities.InventoryCount.delete(pending.id);
@@ -125,6 +135,13 @@ export default function CountList({ counts, storages, onDeleted }) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <StockUsageBlockedDialog
+      open={blocked.length > 0}
+      onOpenChange={(open) => !open && setBlocked([])}
+      usages={blocked}
+      mode="delete"
+    />
     </>
   );
 }

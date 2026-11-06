@@ -8,6 +8,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { fetchList } from '@/lib/data';
 import { avgCostOf, buildInputTotals, buildOnHand } from '@/lib/inventory';
 import { deleteInventoryCount } from '@/lib/countStock';
+import { findStockUsages } from '@/lib/stockUsage';
+import StockUsageBlockedDialog from '@/components/inventorycount/StockUsageBlockedDialog';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function StockCount() {
@@ -23,6 +25,7 @@ export default function StockCount() {
   const [detail, setDetail] = useState(null);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [usageBlock, setUsageBlock] = useState(null);
 
   const load = async () => {
     const [itemRows, storageRows, invoiceRows, movementRows, countRows, user] = await Promise.all([
@@ -69,6 +72,12 @@ export default function StockCount() {
 
   const remove = async (count) => {
     if (!count) return;
+    // Un intrant déjà consommé doit d'abord être retiré des interventions liées.
+    const used = await findStockUsages((count.lines || []).map((line) => line.item_id));
+    if (used.length) {
+      setUsageBlock(used);
+      return;
+    }
     setDeleting(true);
     await deleteInventoryCount(count);
     setDeleting(false);
@@ -118,6 +127,13 @@ export default function StockCount() {
           setEditing(count);
         }}
         onDelete={remove}
+      />
+
+      <StockUsageBlockedDialog
+        open={Boolean(usageBlock)}
+        onOpenChange={(open) => !open && setUsageBlock(null)}
+        usages={usageBlock || []}
+        mode="delete"
       />
     </div>
   );

@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { todayISO, fmtMoney } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { syncCountMovements } from '@/lib/countStock';
+import { findStockUsages } from '@/lib/stockUsage';
+import StockUsageBlockedDialog from '@/components/inventorycount/StockUsageBlockedDialog';
 
 const UNIT_OPTIONS = ['L', 'KG', 'Flacon', 'Sac', 'Bidon', 'Tonne', 'Carton', 'Palette'];
 
@@ -52,6 +54,7 @@ export default function CountForm({
   const [form, setForm] = useState(() => (editing ? formFromCount(count) : emptyForm()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [usages, setUsages] = useState([]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -102,7 +105,6 @@ export default function CountForm({
       return;
     }
     setError('');
-    setSaving(true);
     const lines = filledLines.map((line) => ({
       item_id: line.item_id,
       category: line.category.trim(),
@@ -117,6 +119,16 @@ export default function CountForm({
       lines,
       notes: form.notes.trim(),
     };
+    // Les intrants déjà consommés doivent d'abord être retirés des interventions.
+    if (editing) {
+      const used = await findStockUsages(lines.map((line) => line.item_id));
+      if (used.length) {
+        setUsages(used);
+        return;
+      }
+    }
+
+    setSaving(true);
     const note = t('stockCount.movementNote', { date: form.date });
 
     // Le constat ajuste le stock : un mouvement d'entrée ou de sortie par écart.
@@ -308,6 +320,13 @@ export default function CountForm({
       </div>
 
       {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+
+      <StockUsageBlockedDialog
+        open={usages.length > 0}
+        onOpenChange={(open) => !open && setUsages([])}
+        usages={usages}
+        mode="edit"
+      />
     </form>
   );
 }
