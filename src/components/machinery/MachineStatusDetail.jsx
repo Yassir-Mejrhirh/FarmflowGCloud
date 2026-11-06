@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { Fuel, Wrench } from 'lucide-react';
+import { Wrench } from 'lucide-react';
+import ConsumptionSection from '@/components/machinery/ConsumptionSection';
 import EmptyState from '@/components/EmptyState';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { byId } from '@/lib/data';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
-import { isMachineConsumableItem, logTotalCost } from '@/lib/machineryCosts';
+import { isFuelItem, isLubricantItem, logTotalCost } from '@/lib/machineryCosts';
 import { useI18n } from '@/lib/I18nContext';
 
 function Tile({ label, value }) {
@@ -29,25 +30,29 @@ export default function MachineStatusDetail({ row, movements, logs, items, itemC
   const { t } = useI18n();
   const itemMap = useMemo(() => byId(items), [items]);
 
-  // One line per date: the gasoil drawn for the machine that day is added up.
-  const fuelLines = useMemo(() => {
-    if (!row) return [];
-    const byDate = new Map();
-    movements.forEach((movement) => {
-      if (movement.machine_id !== row.id || movement.kind !== 'out') return;
-      const quantity = Number(movement.quantity) || 0;
-      const item = itemMap[movement.item_id];
-      if (!(quantity > 0) || !item || !isMachineConsumableItem(item)) return;
-      const entry = byDate.get(movement.date) || { key: movement.date, date: movement.date, names: new Set(), unit: '', quantity: 0, cost: 0 };
-      entry.names.add(item.name || t('inv.unknownInput'));
-      entry.unit = item.unit || entry.unit;
-      entry.quantity += quantity;
-      entry.cost += quantity * itemCost(movement.item_id);
-      byDate.set(movement.date, entry);
-    });
-    return [...byDate.values()]
-      .map((entry) => ({ ...entry, name: [...entry.names].join(' · ') }))
-      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  // One line per date and per nature: gasoil on one side, lubricants on the other.
+  const grouped = useMemo(() => {
+    const build = (matches) => {
+      if (!row) return [];
+      const byDate = new Map();
+      movements.forEach((movement) => {
+        if (movement.machine_id !== row.id || movement.kind !== 'out') return;
+        const quantity = Number(movement.quantity) || 0;
+        const item = itemMap[movement.item_id];
+        if (!(quantity > 0) || !item || !matches(item)) return;
+        const entry = byDate.get(movement.date) || { key: movement.date, date: movement.date, names: new Set(), unit: '', quantity: 0, cost: 0 };
+        entry.names.add(item.name || t('inv.unknownInput'));
+        entry.unit = item.unit || entry.unit;
+        entry.quantity += quantity;
+        entry.cost += quantity * itemCost(movement.item_id);
+        byDate.set(movement.date, entry);
+      });
+      return [...byDate.values()]
+        .map((entry) => ({ ...entry, name: [...entry.names].join(' · ') }))
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    };
+
+    return { fuel: build(isFuelItem), lubricants: build(isLubricantItem) };
   }, [row, movements, itemMap, itemCost, t]);
 
   const logRows = useMemo(
@@ -80,29 +85,18 @@ export default function MachineStatusDetail({ row, movements, logs, items, itemC
               <Tile label={t('ms.chmp')} value={row.chmp === null ? '—' : fmtMoney(row.chmp)} />
             </dl>
 
-            <section className="space-y-2">
-              <SectionTitle icon={Fuel}>{t('msd.fuel')}</SectionTitle>
-              {fuelLines.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t('msd.fuelEmpty')}</p>
-              ) : (
-                <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/70">
-                  {fuelLines.map((line) => (
-                    <li key={line.key} className="flex flex-wrap items-start gap-3 px-3.5 py-2.5">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm">{line.name}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{fmtDate(line.date)}</p>
-                      </div>
-                      <div className="text-end">
-                        <p className="text-sm tabular-nums text-clay">
-                          {fmtNum(line.quantity, 1)} {line.unit}
-                        </p>
-                        <p className="text-[11px] tabular-nums text-muted-foreground">{fmtMoney(line.cost)}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <ConsumptionSection
+              title={t('msd.fuel')}
+              empty={t('msd.fuelEmpty')}
+              lines={grouped.fuel}
+            />
+
+            <ConsumptionSection
+              title={t('msd.lubricants')}
+              empty={t('msd.lubricantsEmpty')}
+              lines={grouped.lubricants}
+              tone="sage"
+            />
 
             <section className="space-y-2">
               <SectionTitle icon={Wrench}>{t('msd.logs')}</SectionTitle>
