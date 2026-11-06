@@ -3,9 +3,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
+import { fmtNum } from '@/lib/format';
+
+const areaOf = (block) => Number(block.area_ha) || 0;
 
 export default function BlockPicker({ groups, selected, onChange }) {
   const { t } = useI18n();
+
+  const selectedArea = groups
+    .flatMap((group) => group.blocks)
+    .filter((block) => selected.includes(block.id))
+    .reduce((sum, block) => sum + areaOf(block), 0);
 
   const toggleBlock = (id) => {
     onChange(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
@@ -29,7 +37,7 @@ export default function BlockPicker({ groups, selected, onChange }) {
         >
           <span className={cn('truncate text-left', !selected.length && 'text-muted-foreground')}>
             {selected.length
-              ? t('report.blocksSelected', { n: selected.length })
+              ? `${t('report.blocksSelected', { n: selected.length })} · ${fmtNum(selectedArea)} ha`
               : t('report.chooseBlocks')}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
@@ -68,6 +76,9 @@ export default function BlockPicker({ groups, selected, onChange }) {
                           onCheckedChange={() => toggleBlock(block.id)}
                         />
                         <span className="truncate">{block.name}</span>
+                        <span className="ms-auto shrink-0 tabular-nums text-[10px] text-muted-foreground">
+                          {fmtNum(areaOf(block))} ha
+                        </span>
                       </label>
                     ))}
                   </div>
