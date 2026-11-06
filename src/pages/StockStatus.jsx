@@ -8,6 +8,7 @@ import ItemOperationsDialog from '@/components/stock/ItemOperationsDialog';
 import StockFilters from '@/components/stock/StockFilters';
 import { fetchList } from '@/lib/data';
 import { avgCostOf, buildCountTotals, buildInputTotals, buildOnHand, buildStorageOnHand, mergeTotals } from '@/lib/inventory';
+import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -20,6 +21,9 @@ export default function StockStatus() {
   const [invoices, setInvoices] = useState([]);
   const [movements, setMovements] = useState([]);
   const [storages, setStorages] = useState([]);
+  const [machines, setMachines] = useState([]);
+  const [blocks, setBlocks] = useState([]);
+  const [reports, setReports] = useState([]);
   const [storageFilter, setStorageFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [selected, setSelected] = useState(null);
@@ -27,17 +31,24 @@ export default function StockStatus() {
 
   useEffect(() => {
     const load = async () => {
-      const [itemRows, invoiceRows, movementRows, countRows, storageRows] = await Promise.all([
-        fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
-        fetchList(base44.entities.InputInvoice, {}),
-        fetchList(base44.entities.StockMovement, {}),
-        fetchList(base44.entities.InventoryCount, {}),
-        fetchList(base44.entities.Storage, {}, { sort: 'name' }),
-      ]);
+      const [itemRows, invoiceRows, movementRows, countRows, storageRows, machineRows, blockRows, reportRows] =
+        await Promise.all([
+          fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+          fetchList(base44.entities.InputInvoice, {}),
+          fetchList(base44.entities.StockMovement, {}),
+          fetchList(base44.entities.InventoryCount, {}),
+          fetchList(base44.entities.Storage, {}, { sort: 'name' }),
+          fetchList(base44.entities.Machine, {}, { sort: 'name' }),
+          fetchList(base44.entities.FarmBlock, {}),
+          fetchList(base44.entities.DailyReport, {}),
+        ]);
       setItems(itemRows);
       setInvoices(invoiceRows);
       setMovements(movementRows);
       setStorages(storageRows);
+      setMachines(machineRows);
+      setBlocks(blockRows);
+      setReports(reportRows);
       setPurchases(mergeTotals(buildInputTotals(invoiceRows), buildCountTotals(countRows)));
       setOnHand(buildOnHand(invoiceRows, movementRows));
       setStorageOnHand(buildStorageOnHand(invoiceRows, movementRows));
@@ -81,9 +92,17 @@ export default function StockStatus() {
   const lowRows = rows.filter((row) => row.low);
   const inStock = rows.filter((row) => row.quantity > 0).length;
 
+  const machineConsumables = useMemo(
+    () => new Set(items.filter(isMachineConsumableItem).map((item) => item.id)),
+    [items],
+  );
+
   const operations = useMemo(() => {
     if (!selected) return [];
-    const storageMap = new Map(storages.map((storage) => [storage.id, storage.name]));
+    const storageMap = new Map(storages.map((storage) => [storage.id, storage]));
+    const machineMap = new Map(machines.map((machine) => [machine.id, machine.name]));
+    const blockMap = new Map(blocks.map((block) => [block.id, block]));
+    const reportMap = new Map(reports.map((report) => [report.id, report]));
 
     const purchaseLines = invoices.flatMap((invoice) =>
       (invoice.lines || [])
@@ -91,6 +110,7 @@ export default function StockStatus() {
         .map((line, index) => {
           const quantity = Number(line.quantity) || 0;
           const unitPrice = Number(line.unit_price) || 0;
+          const storage = storageMap.get(invoice.storage_id);
           return {
             key: `${invoice.id}-${index}`,
             kind: 'in',
@@ -98,27 +118,41 @@ export default function StockStatus() {
             date: invoice.date,
             quantity,
             amount: quantity * unitPrice,
-            place: storageMap.get(invoice.storage_id) || '',
+            place: storage?.name || '',
             notes: invoice.notes || '',
+            machine: '',
+            farm: storage?.farm || '',
           };
         }),
     );
 
     const movementLines = movements
       .filter((movement) => movement.item_id === selected.id)
-      .map((movement) => ({
-        key: movement.id,
-        kind: movement.kind === 'out' ? 'out' : 'in',
-        source: t('stock.movement'),
-        date: movement.date,
-        quantity: Number(movement.quantity) || 0,
-        amount: 0,
-        place: storageMap.get(movement.storage_id) || '',
-        notes: movement.notes || '',
-      }));
+      .map((movement) => {
+        const storage = storageMap.get(movement.storage_id);
+        const report = reportMap.get(movement.report_id);
+        const block = report ? blockMap.get(report.block_id) : null;
+        const machineId =
+          movement.machine_id ||
+          (report?.machinery || []).find(
+            (line) => line.machine_id && line.fuel_item_id === selected.id,
+          )?.machine_id;
+        return {
+          key: movement.id,
+          kind: movement.kind === 'out' ? 'out' : 'in',
+          source: t('stock.movement'),
+          date: movement.date,
+          quantity: Number(movement.quantity) || 0,
+          amount: 0,
+          place: storage?.name || '',
+          notes: movement.notes || '',
+          machine: machineMap.get(machineId) || '',
+          farm: block?.farm || storage?.farm || '',
+        };
+      });
 
     return [...purchaseLines, ...movementLines].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [selected, invoices, movements, storages, t]);
+  }, [selected, invoices, movements, storages, machines, blocks, reports, t]);
 
   return (
     <div className="space-y-8">
@@ -189,7 +223,12 @@ export default function StockStatus() {
         </div>
       )}
 
-      <ItemOperationsDialog item={selected} operations={operations} onClose={() => setSelected(null)} />
+      <ItemOperationsDialog
+        item={selected}
+        operations={operations}
+        groupBy={selected && machineConsumables.has(selected.id) ? 'machine' : 'farm'}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }
