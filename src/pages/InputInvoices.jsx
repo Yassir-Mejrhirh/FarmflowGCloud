@@ -5,12 +5,16 @@ import { List } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import InvoiceForm from '@/components/invoices/InvoiceForm';
 import InvoiceList from '@/components/invoices/InvoiceList';
+import InvoiceEditDialog from '@/components/invoices/InvoiceEditDialog';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { fetchList, byId } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function InputInvoices() {
   const { t } = useI18n();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(null);
   const [suppliers, setSuppliers] = useState([]);
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -40,6 +44,18 @@ export default function InputInvoices() {
   const storageMap = byId(storages);
   const recent = invoices.slice(0, 5);
 
+  const handleSaved = async () => {
+    setEditing(null);
+    await load();
+    toast({ title: editing ? t('invInvoices.updated') : t('invInvoices.created') });
+  };
+
+  const handleDelete = async (invoice) => {
+    await base44.entities.InputInvoice.delete(invoice.id);
+    await load();
+    toast({ title: t('invInvoices.deleted') });
+  };
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -59,7 +75,7 @@ export default function InputInvoices() {
         <div className="h-48 animate-pulse rounded-2xl bg-muted" />
       ) : (
         <>
-          <InvoiceForm suppliers={suppliers} items={items} storages={storages} onSaved={load} />
+          <InvoiceForm suppliers={suppliers} items={items} storages={storages} onSaved={handleSaved} />
 
           <section className="space-y-3">
             <div className="flex items-end justify-between gap-3">
@@ -73,9 +89,25 @@ export default function InputInvoices() {
                 {t('invInvoices.emptyDesc')}
               </p>
             ) : (
-              <InvoiceList invoices={recent} supplierMap={supplierMap} itemMap={itemMap} storageMap={storageMap} />
+              <InvoiceList
+                invoices={recent}
+                supplierMap={supplierMap}
+                itemMap={itemMap}
+                storageMap={storageMap}
+                onEdit={setEditing}
+                onDelete={handleDelete}
+              />
             )}
           </section>
+
+          <InvoiceEditDialog
+            invoice={editing}
+            suppliers={suppliers}
+            items={items}
+            storages={storages}
+            onClose={() => setEditing(null)}
+            onSaved={handleSaved}
+          />
         </>
       )}
     </div>

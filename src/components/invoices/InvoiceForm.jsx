@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Receipt, X } from 'lucide-react';
 import Field from '@/components/Field';
@@ -23,11 +23,32 @@ const emptyForm = () => ({
 
 const lineTotal = (line) => (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
 
-export default function InvoiceForm({ suppliers, items, storages = [], onSaved }) {
+// Une facture enregistrée garde ses quantités et prix dans l'unité principale de chaque intrant.
+const formFromInvoice = (invoice) => ({
+  date: invoice.date || todayISO(),
+  invoice_number: invoice.invoice_number || '',
+  supplier_id: invoice.supplier_id || '',
+  storage_id: invoice.storage_id || '',
+  lines: invoice.lines?.length
+    ? invoice.lines.map((line) => ({
+        item_id: line.item_id || '',
+        quantity: line.quantity ?? '',
+        unit: line.unit || '',
+        unit_price: line.unit_price ?? '',
+      }))
+    : [emptyLine()],
+  notes: invoice.notes || '',
+});
+
+export default function InvoiceForm({ suppliers, items, storages = [], invoice, onSaved, onCancel }) {
   const { t } = useI18n();
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => (invoice ? formFromInvoice(invoice) : emptyForm()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setForm(invoice ? formFromInvoice(invoice) : emptyForm());
+  }, [invoice?.id]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -59,7 +80,7 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
     }
     setError('');
     setSaving(true);
-    await base44.entities.InputInvoice.create({
+    const payload = {
       date: form.date,
       invoice_number: form.invoice_number.trim(),
       supplier_id: form.supplier_id,
@@ -78,7 +99,11 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
         }),
       amount: total,
       notes: form.notes.trim(),
-    });
+    };
+    // Le stock et le PMP sont calculés à partir des lignes de facture : les corriger
+    // ici les met à jour partout, sans mouvement de stock à réécrire.
+    if (invoice) await base44.entities.InputInvoice.update(invoice.id, payload);
+    else await base44.entities.InputInvoice.create(payload);
     setSaving(false);
     setForm(emptyForm());
     onSaved();
@@ -91,8 +116,12 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
           <Receipt className="h-3.5 w-3.5" strokeWidth={1.9} />
         </span>
         <div>
-          <h2 className="font-display text-base leading-tight tracking-tight">{t('invInvoices.formTitle')}</h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">{t('invInvoices.formHint')}</p>
+          <h2 className="font-display text-base leading-tight tracking-tight">
+            {invoice ? t('invInvoices.editTitle') : t('invInvoices.formTitle')}
+          </h2>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {invoice ? t('invInvoices.editHint') : t('invInvoices.formHint')}
+          </p>
         </div>
       </div>
 
@@ -216,9 +245,16 @@ export default function InvoiceForm({ suppliers, items, storages = [], onSaved }
           <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{t('invInvoices.amount')}</p>
           <p className="font-display text-xl leading-tight tabular-nums">{fmtMoney(total)}</p>
         </div>
-        <Button type="submit" className="rounded-xl" disabled={saving}>
-          {t('invInvoices.save')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {invoice && onCancel && (
+            <Button type="button" variant="ghost" className="rounded-xl" onClick={onCancel}>
+              {t('common.cancel')}
+            </Button>
+          )}
+          <Button type="submit" className="rounded-xl" disabled={saving}>
+            {saving ? t('common.saving') : invoice ? t('invInvoices.update') : t('invInvoices.save')}
+          </Button>
+        </div>
       </div>
     </form>
   );

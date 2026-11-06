@@ -1,56 +1,125 @@
+import { useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/I18nContext';
 import { fmtDate, fmtMoney } from '@/lib/format';
 
 const lineTotal = (line) => (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
 
-export default function InvoiceList({ invoices, supplierMap, itemMap, storageMap = {} }) {
+export default function InvoiceList({ invoices, supplierMap, itemMap, storageMap = {}, onEdit, onDelete }) {
   const { t } = useI18n();
+  const [pending, setPending] = useState(null);
+
+  const confirmDelete = async () => {
+    const invoice = pending;
+    setPending(null);
+    await onDelete(invoice);
+  };
 
   return (
-    <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
-      {invoices.map((invoice) => {
-        const supplier = supplierMap[invoice.supplier_id];
-        const lines = invoice.lines || [];
-        return (
-          <li key={invoice.id} className="px-4 py-3.5">
-            <div className="flex flex-wrap items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-sm font-medium">{invoice.invoice_number || t('invInvoices.noNumber')}</p>
-                  <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{fmtDate(invoice.date)}</span>
+    <>
+      <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
+        {invoices.map((invoice) => {
+          const supplier = supplierMap[invoice.supplier_id];
+          const lines = invoice.lines || [];
+          return (
+            <li key={invoice.id} className="px-4 py-3.5">
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-medium">{invoice.invoice_number || t('invInvoices.noNumber')}</p>
+                    <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{fmtDate(invoice.date)}</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {[supplier?.name || t('invInvoices.unknownSupplier'), storageMap[invoice.storage_id]?.name]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 </div>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {[supplier?.name || t('invInvoices.unknownSupplier'), storageMap[invoice.storage_id]?.name]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
+                <p className="font-display text-base leading-tight tabular-nums">{fmtMoney(invoice.amount)}</p>
               </div>
-              <p className="font-display text-base leading-tight tabular-nums">{fmtMoney(invoice.amount)}</p>
-            </div>
 
-            {lines.length > 0 && (
-              <ul className="mt-2 space-y-1 border-s-2 border-border/60 ps-3">
-                {lines.map((line, index) => {
-                  const item = itemMap[line.item_id];
-                  return (
-                    <li key={index} className="flex flex-wrap items-baseline gap-x-2 text-xs">
-                      <span className="min-w-0 truncate text-foreground/85">
-                        {item?.name || t('invInvoices.unknownItem')}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {line.quantity ? `${line.quantity}${line.unit ? ` ${line.unit}` : ''}` : ''}
-                        {line.unit_price ? ` × ${fmtMoney(line.unit_price)}` : ''}
-                      </span>
-                      <span className="ms-auto tabular-nums text-muted-foreground">{fmtMoney(lineTotal(line))}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {invoice.notes && <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{invoice.notes}</p>}
-          </li>
-        );
-      })}
-    </ul>
+              {lines.length > 0 && (
+                <ul className="mt-2 space-y-1 border-s-2 border-border/60 ps-3">
+                  {lines.map((line, index) => {
+                    const item = itemMap[line.item_id];
+                    return (
+                      <li key={index} className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                        <span className="min-w-0 truncate text-foreground/85">
+                          {item?.name || t('invInvoices.unknownItem')}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {line.quantity ? `${line.quantity}${line.unit ? ` ${line.unit}` : ''}` : ''}
+                          {line.unit_price ? ` × ${fmtMoney(line.unit_price)}` : ''}
+                        </span>
+                        <span className="ms-auto tabular-nums text-muted-foreground">{fmtMoney(lineTotal(line))}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {invoice.notes && <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{invoice.notes}</p>}
+
+              {(onEdit || onDelete) && (
+                <div className="mt-2 flex items-center gap-1">
+                  {onEdit && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-primary"
+                      onClick={() => onEdit(invoice)}
+                    >
+                      <Pencil className="me-1 h-3 w-3" /> {t('common.edit')}
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                      onClick={() => setPending(invoice)}
+                    >
+                      <Trash2 className="me-1 h-3 w-3" /> {t('common.delete')}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <AlertDialog open={!!pending} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('invInvoices.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('invInvoices.deleteDesc', { number: pending?.invoice_number || t('invInvoices.noNumber') })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

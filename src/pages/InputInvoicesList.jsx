@@ -5,38 +5,56 @@ import { Plus, Receipt } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import InvoiceList from '@/components/invoices/InvoiceList';
+import InvoiceEditDialog from '@/components/invoices/InvoiceEditDialog';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { fetchList, byId, sumBy } from '@/lib/data';
 import { fmtMoney } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function InputInvoicesList() {
   const { t } = useI18n();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(null);
   const [suppliers, setSuppliers] = useState([]);
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [storages, setStorages] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const load = async () => {
+    const [supplierRows, itemRows, invoiceRows, storageRows] = await Promise.all([
+      fetchList(base44.entities.Supplier, {}, { sort: 'name' }),
+      fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+      fetchList(base44.entities.InputInvoice, {}, { sort: '-date' }),
+      fetchList(base44.entities.Storage, {}, { sort: 'name' }),
+    ]);
+    setSuppliers(supplierRows);
+    setItems(itemRows);
+    setInvoices(invoiceRows);
+    setStorages(storageRows);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    (async () => {
-      const [supplierRows, itemRows, invoiceRows, storageRows] = await Promise.all([
-        fetchList(base44.entities.Supplier, {}, { sort: 'name' }),
-        fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
-        fetchList(base44.entities.InputInvoice, {}, { sort: '-date' }),
-        fetchList(base44.entities.Storage, {}, { sort: 'name' }),
-      ]);
-      setSuppliers(supplierRows);
-      setItems(itemRows);
-      setInvoices(invoiceRows);
-      setStorages(storageRows);
-      setLoading(false);
-    })();
+    load();
   }, []);
 
   const supplierMap = byId(suppliers);
   const itemMap = byId(items);
   const storageMap = byId(storages);
+
+  const handleSaved = async () => {
+    setEditing(null);
+    await load();
+    toast({ title: t('invInvoices.updated') });
+  };
+
+  const handleDelete = async (invoice) => {
+    await base44.entities.InputInvoice.delete(invoice.id);
+    await load();
+    toast({ title: t('invInvoices.deleted') });
+  };
 
   return (
     <div className="space-y-8">
@@ -78,7 +96,23 @@ export default function InputInvoicesList() {
               <p className="font-display text-lg leading-tight tabular-nums">{fmtMoney(sumBy(invoices, 'amount'))}</p>
             </div>
           </div>
-          <InvoiceList invoices={invoices} supplierMap={supplierMap} itemMap={itemMap} storageMap={storageMap} />
+          <InvoiceList
+            invoices={invoices}
+            supplierMap={supplierMap}
+            itemMap={itemMap}
+            storageMap={storageMap}
+            onEdit={setEditing}
+            onDelete={handleDelete}
+          />
+
+          <InvoiceEditDialog
+            invoice={editing}
+            suppliers={suppliers}
+            items={items}
+            storages={storages}
+            onClose={() => setEditing(null)}
+            onSaved={handleSaved}
+          />
         </>
       )}
     </div>
