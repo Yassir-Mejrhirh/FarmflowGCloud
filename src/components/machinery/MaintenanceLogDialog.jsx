@@ -4,6 +4,8 @@ import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import MaintenancePartsEditor from '@/components/machinery/MaintenancePartsEditor';
+import StockShortageAlert from '@/components/stock/StockShortageAlert';
+import { aggregateQuantities, findShortages } from '@/lib/stockGuard';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { syncMaintenanceMovements } from '@/lib/maintenanceStock';
@@ -55,9 +57,11 @@ export default function MaintenanceLogDialog({
       .filter((line) => line.item_id === itemId)
       .reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
 
+  const shortages = findShortages(aggregateQuantities(filledParts), availableFor);
+
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.machine_id) return;
+    if (!form.machine_id || shortages.length) return;
     setSaving(true);
 
     const payload = {
@@ -101,6 +105,7 @@ export default function MaintenanceLogDialog({
       onSubmit={submit}
       saving={saving}
       submitLabel={t('maintDialog.save')}
+      submitDisabled={shortages.length > 0}
       wide
     >
       <Field label={t('common.machine')}>
@@ -134,6 +139,8 @@ export default function MaintenanceLogDialog({
         unitCostFor={unitCostFor}
         availableFor={availableFor}
       />
+
+      <StockShortageAlert shortages={shortages} items={items} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('maint.storage')}>

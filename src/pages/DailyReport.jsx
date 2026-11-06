@@ -8,6 +8,8 @@ import SelectField from '@/components/SelectField';
 import UsageField from '@/components/dailyreport/UsageField';
 import InputStockNote from '@/components/dailyreport/InputStockNote';
 import FuelLine from '@/components/dailyreport/FuelLine';
+import StockShortageAlert from '@/components/stock/StockShortageAlert';
+import { aggregateQuantities, findShortages } from '@/lib/stockGuard';
 import { buildOnHand, pickStorageFor } from '@/lib/inventory';
 import { buildReportOutflow } from '@/lib/reportStock';
 import { isFuelItem } from '@/lib/machineryCosts';
@@ -113,9 +115,16 @@ export default function DailyReport() {
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
   const blockCount = form.block_ids.length || 1;
-  const stockExceeded = outflow.some(
-    (line) => line.quantity * blockCount > (stockTotals[line.item_id]?.quantity || 0),
+  const shortages = useMemo(
+    () =>
+      findShortages(
+        aggregateQuantities(outflow),
+        (itemId) => stockTotals[itemId]?.quantity || 0,
+        blockCount,
+      ),
+    [outflow, stockTotals, blockCount],
   );
+  const stockExceeded = shortages.length > 0;
   const canSubmit =
     form.block_ids.length > 0 && !!form.task_id && (!machineRequired || machineryReady) && !stockExceeded;
 
@@ -350,6 +359,8 @@ export default function DailyReport() {
             <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
           </Field>
 
+          <StockShortageAlert shortages={shortages} items={items} />
+
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={saving || !canSubmit} className="rounded-xl">
               {saving ? t('common.saving') : t('report.submit')}
@@ -359,9 +370,6 @@ export default function DailyReport() {
             )}
             {machineRequired && !machineryReady && (
               <span className="text-[11px] font-medium text-destructive">{t('report.machineRequired')}</span>
-            )}
-            {stockExceeded && (
-              <span className="text-[11px] font-medium text-destructive">{t('report.stockBlocked')}</span>
             )}
           </div>
         </form>

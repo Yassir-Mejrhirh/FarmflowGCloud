@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function FormDialog({
-  open, onOpenChange, title, description, onSubmit, submitLabel, saving, children, wide,
+  open, onOpenChange, title, description, onSubmit, submitLabel, saving, children, wide, submitDisabled,
 }) {
   const { t } = useI18n();
 
@@ -21,7 +21,7 @@ export default function FormDialog({
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={saving} className="rounded-xl">
+            <Button type="submit" disabled={saving || submitDisabled} className="rounded-xl">
               {saving ? t('common.saving') : submitLabel || t('common.save')}
             </Button>
           </DialogFooter>
