@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import CountForm from '@/components/inventorycount/CountForm';
@@ -26,6 +26,16 @@ export default function StockCount() {
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [usageBlock, setUsageBlock] = useState(null);
+  const formRef = useRef(null);
+
+  // L'édition se fait dans le formulaire en haut de page : on y amène l'utilisateur.
+  useEffect(() => {
+    if (!editing) return undefined;
+    const timer = setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 260);
+    return () => clearTimeout(timer);
+  }, [editing]);
 
   const load = async () => {
     const [itemRows, storageRows, invoiceRows, movementRows, countRows, user] = await Promise.all([
@@ -104,17 +114,19 @@ export default function StockCount() {
         <div className="h-48 animate-pulse rounded-2xl bg-muted" />
       ) : (
         <>
-          <CountForm
-            key={editing?.id || 'new'}
-            items={items}
-            storages={storages}
-            count={editing}
-            onCancel={() => setEditing(null)}
-            unitCostFor={(itemId) => Math.round(avgCostOf(totals, itemId) * 100) / 100}
-            stockFor={stockFor}
-            responsible={currentUser?.full_name || ''}
-            onSaved={onSaved}
-          />
+          <div ref={formRef} className="scroll-mt-20">
+            <CountForm
+              key={editing?.id || 'new'}
+              items={items}
+              storages={storages}
+              count={editing}
+              onCancel={() => setEditing(null)}
+              unitCostFor={(itemId) => Math.round(avgCostOf(totals, itemId) * 100) / 100}
+              stockFor={stockFor}
+              responsible={currentUser?.full_name || ''}
+              onSaved={onSaved}
+            />
+          </div>
 
           <CountHistory counts={counts} storages={storages} onOpen={setDetail} />
         </>
