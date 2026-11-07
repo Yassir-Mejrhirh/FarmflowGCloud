@@ -3,7 +3,15 @@ import PlanSheetFrame from '@/components/plans/PlanSheetFrame';
 import { fmtLongDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
-export default function PlanSheet({ title, parcels, missing, orientation = 'landscape', zoom = 50 }) {
+export default function PlanSheet({
+  title,
+  parcels,
+  missing,
+  orientation = 'landscape',
+  zoom = 50,
+  labels = {},
+  onLabelMove,
+}) {
   const { t } = useI18n();
   const totalArea = parcels.reduce((total, parcel) => total + (Number(parcel.area) || 0), 0);
   const legendColumns = orientation === 'portrait' ? 'grid-cols-3' : 'grid-cols-4';
@@ -33,7 +41,13 @@ export default function PlanSheet({ title, parcels, missing, orientation = 'land
         </header>
 
         <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-md border border-[#dfe3d9]">
-          <PlanMap key={orientation} parcels={parcels} zoom={zoom} />
+          <PlanMap
+            key={orientation}
+            parcels={parcels}
+            zoom={zoom}
+            labels={labels}
+            onLabelMove={onLabelMove}
+          />
         </div>
 
         <footer className="mt-4 max-h-[170px] flex-none overflow-hidden">

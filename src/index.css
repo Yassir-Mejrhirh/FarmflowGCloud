@@ -153,15 +153,12 @@
   border: none;
 }
 
-/* Parcel labels sit on the map without hiding it: no box, just outlined text */
-.leaflet-tooltip.plan-label {
+/* Parcel labels sit on the map without hiding it: no box, just outlined text.
+   Each label is a draggable marker, so its own text is the grab area. */
+.plan-parcel-label {
   display: flex;
   flex-direction: column;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 2px 4px;
   color: #ffffff;
   font-family: var(--font-body);
   font-size: 11px;
@@ -169,13 +166,17 @@
   line-height: 1.2;
   white-space: nowrap;
   text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.85);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  transform: translate(-2px, -8px);
 }
 
-.leaflet-tooltip.plan-label::before {
-  display: none;
+.plan-parcel-label:active {
+  cursor: grabbing;
 }
 
-.leaflet-tooltip.plan-label small {
+.plan-parcel-label small {
   font-size: 9.5px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.92);

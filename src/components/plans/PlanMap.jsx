@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Polygon, Marker, Tooltip, ScaleControl, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Marker, ScaleControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { SATELLITE_URL } from '@/components/blocks/BlockMap';
@@ -8,7 +8,22 @@ import { fmtNum } from '@/lib/format';
 
 export const PLAN_COLORS = ['#2f6b46', '#b5651d', '#7d8f3f', '#9c4638', '#43688f', '#8a5f97', '#b08a1e', '#3b7d76'];
 
-const LABEL_ANCHOR = L.divIcon({ className: 'plan-label-anchor', iconSize: [1, 1] });
+const escapeHtml = (value) =>
+  String(value ?? '').replace(
+    /[&<>"']/g,
+    (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]),
+  );
+
+// Parcel label drawn at its own map point, so it can be dragged into place.
+function labelIcon(name, area) {
+  return L.divIcon({
+    className: 'plan-label-anchor',
+    iconSize: [0, 0],
+    html: `<div class="plan-parcel-label"><span>${escapeHtml(name)}</span><small>${escapeHtml(
+      fmtNum(area, 2),
+    )} ha</small></div>`,
+  });
+}
 
 // The vertex nearest the north-west corner of the parcel, where its label sits.
 function cornerVertex(boundary) {
@@ -46,7 +61,7 @@ function FitToParcels({ points, zoom }) {
   return null;
 }
 
-export default function PlanMap({ parcels, zoom = 50 }) {
+export default function PlanMap({ parcels, zoom = 50, labels = {}, onLabelMove }) {
   const points = useMemo(() => parcels.flatMap((parcel) => toLatLngs(parcel.boundary)), [parcels]);
 
   return (
@@ -67,7 +82,7 @@ export default function PlanMap({ parcels, zoom = 50 }) {
 
       {parcels.map((parcel, index) => {
         const color = PLAN_COLORS[index % PLAN_COLORS.length];
-        const corner = cornerVertex(parcel.boundary);
+        const position = labels[parcel.id] || cornerVertex(parcel.boundary);
 
         return (
           <Fragment key={parcel.id}>
@@ -75,13 +90,23 @@ export default function PlanMap({ parcels, zoom = 50 }) {
               positions={toLatLngs(parcel.boundary)}
               pathOptions={{ color, weight: 2, opacity: 0.95, fillColor: color, fillOpacity: 0.22 }}
             />
-            {corner && (
-              <Marker position={corner} icon={LABEL_ANCHOR} interactive={false}>
-                <Tooltip permanent direction="right" offset={[6, 0]} opacity={1} className="plan-label">
-                  <span>{parcel.name}</span>
-                  <small>{fmtNum(parcel.area, 2)} ha</small>
-                </Tooltip>
-              </Marker>
+            {position && (
+              <Marker
+                position={position}
+                icon={labelIcon(parcel.name, parcel.area)}
+                draggable
+                keyboard={false}
+                eventHandlers={
+                  onLabelMove
+                    ? {
+                        dragend: (event) => {
+                          const { lat, lng } = event.target.getLatLng();
+                          onLabelMove(parcel.id, [lat, lng]);
+                        },
+                      }
+                    : undefined
+                }
+              />
             )}
           </Fragment>
         );

@@ -27,6 +27,7 @@ export default function BlockPlans() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [zoom, setZoom] = useState(50);
   const [orientation, setOrientation] = useState('landscape');
+  const [labels, setLabels] = useState({});
 
   useEffect(() => {
     const load = async () => {
@@ -155,6 +156,19 @@ export default function BlockPlans() {
           />
         )}
 
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">{t('plans.dragLabels')}</p>
+          {Object.keys(labels).length > 0 && (
+            <button
+              type="button"
+              onClick={() => setLabels({})}
+              className="shrink-0 rounded-lg border border-border/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              {t('plans.resetLabels')}
+            </button>
+          )}
+        </div>
+
         <p className="text-[11px] leading-relaxed text-muted-foreground">{t('plans.printHint')}</p>
       </section>
 
@@ -167,6 +181,10 @@ export default function BlockPlans() {
           missing={mode === 'farm' ? missing : []}
           orientation={orientation}
           zoom={zoom}
+          labels={labels}
+          onLabelMove={(id, position) =>
+            setLabels((current) => ({ ...current, [id]: position }))
+          }
         />
       ) : (
         <EmptyState
