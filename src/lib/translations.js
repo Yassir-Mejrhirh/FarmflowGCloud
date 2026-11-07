@@ -1027,7 +1027,9 @@ export const TRANSLATIONS = {
     'stockUsage.title': 'Action impossible',
     'stockUsage.blockedDelete': 'Cet inventaire ne peut pas être supprimé : des intrants sont déjà utilisés dans les interventions suivantes.',
     'stockUsage.blockedEdit': 'Ce stock ne peut pas être modifié : des intrants sont déjà utilisés dans les interventions suivantes.',
-    'stockUsage.countEdit': 'Ces intrants ont été consommés après la date de l’inventaire. Corrigez seulement si les quantités comptées étaient erronées : le stock sera recalculé à partir de ce constat.',
+    'stockUsage.countEditTitle': 'Alerte : inventaire déjà consommé',
+    'stockUsage.countEdit': 'Des intrants de cet inventaire ont déjà été consommés dans les opérations ci-dessous. La correction reste possible, mais elle ne s’applique pas à ces consommations.',
+    'stockUsage.countEditNote': 'Le stock sera recalculé à partir des quantités constatées à cette date, et les consommations ci-dessus restent déduites. Corrigez seulement si les quantités comptées étaient erronées, sinon annulez pour revenir au formulaire.',
     'stockUsage.correctAnyway': 'Corriger l’inventaire',
 
     'paramLock.title': 'Utilisé dans des données existantes',
@@ -2126,7 +2128,9 @@ export const TRANSLATIONS = {
     'stockUsage.title': 'إجراء غير ممكن',
     'stockUsage.blockedDelete': 'لا يمكن حذف هذا الجرد: بعض المدخلات مستعملة في التدخلات التالية.',
     'stockUsage.blockedEdit': 'لا يمكن تعديل هذا المخزون: بعض المدخلات مستعملة في التدخلات التالية.',
-    'stockUsage.countEdit': 'استُهلكت هذه المدخلات بعد تاريخ الجرد. صحّح فقط إذا كانت الكميات المجرودة خاطئة: سيُعاد حساب المخزون انطلاقًا من هذا الجرد.',
+    'stockUsage.countEditTitle': 'تنبيه: جرد تم استهلاكه',
+    'stockUsage.countEdit': 'بعض مدخلات هذا الجرد استُهلكت مسبقًا في التدخلات التالية. التصحيح ممكن، لكنه لا يمس هذه الاستهلاكات.',
+    'stockUsage.countEditNote': 'سيُعاد حساب المخزون انطلاقًا من الكميات المجرودة في هذا التاريخ، وتبقى الاستهلاكات أعلاه مخصومة. صحّح فقط إذا كانت الكميات المجرودة خاطئة، وإلا ألغِ للرجوع إلى الاستمارة.',
     'stockUsage.correctAnyway': 'تصحيح الجرد',
 
     'paramLock.title': 'مستعمل في بيانات موجودة',

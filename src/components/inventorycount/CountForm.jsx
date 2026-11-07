@@ -363,7 +363,9 @@ export default function CountForm({
         }}
         usages={usages}
         mode="edit"
+        title={t('stockUsage.countEditTitle')}
         description={t('stockUsage.countEdit')}
+        note={t('stockUsage.countEditNote')}
         confirmLabel={pendingSave ? t('stockUsage.correctAnyway') : ''}
         onConfirm={pendingSave ? confirmSave : undefined}
       />

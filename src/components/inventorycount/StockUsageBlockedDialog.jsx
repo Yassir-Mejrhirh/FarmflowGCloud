@@ -21,7 +21,9 @@ export default function StockUsageBlockedDialog({
   open,
   onOpenChange,
   mode = 'delete',
+  title,
   description,
+  note,
   confirmLabel,
   onConfirm,
 }) {
@@ -33,7 +35,7 @@ export default function StockUsageBlockedDialog({
       <DialogContent className="max-h-[88vh] max-w-lg overflow-y-auto rounded-2xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl leading-tight tracking-tight">
-            {t('stockUsage.title')}
+            {title || t('stockUsage.title')}
           </DialogTitle>
           <DialogDescription>
             {description || (mode === 'edit' ? t('stockUsage.blockedEdit') : t('stockUsage.blockedDelete'))}
@@ -62,8 +64,14 @@ export default function StockUsageBlockedDialog({
           })}
         </ul>
 
-        {!onConfirm && (
-          <p className="text-xs leading-relaxed text-muted-foreground">{t('stockUsage.hint')}</p>
+        {note ? (
+          <p className="rounded-xl bg-secondary/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+            {note}
+          </p>
+        ) : (
+          !onConfirm && (
+            <p className="text-xs leading-relaxed text-muted-foreground">{t('stockUsage.hint')}</p>
+          )
         )}
 
         <DialogFooter>
