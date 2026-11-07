@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useI18n } from '@/lib/I18nContext';
 import { useParamLock } from '@/lib/paramUsage';
+import { useUndo } from '@/lib/undoContext';
 
 const PRIORITIES = ['1', '2', '3'];
 const DEFINITIONS = ['nominative', 'salary_band'];
@@ -44,6 +45,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
   const [newFunction, setNewFunction] = useState('');
   const [creatingFunction, setCreatingFunction] = useState(false);
   const lock = useParamLock('Worker', worker);
+  const { offerUndo } = useUndo();
 
   useEffect(() => {
     if (!open) return;

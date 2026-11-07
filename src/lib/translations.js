@@ -1082,6 +1082,12 @@ export const TRANSLATIONS = {
     'expenseDialog.descPlaceholder': 'Plein de gasoil',
     'expenseDialog.save': 'Enregistrer la dépense',
     'expenseDialog.farmWide': 'Toute la ferme',
+
+    'undo.title': 'Élément supprimé',
+    'undo.action': 'Annuler',
+    'undo.dismiss': 'Fermer',
+    'undo.done': 'Suppression annulée, l’élément a été restauré.',
+    'undo.blocked': 'Annulation impossible : un élément portant ce nom existe déjà.',
   },
 
   ar: {
@@ -2168,5 +2174,11 @@ export const TRANSLATIONS = {
     'expenseDialog.descPlaceholder': 'تعبئة وقود',
     'expenseDialog.save': 'حفظ النفقة',
     'expenseDialog.farmWide': 'عموم المزرعة',
+
+    'undo.title': 'تم حذف العنصر',
+    'undo.action': 'تراجع',
+    'undo.dismiss': 'إغلاق',
+    'undo.done': 'تم التراجع عن الحذف واستعادة العنصر.',
+    'undo.blocked': 'تعذر التراجع: يوجد عنصر بهذا الاسم بالفعل.',
   },
 };

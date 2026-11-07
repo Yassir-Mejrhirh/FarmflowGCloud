@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useI18n } from '@/lib/I18nContext';
 import { useParamLock } from '@/lib/paramUsage';
+import { useUndo } from '@/lib/undoContext';
 
 export const BASE_TYPES = ['tractor', 'harvester', 'sprayer', 'truck', 'implement', 'other'];
 const NEW_TYPE = '__new_type';
@@ -30,6 +31,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
   const [newType, setNewType] = useState('');
   const [creatingType, setCreatingType] = useState(false);
   const lock = useParamLock('Machine', machine);
+  const { offerUndo } = useUndo();
 
   useEffect(() => {
     if (!open) return;
@@ -92,6 +94,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
     if (!machine?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Machine.delete(machine.id);
+    offerUndo({ entityName: 'Machine', record: machine, onRestored: onSaved });
     setSaving(false);
     onOpenChange(false);
     onSaved();

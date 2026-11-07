@@ -9,6 +9,8 @@ import { CompanyProvider } from '@/lib/CompanyContext';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/I18nContext';
+import { UndoProvider } from '@/lib/undoContext';
+import UndoBar from '@/components/undo/UndoBar';
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
@@ -53,7 +55,10 @@ export default function Layout() {
               {t('common.backOverview')}
             </Link>
           )}
-          <Outlet />
+          <UndoProvider>
+            <Outlet />
+            <UndoBar />
+          </UndoProvider>
         </main>
       </div>
     </div>

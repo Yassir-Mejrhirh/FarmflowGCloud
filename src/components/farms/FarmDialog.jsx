@@ -9,12 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useI18n } from '@/lib/I18nContext';
 import { useParamLock } from '@/lib/paramUsage';
+import { useUndo } from '@/lib/undoContext';
 
 export default function FarmDialog({ open, onOpenChange, farm, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const lock = useParamLock('Farm', farm);
+  const { offerUndo } = useUndo();
 
   useEffect(() => {
     if (!open) return;
@@ -54,6 +56,7 @@ export default function FarmDialog({ open, onOpenChange, farm, onSaved }) {
     if (!farm?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Farm.delete(farm.id);
+    offerUndo({ entityName: 'Farm', record: farm, onRestored: onSaved });
     setSaving(false);
     onOpenChange(false);
     onSaved();

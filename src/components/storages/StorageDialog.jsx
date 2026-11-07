@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
 import { useParamLock } from '@/lib/paramUsage';
+import { useUndo } from '@/lib/undoContext';
 
 const KINDS = ['warehouse', 'cold_room', 'silo', 'shed'];
 
@@ -20,6 +21,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
   const [farms, setFarms] = useState([]);
   const [saving, setSaving] = useState(false);
   const lock = useParamLock('Storage', storage);
+  const { offerUndo } = useUndo();
 
   useEffect(() => {
     if (!open) return;
@@ -71,6 +73,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
     if (!storage?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Storage.delete(storage.id);
+    offerUndo({ entityName: 'Storage', record: storage, onRestored: onSaved });
     setSaving(false);
     onOpenChange(false);
     onSaved();
