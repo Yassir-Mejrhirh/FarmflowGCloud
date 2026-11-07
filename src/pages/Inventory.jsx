@@ -51,7 +51,7 @@ export default function Inventory() {
 
   const totals = useMemo(() => buildInputTotals(invoices), [invoices]);
 
-  const onHand = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
+  const onHand = useMemo(() => buildOnHand(invoices, movements, counts), [invoices, movements, counts]);
   const quantityOf = (item) => onHand[item.id]?.quantity || 0;
   const avgCostOf = (item) => {
     const row = totals[item.id];

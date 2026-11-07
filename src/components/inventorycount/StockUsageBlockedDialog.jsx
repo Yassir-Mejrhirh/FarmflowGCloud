@@ -16,7 +16,15 @@ const KIND_ICONS = {
   maintenance: Wrench,
 };
 
-export default function StockUsageBlockedDialog({ usages = [], open, onOpenChange, mode = 'delete' }) {
+export default function StockUsageBlockedDialog({
+  usages = [],
+  open,
+  onOpenChange,
+  mode = 'delete',
+  description,
+  confirmLabel,
+  onConfirm,
+}) {
   const { t } = useI18n();
   if (!usages.length) return null;
 
@@ -28,7 +36,7 @@ export default function StockUsageBlockedDialog({ usages = [], open, onOpenChang
             {t('stockUsage.title')}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'edit' ? t('stockUsage.blockedEdit') : t('stockUsage.blockedDelete')}
+            {description || (mode === 'edit' ? t('stockUsage.blockedEdit') : t('stockUsage.blockedDelete'))}
           </DialogDescription>
         </DialogHeader>
 
@@ -54,11 +62,18 @@ export default function StockUsageBlockedDialog({ usages = [], open, onOpenChang
           })}
         </ul>
 
-        <p className="text-xs leading-relaxed text-muted-foreground">{t('stockUsage.hint')}</p>
+        {!onConfirm && (
+          <p className="text-xs leading-relaxed text-muted-foreground">{t('stockUsage.hint')}</p>
+        )}
 
         <DialogFooter>
-          <Button type="button" onClick={() => onOpenChange(false)}>
-            {t('stockCount.close')}
+          {onConfirm && (
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {t('common.cancel')}
+            </Button>
+          )}
+          <Button type="button" onClick={onConfirm || (() => onOpenChange(false))}>
+            {onConfirm ? confirmLabel || t('stockUsage.correctAnyway') : t('stockCount.close')}
           </Button>
         </DialogFooter>
       </DialogContent>

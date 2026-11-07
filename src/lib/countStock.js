@@ -27,28 +27,6 @@ export async function removeCountMovements(count) {
   });
 }
 
-// Remplace les ajustements du constat par ceux qui correspondent aux quantités enregistrées.
-export async function syncCountMovements({ count, lines, onHandFor, note }) {
-  await removeCountMovements(count);
-  const adjustments = lines
-    .map((line) => {
-      const delta = line.quantity - (onHandFor(line.item_id) || 0);
-      if (Math.abs(delta) < 0.0001) return null;
-      return {
-        item_id: line.item_id,
-        kind: delta > 0 ? 'in' : 'out',
-        quantity: Math.abs(delta),
-        date: count.date,
-        cost: Math.abs(delta) * line.unit_price,
-        storage_id: count.storage_id,
-        count_id: count.id,
-        notes: note,
-      };
-    })
-    .filter(Boolean);
-  if (adjustments.length) await base44.entities.StockMovement.bulkCreate(adjustments);
-}
-
 export async function deleteInventoryCount(count) {
   await removeCountMovements(count);
   await base44.entities.InventoryCount.delete(count.id);

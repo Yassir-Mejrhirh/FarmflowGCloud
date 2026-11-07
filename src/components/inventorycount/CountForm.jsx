@@ -6,11 +6,11 @@ import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { todayISO, fmtMoney } from '@/lib/format';
+import { todayISO, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
-import { syncCountMovements } from '@/lib/countStock';
 import { findStockUsages } from '@/lib/stockUsage';
 import { priceToPrimary, toPrimary, unitOptionsFor } from '@/lib/units';
+import { cn } from '@/lib/utils';
 import StockUsageBlockedDialog from '@/components/inventorycount/StockUsageBlockedDialog';
 
 const emptyLine = () => ({ item_id: '', category: '', unit: '', unit_price: '', quantity: '' });
@@ -41,7 +41,7 @@ export default function CountForm({
   items,
   storages,
   unitCostFor,
-  onHandFor,
+  stockFor,
   onSaved,
   responsible = '',
   count = null,
@@ -54,6 +54,7 @@ export default function CountForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [usages, setUsages] = useState([]);
+  const [pendingSave, setPendingSave] = useState(null);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -122,39 +123,40 @@ export default function CountForm({
       lines,
       notes: form.notes.trim(),
     };
-    // Les intrants déjà consommés doivent d'abord être retirés des interventions.
+    // Les intrants déjà consommés sont signalés avant la correction : le constat
+    // reste la référence, mais l'utilisateur doit savoir ce qui en dépend.
     if (editing) {
       const used = await findStockUsages(lines.map((line) => line.item_id));
       if (used.length) {
         setUsages(used);
+        setPendingSave(payload);
         return;
       }
     }
 
-    setSaving(true);
-    const note = t('stockCount.movementNote', { date: form.date });
+    await save(payload);
+  };
 
-    // Le constat ajuste le stock : un mouvement d'entrée ou de sortie par écart.
+  const save = async (payload) => {
+    setSaving(true);
+
+    // Le constat est la référence du stock à sa date : les quantités constatées
+    // remplacent le stock calculé, aucun mouvement d'ajustement n'est écrit.
     if (editing) {
       await base44.entities.InventoryCount.update(count.id, payload);
-      await syncCountMovements({
-        count: { ...count, ...payload },
-        lines,
-        note,
-        onHandFor: (itemId) => onHandFor(itemId, count.id),
-      });
     } else {
-      const created = await base44.entities.InventoryCount.create(payload);
-      await syncCountMovements({
-        count: created,
-        lines,
-        note,
-        onHandFor: (itemId) => onHandFor(itemId),
-      });
+      await base44.entities.InventoryCount.create(payload);
       setForm(emptyForm());
     }
     setSaving(false);
     onSaved(editing ? 'edit' : 'create');
+  };
+
+  const confirmSave = async () => {
+    const payload = pendingSave;
+    setUsages([]);
+    setPendingSave(null);
+    if (payload) await save(payload);
   };
 
   return (
@@ -196,7 +198,7 @@ export default function CountForm({
         </p>
 
         <div className="overflow-x-auto rounded-xl border border-border/60">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
+          <table className="w-full min-w-[820px] border-collapse text-sm">
             <thead className="bg-secondary/40 text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               <tr>
                 <th className="px-2.5 py-2 text-start font-medium">{t('stockCount.item')}</th>
@@ -204,11 +206,18 @@ export default function CountForm({
                 <th className="px-2.5 py-2 text-start font-medium">{t('stockCount.unit')}</th>
                 <th className="px-2.5 py-2 text-start font-medium">{t('stockCount.unitPrice')}</th>
                 <th className="px-2.5 py-2 text-start font-medium">{t('stockCount.quantity')}</th>
+                <th className="px-2.5 py-2 text-end font-medium">{t('stockCount.currentStock')}</th>
                 <th className="w-10 px-1 py-2" />
               </tr>
             </thead>
             <tbody>
-              {form.lines.map((line, index) => (
+              {form.lines.map((line, index) => {
+                const lineItem = items.find((row) => row.id === line.item_id);
+                const current = line.item_id ? stockFor(line.item_id, form.storage_id) : 0;
+                const counted = toPrimary(line.quantity, line.unit, lineItem);
+                const gap = counted - current;
+                const hasGap = line.item_id && String(line.quantity).trim() !== '' && Math.abs(gap) > 0.0001;
+                return (
                 <tr key={index} className="border-t border-border/50">
                   <td className="px-2.5 py-2 align-middle">
                     <SelectField
@@ -232,7 +241,7 @@ export default function CountForm({
                       value={line.unit}
                       onChange={(value) => setLine(index, 'unit', value)}
                       noneLabel={t('itemDialog.noUnit')}
-                      options={unitOptionsFor(items.find((row) => row.id === line.item_id))}
+                      options={unitOptionsFor(lineItem)}
                       className="h-9 w-[110px]"
                     />
                   </td>
@@ -254,6 +263,29 @@ export default function CountForm({
                       className="h-9 w-[100px] text-end tabular-nums"
                     />
                   </td>
+                  <td className="px-2.5 py-2 text-end">
+                    {line.item_id ? (
+                      <div className="min-w-[86px]">
+                        <p className="text-sm tabular-nums">
+                          {fmtNum(current, 1)}{' '}
+                          <span className="text-[10px] text-muted-foreground">{lineItem?.unit || line.unit}</span>
+                        </p>
+                        {hasGap && (
+                          <p
+                            className={cn(
+                              'text-[11px] tabular-nums',
+                              gap > 0 ? 'text-sage' : 'text-clay',
+                            )}
+                          >
+                            {t('stockCount.gap')} {gap > 0 ? '+' : ''}
+                            {fmtNum(gap, 1)}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-1 py-2 text-center">
                     {form.lines.length > 1 && (
                       <Button
@@ -269,11 +301,12 @@ export default function CountForm({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
             <tfoot className="border-t border-border/60 bg-secondary/20">
               <tr>
-                <td colSpan={3} className="px-2.5 py-3">
+                <td colSpan={4} className="px-2.5 py-3">
                   <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={addLine}>
                     <Plus className="mr-1.5 h-3.5 w-3.5" /> {t('stockCount.addLine')}
                   </Button>
@@ -293,7 +326,7 @@ export default function CountForm({
                     {responsibleName || t('stockCount.responsibleUnknown')}
                   </p>
                 </td>
-                <td colSpan={3} className="px-2.5 py-3">
+                <td colSpan={4} className="px-2.5 py-3">
                   <div className="flex flex-wrap justify-end gap-2">
                     {editing && (
                       <Button type="button" variant="outline" className="rounded-xl" onClick={onCancel}>
@@ -322,9 +355,17 @@ export default function CountForm({
 
       <StockUsageBlockedDialog
         open={usages.length > 0}
-        onOpenChange={(open) => !open && setUsages([])}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUsages([]);
+            setPendingSave(null);
+          }
+        }}
         usages={usages}
         mode="edit"
+        description={t('stockUsage.countEdit')}
+        confirmLabel={pendingSave ? t('stockUsage.correctAnyway') : ''}
+        onConfirm={pendingSave ? confirmSave : undefined}
       />
     </form>
   );

@@ -56,7 +56,7 @@ export default function MachineMaintenance() {
     () => mergeTotals(buildInputTotals(invoices), buildCountTotals(counts)),
     [invoices, counts],
   );
-  const onHand = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
+  const onHand = useMemo(() => buildOnHand(invoices, movements, counts), [invoices, movements, counts]);
 
   const unitCostFor = (itemId) => avgCostOf(purchases, itemId);
   const onHandFor = (itemId) => onHand[itemId]?.quantity || 0;

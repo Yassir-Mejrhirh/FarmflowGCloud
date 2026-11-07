@@ -15,13 +15,14 @@ export default function Dashboard() {
   const [onHand, setOnHand] = useState({});
 
   const load = async () => {
-    const [itemRows, invoiceRows, movementRows] = await Promise.all([
+    const [itemRows, invoiceRows, movementRows, countRows] = await Promise.all([
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
       fetchList(base44.entities.StockMovement, {}),
+      fetchList(base44.entities.InventoryCount, {}, { sort: '-date' }),
     ]);
     setItems(itemRows);
-    setOnHand(buildOnHand(invoiceRows, movementRows));
+    setOnHand(buildOnHand(invoiceRows, movementRows, countRows));
   };
 
   useEffect(() => {

@@ -6,7 +6,7 @@ import CountHistory from '@/components/inventorycount/CountHistory';
 import CountDetailDialog from '@/components/inventorycount/CountDetailDialog';
 import { useToast } from '@/components/ui/use-toast';
 import { fetchList } from '@/lib/data';
-import { avgCostOf, buildInputTotals, buildOnHand } from '@/lib/inventory';
+import { avgCostOf, buildInputTotals, buildOnHand, buildStorageOnHand } from '@/lib/inventory';
 import { deleteInventoryCount } from '@/lib/countStock';
 import { findStockUsages } from '@/lib/stockUsage';
 import StockUsageBlockedDialog from '@/components/inventorycount/StockUsageBlockedDialog';
@@ -50,16 +50,21 @@ export default function StockCount() {
   }, []);
 
   const totals = buildInputTotals(invoices);
-  const onHand = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
-  // En modification, le stock de référence exclut les ajustements du constat en cours.
-  const onHandWithoutEditing = useMemo(
-    () => (editing ? buildOnHand(invoices, movements.filter((row) => row.count_id !== editing.id)) : null),
-    [invoices, movements, editing],
+  // Le constat en cours d'édition est exclu : le stock affiché est celui d'avant sa validation.
+  const activeCounts = useMemo(
+    () => (editing ? counts.filter((row) => row.id !== editing.id) : counts),
+    [counts, editing],
   );
-  const onHandFor = (itemId, excludeCountId) => {
-    const map = excludeCountId && onHandWithoutEditing ? onHandWithoutEditing : onHand;
-    return map[itemId]?.quantity || 0;
-  };
+  const onHand = useMemo(
+    () => buildOnHand(invoices, movements, activeCounts),
+    [invoices, movements, activeCounts],
+  );
+  const storageOnHand = useMemo(
+    () => buildStorageOnHand(invoices, movements, activeCounts),
+    [invoices, movements, activeCounts],
+  );
+  const stockFor = (itemId, storageId) =>
+    storageId ? storageOnHand[storageId]?.[itemId]?.quantity || 0 : onHand[itemId]?.quantity || 0;
 
   const onSaved = (mode) => {
     setEditing(null);
@@ -106,7 +111,7 @@ export default function StockCount() {
             count={editing}
             onCancel={() => setEditing(null)}
             unitCostFor={(itemId) => Math.round(avgCostOf(totals, itemId) * 100) / 100}
-            onHandFor={onHandFor}
+            stockFor={stockFor}
             responsible={currentUser?.full_name || ''}
             onSaved={onSaved}
           />

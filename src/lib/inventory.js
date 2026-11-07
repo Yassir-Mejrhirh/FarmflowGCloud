@@ -44,40 +44,79 @@ export function mergeTotals(base = {}, extra = {}) {
   return merged;
 }
 
-// On-hand quantity per input: purchases from invoices, plus stock-in movements, minus stock-out movements.
-export function buildOnHand(invoices = [], movements = []) {
-  const totals = buildInputTotals(invoices);
-  const onHand = {};
-  Object.entries(totals).forEach(([itemId, row]) => {
-    onHand[itemId] = { ...row };
-  });
-  movements.forEach((movement) => {
-    if (!movement.item_id) return;
-    const sign = movement.kind === 'out' ? -1 : 1;
-    const row = onHand[movement.item_id] || { quantity: 0, cost: 0 };
-    row.quantity += sign * (Number(movement.quantity) || 0);
-    onHand[movement.item_id] = row;
-  });
-  return onHand;
-}
+// Le stock suit les événements dans l'ordre du temps : une facture ajoute, un mouvement
+// entre ou sort, et un inventaire validé fixe la quantité réellement constatée à sa date.
+// Les ajustements écrits par les anciens inventaires sont ignorés : le constat les remplace.
+const eventKey = (row) => `${String(row.date || '').slice(0, 10)}|${String(row.created_date || '')}`;
 
-// On-hand quantity per input, broken down by storage: invoices and movements of that storage.
-export function buildStorageOnHand(invoices = [], movements = []) {
-  const totals = {};
-  const add = (storageId, itemId, quantity) => {
-    if (!storageId || !itemId || !quantity) return;
-    const byStorage = totals[storageId] || {};
-    byStorage[itemId] = (byStorage[itemId] || 0) + quantity;
-    totals[storageId] = byStorage;
-  };
-  invoices.forEach((invoice) => {
+export function buildStockTotals({ invoices = [], movements = [], counts = [] }, storageId = '') {
+  const inScope = (row) => !storageId || (row.storage_id || '') === storageId;
+  const events = [];
+
+  invoices.filter(inScope).forEach((invoice) => {
     (invoice.lines || []).forEach((line) => {
-      add(invoice.storage_id, line.item_id, Number(line.quantity) || 0);
+      if (!line.item_id) return;
+      events.push({
+        item_id: line.item_id,
+        kind: 'in',
+        quantity: Number(line.quantity) || 0,
+        key: eventKey(invoice),
+        rank: 1,
+      });
     });
   });
-  movements.forEach((movement) => {
-    const sign = movement.kind === 'out' ? -1 : 1;
-    add(movement.storage_id, movement.item_id, sign * (Number(movement.quantity) || 0));
+
+  movements
+    .filter((movement) => !movement.count_id && inScope(movement))
+    .forEach((movement) => {
+      if (!movement.item_id) return;
+      events.push({
+        item_id: movement.item_id,
+        kind: movement.kind === 'out' ? 'out' : 'in',
+        quantity: Number(movement.quantity) || 0,
+        key: eventKey(movement),
+        rank: 1,
+      });
+    });
+
+  counts.filter(inScope).forEach((count) => {
+    (count.lines || []).forEach((line) => {
+      if (!line.item_id) return;
+      events.push({
+        item_id: line.item_id,
+        kind: 'count',
+        quantity: Number(line.quantity) || 0,
+        key: eventKey(count),
+        rank: 0,
+      });
+    });
+  });
+
+  events.sort((a, b) => a.key.localeCompare(b.key) || a.rank - b.rank);
+
+  const totals = {};
+  events.forEach((event) => {
+    const row = totals[event.item_id] || { quantity: 0 };
+    if (event.kind === 'count') row.quantity = event.quantity;
+    else row.quantity += (event.kind === 'out' ? -1 : 1) * event.quantity;
+    totals[event.item_id] = row;
+  });
+  return totals;
+}
+
+// Quantité disponible par intrant, inventaires compris.
+export function buildOnHand(invoices = [], movements = [], counts = []) {
+  return buildStockTotals({ invoices, movements, counts });
+}
+
+// Même calcul, restreint aux mouvements et inventaires d'un dépôt.
+export function buildStorageOnHand(invoices = [], movements = [], counts = []) {
+  const ids = new Set(
+    [...invoices, ...movements, ...counts].map((row) => row.storage_id).filter(Boolean),
+  );
+  const totals = {};
+  ids.forEach((id) => {
+    totals[id] = buildStockTotals({ invoices, movements, counts }, id);
   });
   return totals;
 }

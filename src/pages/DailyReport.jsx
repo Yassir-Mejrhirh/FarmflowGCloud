@@ -36,6 +36,7 @@ export default function DailyReport() {
   const [items, setItems] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [counts, setCounts] = useState([]);
   const [storages, setStorages] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [natures, setNatures] = useState([]);
@@ -50,7 +51,7 @@ export default function DailyReport() {
   const [editChoice, setEditChoice] = useState(null);
 
   const load = async () => {
-    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, storageRows, reportRows, taskRows, natureRows] = await Promise.all([
+    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, countRows, storageRows, reportRows, taskRows, natureRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
@@ -59,6 +60,7 @@ export default function DailyReport() {
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
       fetchList(base44.entities.StockMovement, {}),
+      fetchList(base44.entities.InventoryCount, {}, { sort: '-date' }),
       fetchList(base44.entities.Storage, {}, { sort: 'name' }),
       fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
       fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
@@ -72,6 +74,7 @@ export default function DailyReport() {
     setItems(itemRows);
     setInvoices(invoiceRows);
     setMovements(movementRows);
+    setCounts(countRows);
     setStorages(storageRows);
     setReports(reportRows);
     setTasks(taskRows);
@@ -119,7 +122,10 @@ export default function DailyReport() {
   }, [visibleBlocks, crops, t]);
   const taskMap = useMemo(() => byId(tasks), [tasks]);
   const itemMap = useMemo(() => byId(items), [items]);
-  const stockTotals = useMemo(() => buildOnHand(invoices, movements), [invoices, movements]);
+  const stockTotals = useMemo(
+    () => buildOnHand(invoices, movements, counts),
+    [invoices, movements, counts],
+  );
   const outflow = useMemo(() => buildReportOutflow(inputs, machinery), [inputs, machinery]);
   const itemOption = (item) => ({ value: item.id, label: `${item.name}${item.unit ? ` (${item.unit})` : ''}` });
   const fuelOptions = useMemo(
