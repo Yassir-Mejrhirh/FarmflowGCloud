@@ -23,7 +23,9 @@ export default function OperationGroups({ operations, groupBy, unit }) {
       .map(([key, lines]) => ({
         key,
         label: key || (groupBy === 'machine' ? t('stock.noMachine') : t('stock.noFarm')),
-        quantity: lines.reduce((sum, line) => sum + line.quantity, 0),
+        quantity: lines
+          .filter((line) => line.kind !== 'count')
+          .reduce((sum, line) => sum + line.quantity, 0),
         lines,
       }))
       .sort((a, b) => a.label.localeCompare(b.label)),
@@ -51,7 +53,14 @@ export default function OperationGroups({ operations, groupBy, unit }) {
                   {group.lines.map((line) => (
                     <li key={line.key} className="flex flex-wrap items-start gap-3 px-3.5 py-2.5">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm">{line.source}</p>
+                        <p className="flex items-center gap-1.5 truncate text-sm">
+                          {line.source}
+                          {line.kind === 'count' && (
+                            <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                              {t('stock.counted')}
+                            </span>
+                          )}
+                        </p>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
                           {[line.place, line.notes].filter(Boolean).join(' · ')}
                         </p>
@@ -63,7 +72,7 @@ export default function OperationGroups({ operations, groupBy, unit }) {
                             line.kind === 'out' ? 'text-clay' : 'text-primary',
                           )}
                         >
-                          {line.kind === 'out' ? '−' : '+'}
+                          {line.kind === 'out' ? '−' : line.kind === 'count' ? '= ' : '+'}
                           {fmtNum(line.quantity, 1)} {unit}
                         </p>
                         {!!line.amount && (

@@ -21,6 +21,7 @@ export default function StockStatus() {
   const [storageOnHand, setStorageOnHand] = useState({});
   const [invoices, setInvoices] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [counts, setCounts] = useState([]);
   const [storages, setStorages] = useState([]);
   const [machines, setMachines] = useState([]);
   const [blocks, setBlocks] = useState([]);
@@ -46,6 +47,7 @@ export default function StockStatus() {
       setItems(itemRows);
       setInvoices(invoiceRows);
       setMovements(movementRows);
+      setCounts(countRows);
       setStorages(storageRows);
       setMachines(machineRows);
       setBlocks(blockRows);
@@ -153,8 +155,30 @@ export default function StockStatus() {
         };
       });
 
-    return [...purchaseLines, ...movementLines].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [selected, invoices, movements, storages, machines, blocks, reports, t]);
+    const countLines = counts.flatMap((count) =>
+      (count.lines || [])
+        .filter((line) => line.item_id === selected.id)
+        .map((line, index) => {
+          const storage = storageMap.get(count.storage_id);
+          return {
+            key: `${count.id}-${index}`,
+            kind: 'count',
+            source: t('stock.inventory'),
+            date: count.date,
+            quantity: Number(line.quantity) || 0,
+            amount: (Number(line.quantity) || 0) * (Number(line.unit_price) || 0),
+            place: storage?.name || '',
+            notes: count.responsible || '',
+            machine: '',
+            farm: storage?.farm || '',
+          };
+        }),
+    );
+
+    return [...purchaseLines, ...movementLines, ...countLines].sort((a, b) =>
+      (b.date || '').localeCompare(a.date || ''),
+    );
+  }, [selected, invoices, movements, counts, storages, machines, blocks, reports, t]);
 
   return (
     <div className="space-y-8">
