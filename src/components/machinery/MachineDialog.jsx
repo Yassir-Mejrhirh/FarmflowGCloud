@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus } from 'lucide-react';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import PhotoField from '@/components/machinery/PhotoField';
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock } from '@/lib/paramUsage';
 
 export const BASE_TYPES = ['tractor', 'harvester', 'sprayer', 'truck', 'implement', 'other'];
 const NEW_TYPE = '__new_type';
@@ -27,6 +29,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
   const [showNewType, setShowNewType] = useState(false);
   const [newType, setNewType] = useState('');
   const [creatingType, setCreatingType] = useState(false);
+  const lock = useParamLock('Machine', machine);
 
   useEffect(() => {
     if (!open) return;
@@ -66,7 +69,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name?.trim()) return;
+    if (!form.name?.trim() || lock.locked) return;
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -86,7 +89,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
   };
 
   const remove = async () => {
-    if (!machine?.id) return;
+    if (!machine?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Machine.delete(machine.id);
     setSaving(false);
@@ -101,8 +104,11 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
       title={machine ? t('machDialog.editTitle') : t('machDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
+      submitDisabled={lock.locked}
       submitLabel={machine ? t('machDialog.save') : t('machDialog.add')}
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <Field label={t('common.name')}>
         <Input
           value={form.name || ''}
@@ -185,7 +191,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
         <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
 
-      {machine?.id && (
+      {machine?.id && !lock.locked && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
           {t('machDialog.delete')}
         </button>

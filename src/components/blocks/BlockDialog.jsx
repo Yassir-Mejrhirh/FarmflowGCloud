@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import BoundaryDrawer from '@/components/blocks/BoundaryDrawer';
@@ -11,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { polygonAreaHa } from '@/lib/geo';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock } from '@/lib/paramUsage';
 
 const EMPTY = {
   name: '', code: '', farm: '', crop_id: '', variety_id: '', planting_date: '', status: 'active', soil_type: '', notes: '', boundary: [], sub_blocks: [], irrigation_zones: [],
@@ -65,6 +67,7 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
   const [form, setForm] = useState(EMPTY);
   const [farms, setFarms] = useState([]);
   const [saving, setSaving] = useState(false);
+  const lock = useParamLock('FarmBlock', block);
 
   useEffect(() => {
     if (!open) return;
@@ -116,7 +119,7 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || lock.locked) return;
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -151,7 +154,7 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
   };
 
   const handleDelete = async () => {
-    if (!block?.id) return;
+    if (!block?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.FarmBlock.delete(block.id);
     setSaving(false);
@@ -171,9 +174,12 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
       description={t('blockDialog.desc')}
       onSubmit={handleSubmit}
       saving={saving}
+      submitDisabled={lock.locked}
       submitLabel={block ? t('blockDialog.save') : t('blockDialog.create')}
       wide
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('blockDialog.blockName')}>
           <Input value={form.name} onChange={(e) => handleNameChange(e.target.value)} placeholder={t('blockDialog.namePlaceholder')} required />
@@ -250,7 +256,7 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
         <Textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} rows={2} placeholder={t('blockDialog.notesPlaceholder')} />
       </Field>
 
-      {block?.id && (
+      {block?.id && !lock.locked && (
         <button
           type="button"
           onClick={handleDelete}

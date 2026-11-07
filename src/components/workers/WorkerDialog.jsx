@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus } from 'lucide-react';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock } from '@/lib/paramUsage';
 
 const PRIORITIES = ['1', '2', '3'];
 const DEFINITIONS = ['nominative', 'salary_band'];
@@ -41,6 +43,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
   const [showNewFunction, setShowNewFunction] = useState(false);
   const [newFunction, setNewFunction] = useState('');
   const [creatingFunction, setCreatingFunction] = useState(false);
+  const lock = useParamLock('Worker', worker);
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +90,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name?.trim()) return;
+    if (!form.name?.trim() || lock.locked) return;
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -115,7 +118,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
   };
 
   const remove = async () => {
-    if (!worker?.id) return;
+    if (!worker?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Worker.delete(worker.id);
     setSaving(false);
@@ -135,8 +138,11 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       title={worker ? t('workerDialog.editTitle') : t('workerDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
+      submitDisabled={lock.locked}
       submitLabel={worker ? t('workerDialog.save') : t('workerDialog.add')}
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <Field label={t('workerDialog.fullName')}>
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       </Field>
@@ -307,7 +313,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       <Field label={t('common.notes')}>
         <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
-      {worker?.id && (
+      {worker?.id && !lock.locked && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
           {t('workerDialog.delete')}
         </button>

@@ -5,6 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock } from '@/lib/paramUsage';
 
 const CATEGORIES = ['cereal', 'vegetable', 'fruit_tree', 'legume', 'fodder', 'other'];
 
@@ -95,6 +97,7 @@ function CropDialog({ open, onOpenChange, crop, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState({ name: '', category: 'other', cycle_days: '', notes: '' });
   const [saving, setSaving] = useState(false);
+  const lock = useParamLock('Crop', crop);
 
   useEffect(() => {
     if (!open) return;
@@ -108,7 +111,7 @@ function CropDialog({ open, onOpenChange, crop, onSaved }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || lock.locked) return;
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -124,7 +127,7 @@ function CropDialog({ open, onOpenChange, crop, onSaved }) {
   };
 
   const remove = async () => {
-    if (!crop?.id) return;
+    if (!crop?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Crop.delete(crop.id);
     setSaving(false);
@@ -139,8 +142,11 @@ function CropDialog({ open, onOpenChange, crop, onSaved }) {
       title={crop ? t('cropDialog.editTitle') : t('cropDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
+      submitDisabled={lock.locked}
       submitLabel={crop ? t('cropDialog.save') : t('cropDialog.add')}
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <Field label={t('cropDialog.nameLabel')}>
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('cropDialog.namePlaceholder')} required />
       </Field>
@@ -164,7 +170,7 @@ function CropDialog({ open, onOpenChange, crop, onSaved }) {
       <Field label={t('common.notes')}>
         <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
-      {crop?.id && (
+      {crop?.id && !lock.locked && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
           {t('cropDialog.delete')}
         </button>

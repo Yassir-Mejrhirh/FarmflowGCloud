@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus } from 'lucide-react';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock } from '@/lib/paramUsage';
 import { UNIT_OPTIONS, suggestedFactor } from '@/lib/units';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +38,7 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
   const [newCategory, setNewCategory] = useState('');
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const lock = useParamLock('InputItem', item);
 
   useEffect(() => {
     if (!open) return;
@@ -108,7 +111,7 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || lock.locked) return;
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -130,7 +133,7 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
   };
 
   const remove = async () => {
-    if (!item?.id) return;
+    if (!item?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.InputItem.delete(item.id);
     setSaving(false);
@@ -145,8 +148,11 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
       title={item ? t('itemDialog.editTitle') : t('itemDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
+      submitDisabled={lock.locked}
       submitLabel={item ? t('itemDialog.save') : t('itemDialog.add')}
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <Field label={t('common.name')}>
         <Input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="NPK 15-15-15" required />
       </Field>
@@ -290,7 +296,7 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
         ))}
       </datalist>
 
-      {item?.id && (
+      {item?.id && !lock.locked && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
           {t('itemDialog.delete')}
         </button>

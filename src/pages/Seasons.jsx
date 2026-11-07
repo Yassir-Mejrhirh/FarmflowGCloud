@@ -5,6 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { fmtDate } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock } from '@/lib/paramUsage';
 
 const STATUSES = ['planned', 'active', 'closed'];
 const TONE = { planned: 'sand', active: 'moss', closed: 'stone' };
@@ -99,6 +101,7 @@ function SeasonDialog({ open, onOpenChange, season, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState({ name: '', start_date: '', end_date: '', status: 'active', notes: '' });
   const [saving, setSaving] = useState(false);
+  const lock = useParamLock('Season', season);
 
   useEffect(() => {
     if (!open) return;
@@ -113,7 +116,7 @@ function SeasonDialog({ open, onOpenChange, season, onSaved }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || lock.locked) return;
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -130,7 +133,7 @@ function SeasonDialog({ open, onOpenChange, season, onSaved }) {
   };
 
   const remove = async () => {
-    if (!season?.id) return;
+    if (!season?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Season.delete(season.id);
     setSaving(false);
@@ -145,7 +148,10 @@ function SeasonDialog({ open, onOpenChange, season, onSaved }) {
       title={season ? t('seasons.dialogEdit') : t('seasons.dialogNew')}
       onSubmit={submit}
       saving={saving}
+      submitDisabled={lock.locked}
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <Field label={t('common.name')}>
         <Input
           value={form.name}
@@ -172,7 +178,7 @@ function SeasonDialog({ open, onOpenChange, season, onSaved }) {
       <Field label={t('common.notes')}>
         <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
-      {season?.id && (
+      {season?.id && !lock.locked && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
           {t('seasons.delete')}
         </button>

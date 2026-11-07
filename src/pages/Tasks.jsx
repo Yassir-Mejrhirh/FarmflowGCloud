@@ -4,6 +4,7 @@ import { Plus, ListChecks, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
@@ -12,10 +13,13 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock, findParamUsage, usageLabel } from '@/lib/paramUsage';
 import { BUILT_IN_TYPES, NEW_NATURE, natureLabel } from '@/lib/taskNature';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function Tasks() {
   const { t } = useI18n();
+  const { toast } = useToast();
   const [tasks, setTasks] = useState([]);
   const [natures, setNatures] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +43,15 @@ export default function Tasks() {
   }, []);
 
   const remove = async (task) => {
+    const usage = await findParamUsage('Task', task);
+    if (usage.length) {
+      toast({
+        title: t('paramLock.title'),
+        description: t('paramLock.body', { list: usageLabel(usage, t) }),
+        variant: 'destructive',
+      });
+      return;
+    }
     setTasks((prev) => prev.filter((row) => row.id !== task.id));
     await base44.entities.Task.delete(task.id);
   };
@@ -136,6 +149,7 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
   const [showNewNature, setShowNewNature] = useState(false);
   const [newNature, setNewNature] = useState('');
   const [creatingNature, setCreatingNature] = useState(false);
+  const lock = useParamLock('Task', task);
 
   useEffect(() => {
     if (!open) return;
@@ -168,6 +182,7 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
 
   const submit = async (event) => {
     event.preventDefault();
+    if (lock.locked) return;
     setSaving(true);
     const payload = {
       title: natureLabel(form.type, natures, t),
@@ -193,8 +208,11 @@ function TaskDialog({ open, onOpenChange, task, natures, onNaturesChanged, onSav
       title={task ? t('taskDialog.editTitle') : t('taskDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
+      submitDisabled={lock.locked}
       submitLabel={task ? t('taskDialog.save') : t('taskDialog.create')}
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <Field label={t('taskDialog.nature')}>
         <SelectField
           value={form.type}

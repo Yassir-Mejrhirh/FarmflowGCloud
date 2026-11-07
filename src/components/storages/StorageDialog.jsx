@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import KmzPointImport from '@/components/geo/KmzPointImport';
@@ -9,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock } from '@/lib/paramUsage';
 
 const KINDS = ['warehouse', 'cold_room', 'silo', 'shed'];
 
@@ -17,6 +19,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
   const [form, setForm] = useState({});
   const [farms, setFarms] = useState([]);
   const [saving, setSaving] = useState(false);
+  const lock = useParamLock('Storage', storage);
 
   useEffect(() => {
     if (!open) return;
@@ -43,7 +46,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name?.trim()) return;
+    if (!form.name?.trim() || lock.locked) return;
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -65,7 +68,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
   };
 
   const remove = async () => {
-    if (!storage?.id) return;
+    if (!storage?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Storage.delete(storage.id);
     setSaving(false);
@@ -81,8 +84,11 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
       onSubmit={submit}
       saving={saving}
       wide
+      submitDisabled={lock.locked}
       submitLabel={storage ? t('storageDialog.save') : t('storageDialog.add')}
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('common.name')}>
           <Input
@@ -137,7 +143,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
       <Field label={t('common.notes')}>
         <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
-      {storage?.id && (
+      {storage?.id && !lock.locked && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
           {t('storageDialog.delete')}
         </button>

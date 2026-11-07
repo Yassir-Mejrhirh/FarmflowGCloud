@@ -5,6 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import EmptyState from '@/components/EmptyState';
 import FormDialog from '@/components/FormDialog';
+import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
+import { useParamLock } from '@/lib/paramUsage';
 
 const CATEGORIES = ['inputs', 'equipment', 'services', 'transport', 'other'];
 
@@ -99,6 +101,7 @@ function SupplierDialog({ open, onOpenChange, supplier, onSaved }) {
     name: '', contact_name: '', phone: '', email: '', category: 'inputs', notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const lock = useParamLock('Supplier', supplier);
 
   useEffect(() => {
     if (!open) return;
@@ -114,7 +117,7 @@ function SupplierDialog({ open, onOpenChange, supplier, onSaved }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || lock.locked) return;
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -132,7 +135,7 @@ function SupplierDialog({ open, onOpenChange, supplier, onSaved }) {
   };
 
   const remove = async () => {
-    if (!supplier?.id) return;
+    if (!supplier?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.Supplier.delete(supplier.id);
     setSaving(false);
@@ -147,7 +150,10 @@ function SupplierDialog({ open, onOpenChange, supplier, onSaved }) {
       title={supplier ? t('suppliers.dialogEdit') : t('suppliers.dialogNew')}
       onSubmit={submit}
       saving={saving}
+      submitDisabled={lock.locked}
     >
+      <ParamLockNotice usage={lock.usage} />
+
       <Field label={t('common.name')}>
         <Input
           value={form.name}
@@ -183,7 +189,7 @@ function SupplierDialog({ open, onOpenChange, supplier, onSaved }) {
       <Field label={t('common.notes')}>
         <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
       </Field>
-      {supplier?.id && (
+      {supplier?.id && !lock.locked && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
           {t('suppliers.delete')}
         </button>
