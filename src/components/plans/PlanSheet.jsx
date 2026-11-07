@@ -3,19 +3,20 @@ import PlanSheetFrame from '@/components/plans/PlanSheetFrame';
 import { fmtLongDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
-export default function PlanSheet({ title, parcels, missing }) {
+export default function PlanSheet({ title, parcels, missing, orientation = 'landscape', zoom = 50 }) {
   const { t } = useI18n();
   const totalArea = parcels.reduce((total, parcel) => total + (Number(parcel.area) || 0), 0);
+  const legendColumns = orientation === 'portrait' ? 'grid-cols-3' : 'grid-cols-4';
 
   return (
-    <PlanSheetFrame>
+    <PlanSheetFrame orientation={orientation}>
       <div className="plan-sheet">
-        <header className="flex flex-none items-end justify-between gap-8 border-b border-[#dfe3d9] pb-4">
-          <div>
+        <header className="flex flex-none items-end justify-between gap-6 border-b border-[#dfe3d9] pb-4">
+          <div className="min-w-0">
             <p className="text-[9px] font-medium uppercase tracking-[0.3em] text-[#7b8a7c]">{t('plans.sheetTitle')}</p>
             <h2 className="mt-2 font-display text-[27px] leading-none text-[#152018]">{title}</h2>
           </div>
-          <div className="flex gap-8 text-right">
+          <div className="flex shrink-0 gap-6 text-right">
             <div>
               <p className="text-[9px] uppercase tracking-[0.16em] text-[#7b8a7c]">{t('common.date')}</p>
               <p className="mt-1 text-[11px] font-medium text-[#152018]">{fmtLongDate()}</p>
@@ -32,11 +33,11 @@ export default function PlanSheet({ title, parcels, missing }) {
         </header>
 
         <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-md border border-[#dfe3d9]">
-          <PlanMap parcels={parcels} />
+          <PlanMap key={orientation} parcels={parcels} zoom={zoom} />
         </div>
 
         <footer className="mt-4 max-h-[170px] flex-none overflow-hidden">
-          <div className="grid grid-cols-4 gap-x-5 gap-y-1">
+          <div className={`grid gap-x-5 gap-y-1 ${legendColumns}`}>
             {parcels.map((parcel, index) => (
               <div key={parcel.id} className="flex items-center gap-1.5 text-[9px] leading-[1.6]">
                 <span

@@ -128,16 +128,16 @@
 }
 
 .plan-sheet-frame {
-  width: 1060px;
-  height: 736px;
+  width: var(--sheet-w, 1050px);
+  height: var(--sheet-h, 720px);
   transform: scale(var(--plan-scale, 1));
   transform-origin: top left;
 }
 
 .plan-sheet {
   display: flex;
-  width: 1060px;
-  height: 736px;
+  width: var(--sheet-w, 1050px);
+  height: var(--sheet-h, 720px);
   flex-direction: column;
   border: 1px solid hsl(var(--border));
   border-radius: 10px;
@@ -147,21 +147,28 @@
   box-shadow: 0 12px 40px rgba(21, 32, 24, 0.1);
 }
 
+.plan-label-anchor,
+.leaflet-div-icon.plan-label-anchor {
+  background: transparent;
+  border: none;
+}
+
+/* Parcel labels sit on the map without hiding it: no box, just outlined text */
 .leaflet-tooltip.plan-label {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 2px 6px;
-  border: 1px solid rgba(21, 32, 24, 0.16);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.93);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
-  color: #152018;
+  color: #ffffff;
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.2;
   white-space: nowrap;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 
 .leaflet-tooltip.plan-label::before {
@@ -169,17 +176,12 @@
 }
 
 .leaflet-tooltip.plan-label small {
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 500;
-  color: #4a5a4e;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 @media print {
-  @page {
-    size: A4 landscape;
-    margin: 8mm;
-  }
-
   html,
   body {
     background: #ffffff !important;
@@ -198,7 +200,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 1060px;
+    width: var(--sheet-w, 1050px);
   }
 
   .plan-sheet-viewport {

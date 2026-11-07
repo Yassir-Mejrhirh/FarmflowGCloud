@@ -9,6 +9,7 @@ import Segmented from '@/components/Segmented';
 import PlanSheet from '@/components/plans/PlanSheet';
 import BlockCheckList from '@/components/plans/BlockCheckList';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { fetchList } from '@/lib/data';
 import { polygonAreaHa } from '@/lib/geo';
 import { fmtNum } from '@/lib/format';
@@ -24,6 +25,8 @@ export default function BlockPlans() {
   const [mode, setMode] = useState('farm');
   const [farmId, setFarmId] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [zoom, setZoom] = useState(50);
+  const [orientation, setOrientation] = useState('landscape');
 
   useEffect(() => {
     const load = async () => {
@@ -109,6 +112,38 @@ export default function BlockPlans() {
           </div>
         </div>
 
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('plans.zoom')}>
+            <div className="flex items-center gap-3 pb-1">
+              <Slider
+                value={[zoom]}
+                min={0}
+                max={100}
+                step={1}
+                onValueChange={([value]) => setZoom(value)}
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => setZoom(50)}
+                className="shrink-0 rounded-lg border border-border/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                {t('plans.resetFraming')}
+              </button>
+            </div>
+          </Field>
+          <Field label={t('plans.orientation')}>
+            <Segmented
+              value={orientation}
+              onChange={setOrientation}
+              options={[
+                { value: 'landscape', label: t('plans.landscape') },
+                { value: 'portrait', label: t('plans.portrait') },
+              ]}
+            />
+          </Field>
+        </div>
+
         {mode === 'parcels' && (
           <BlockCheckList
             parcels={mapped}
@@ -126,7 +161,13 @@ export default function BlockPlans() {
       {loading ? (
         <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
       ) : parcels.length ? (
-        <PlanSheet title={sheetTitle} parcels={parcels} missing={mode === 'farm' ? missing : []} />
+        <PlanSheet
+          title={sheetTitle}
+          parcels={parcels}
+          missing={mode === 'farm' ? missing : []}
+          orientation={orientation}
+          zoom={zoom}
+        />
       ) : (
         <EmptyState
           icon={MapPin}
