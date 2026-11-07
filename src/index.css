@@ -121,3 +121,102 @@
     background: rgba(255, 255, 255, 0.7) !important;
   }
 }
+
+/* Parcel plan sheet: rendered at real A4 landscape size, scaled down for preview */
+.plan-sheet-viewport {
+  overflow: hidden;
+}
+
+.plan-sheet-frame {
+  width: 1060px;
+  height: 736px;
+  transform: scale(var(--plan-scale, 1));
+  transform-origin: top left;
+}
+
+.plan-sheet {
+  display: flex;
+  width: 1060px;
+  height: 736px;
+  flex-direction: column;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 26px 28px;
+  color: #152018;
+  box-shadow: 0 12px 40px rgba(21, 32, 24, 0.1);
+}
+
+.leaflet-tooltip.plan-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 6px;
+  border: 1px solid rgba(21, 32, 24, 0.16);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.93);
+  box-shadow: none;
+  color: #152018;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip.plan-label::before {
+  display: none;
+}
+
+.leaflet-tooltip.plan-label small {
+  font-size: 9px;
+  font-weight: 500;
+  color: #4a5a4e;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #plan-print-root,
+  #plan-print-root * {
+    visibility: visible;
+  }
+
+  #plan-print-root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 1060px;
+  }
+
+  .plan-sheet-viewport {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .plan-sheet-frame {
+    transform: none !important;
+  }
+
+  .plan-sheet {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .leaflet-control-attribution {
+    font-size: 7px !important;
+  }
+}
