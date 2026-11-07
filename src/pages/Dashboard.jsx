@@ -5,22 +5,23 @@ import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import OverviewGroups from '@/components/dashboard/OverviewGroups';
 import { fetchList } from '@/lib/data';
-import { buildInputTotals } from '@/lib/inventory';
+import { buildOnHand } from '@/lib/inventory';
 import { fmtLongDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function Dashboard() {
   const { t } = useI18n();
   const [items, setItems] = useState([]);
-  const [purchases, setPurchases] = useState({});
+  const [onHand, setOnHand] = useState({});
 
   const load = async () => {
-    const [itemRows, invoiceRows] = await Promise.all([
+    const [itemRows, invoiceRows, movementRows] = await Promise.all([
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
+      fetchList(base44.entities.StockMovement, {}),
     ]);
     setItems(itemRows);
-    setPurchases(buildInputTotals(invoiceRows));
+    setOnHand(buildOnHand(invoiceRows, movementRows));
   };
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function Dashboard() {
 
   const dateLabel = fmtLongDate();
   const lowStock = items.filter(
-    (item) => item.min_stock_enabled && (purchases[item.id]?.quantity || 0) <= (Number(item.min_stock) || 0),
+    (item) => item.min_stock_enabled && (onHand[item.id]?.quantity || 0) <= (Number(item.min_stock) || 0),
   );
 
   return (
@@ -49,16 +50,16 @@ export default function Dashboard() {
           ) : (
             <ul className="mt-4 space-y-4">
               {lowStock.slice(0, 3).map((item) => {
-                const onHand = purchases[item.id]?.quantity || 0;
+                const available = onHand[item.id]?.quantity || 0;
                 const level = item.min_stock
-                  ? Math.min(100, Math.round((onHand / Number(item.min_stock)) * 100))
+                  ? Math.min(100, Math.round((available / Number(item.min_stock)) * 100))
                   : 100;
                 return (
                   <li key={item.id}>
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="truncate text-sm">{item.name}</span>
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {fmtNum(onHand, 1)} {item.unit}
+                        {fmtNum(available, 1)} {item.unit}
                       </span>
                     </div>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
