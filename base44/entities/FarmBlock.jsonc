@@ -106,6 +106,50 @@
         }
       }
     },
+    "split_group_id": {
+      "type": "string",
+      "description": "Division the block comes from, shared by all parcels created together"
+    },
+    "split_index": {
+      "type": "number",
+      "description": "Position of the block among the parcels of its division"
+    },
+    "split_source": {
+      "type": "array",
+      "description": "Boundary of the parcel before division, kept to move the cut points again",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "split_cuts": {
+      "type": "array",
+      "description": "Cut lines that separate the parcels of the division, each stored as its two handles",
+      "items": {
+        "type": "object",
+        "properties": {
+          "a_lat": {
+            "type": "number"
+          },
+          "a_lng": {
+            "type": "number"
+          },
+          "b_lat": {
+            "type": "number"
+          },
+          "b_lng": {
+            "type": "number"
+          }
+        }
+      }
+    },
     "notes": {
       "type": "string"
     }

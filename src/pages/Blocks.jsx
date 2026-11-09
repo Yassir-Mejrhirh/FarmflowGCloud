@@ -165,6 +165,7 @@ export default function Blocks() {
         blocks={blocks}
         selectedId={selectedId}
         onSelect={setSelectedId}
+        onSaved={load}
       />
 
       <GroupBlocksDialog

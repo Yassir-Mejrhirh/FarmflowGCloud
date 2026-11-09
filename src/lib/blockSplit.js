@@ -1,5 +1,7 @@
 import { base44 } from '@/api/base44Client';
 import { fetchList } from '@/lib/data';
+import { polygonAreaHa } from '@/lib/geo';
+import { cutToFlat, defaultCuts, splitByCuts } from '@/lib/cutLines';
 
 const PRECISION = 3;
 
@@ -27,79 +29,6 @@ export function distribute(total, weights) {
   const gap = round(value - shares.reduce((acc, share) => acc + share, 0));
   if (shares.length) shares[shares.length - 1] = round(shares[shares.length - 1] + gap);
   return shares;
-}
-
-const planarArea = (points = []) => {
-  if (points.length < 3) return 0;
-  let total = 0;
-  for (let i = 0; i < points.length; i += 1) {
-    const current = points[i];
-    const next = points[(i + 1) % points.length];
-    total += current.lng * next.lat - next.lng * current.lat;
-  }
-  return Math.abs(total / 2);
-};
-
-// Sutherland–Hodgman clip of a ring against an axis-aligned half plane.
-const clipRing = (points, axis, bound, keepAbove) => {
-  const inside = (point) => (keepAbove ? point[axis] >= bound : point[axis] <= bound);
-  const clipped = [];
-  points.forEach((current, index) => {
-    const previous = points[(index + points.length - 1) % points.length];
-    const currentIn = inside(current);
-    const previousIn = inside(previous);
-    if (currentIn !== previousIn) {
-      const delta = current[axis] - previous[axis];
-      const ratio = delta === 0 ? 0 : (bound - previous[axis]) / delta;
-      clipped.push({
-        lat: previous.lat + (current.lat - previous.lat) * ratio,
-        lng: previous.lng + (current.lng - previous.lng) * ratio,
-      });
-    }
-    if (currentIn) clipped.push({ lat: current.lat, lng: current.lng });
-  });
-  return clipped;
-};
-
-// Real boundaries for the new parcels: the original ring is cut into strips
-// along its longer axis, each strip holding the surface share of its parcel.
-export function splitBoundary(boundary = [], weights = []) {
-  if (!boundary || boundary.length < 3 || !weights.length) {
-    return weights.map(() => []);
-  }
-
-  const lats = boundary.map((point) => point.lat);
-  const lngs = boundary.map((point) => point.lng);
-  const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-  const latSpan = Math.max(...lats) - Math.min(...lats);
-  const lngSpan = (Math.max(...lngs) - Math.min(...lngs)) * Math.cos((midLat * Math.PI) / 180);
-  const axis = lngSpan >= latSpan ? 'lng' : 'lat';
-  const values = boundary.map((point) => point[axis]);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const total = planarArea(boundary);
-  if (!total) return weights.map(() => []);
-
-  const cuts = [];
-  let cumulative = 0;
-  weights.slice(0, -1).forEach((weight) => {
-    cumulative += weight;
-    const target = total * cumulative;
-    let low = min;
-    let high = max;
-    for (let i = 0; i < 46; i += 1) {
-      const middle = (low + high) / 2;
-      if (planarArea(clipRing(boundary, axis, middle, false)) < target) low = middle;
-      else high = middle;
-    }
-    cuts.push((low + high) / 2);
-  });
-
-  const bounds = [min, ...cuts, max];
-  return weights.map((_, index) => {
-    const below = clipRing(boundary, axis, bounds[index + 1], false);
-    return clipRing(below, axis, bounds[index], true);
-  });
 }
 
 const emptyUsage = { reports: [], tasks: [], harvests: [], expenses: [], movements: [] };
@@ -160,9 +89,13 @@ export async function canSplit(usage = emptyUsage) {
 // Replaces the parcel by its new parcels, then hands every record that pointed at
 // it over to them in proportion to their surface. The original is deleted last,
 // so a failure anywhere leaves it in place.
-export async function splitBlock({ block, parts, usage = emptyUsage }) {
+export async function splitBlock({ block, parts, usage = emptyUsage, cuts = null }) {
   const weights = shareWeights(parts);
-  const rings = splitBoundary(block.boundary || [], weights);
+  const mapped = (block.boundary || []).length >= 3;
+  const lines = mapped ? (cuts && cuts.length ? cuts : defaultCuts(block.boundary, weights)) : [];
+  const rings = mapped ? splitByCuts(block.boundary, lines) : parts.map(() => []);
+  // The group keeps the cut lines, so the boundaries stay adjustable afterwards.
+  const groupId = mapped ? `split-${block.id}-${Date.now()}` : '';
   const created = [];
 
   for (let index = 0; index < parts.length; index += 1) {
@@ -181,9 +114,13 @@ export async function splitBlock({ block, parts, usage = emptyUsage }) {
         soil_type: block.soil_type || '',
         notes: block.notes || '',
         boundary: rings[index] || [],
-        area_ha: round(part.area_ha, 2),
+        area_ha: round(polygonAreaHa(rings[index]) || part.area_ha, 2),
         sub_blocks: [],
         irrigation_zones: [],
+        split_group_id: groupId,
+        split_index: index,
+        split_source: mapped ? block.boundary : [],
+        split_cuts: mapped ? lines.map(cutToFlat) : [],
       }),
     );
   }

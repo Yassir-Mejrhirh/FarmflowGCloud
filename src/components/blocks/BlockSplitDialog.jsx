@@ -3,10 +3,12 @@ import { Plus, Scissors, Trash2 } from 'lucide-react';
 import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
+import CutLineMap from '@/components/blocks/CutLineMap';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fmtNum, fmtMoney } from '@/lib/format';
 import { polygonAreaHa } from '@/lib/geo';
+import { defaultCuts, pieceIsEmpty, splitByCuts } from '@/lib/cutLines';
 import { loadBlockUsage, canSplit, shareWeights, splitBlock, summarizeUsage } from '@/lib/blockSplit';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -28,19 +30,28 @@ const buildParts = (count, block, baseArea, t) => {
 export default function BlockSplitDialog({ open, onOpenChange, block, count = 2, varieties = [], onDone }) {
   const { t } = useI18n();
   const [parts, setParts] = useState([]);
+  const [cuts, setCuts] = useState([]);
   const [usage, setUsage] = useState(null);
   const [saving, setSaving] = useState(false);
   const [blocked, setBlocked] = useState('');
   const [failed, setFailed] = useState(false);
+
+  const boundary = useMemo(() => (block?.boundary?.length >= 3 ? block.boundary : []), [block]);
+  const mapped = boundary.length >= 3;
 
   const baseArea = useMemo(
     () => Number(block?.area_ha) || polygonAreaHa(block?.boundary || []) || 0,
     [block],
   );
 
+  const equalCuts = (nextParts) =>
+    mapped && nextParts.length > 1 ? defaultCuts(boundary, nextParts.map(() => 1 / nextParts.length)) : [];
+
   useEffect(() => {
     if (!open || !block?.id) return;
-    setParts(buildParts(count || 2, block, baseArea, t));
+    const nextParts = buildParts(count || 2, block, baseArea, t);
+    setParts(nextParts);
+    setCuts(equalCuts(nextParts));
     setUsage(null);
     setBlocked('');
     setFailed(false);
@@ -48,17 +59,41 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
       setUsage(loaded);
       if (!(await canSplit(loaded))) setBlocked(t('blockSplit.adminOnly'));
     });
-  }, [open, block, count, baseArea, t]);
+  }, [open, block, count, baseArea, t, mapped, boundary]);
 
-  const weights = useMemo(() => shareWeights(parts), [parts]);
-  const total = parts.reduce((sum, part) => sum + (Number(part.area_ha) || 0), 0);
-  const areaMismatch = baseArea > 0 && Math.abs(total - baseArea) > 0.02;
+  const rings = useMemo(
+    () => (mapped && cuts.length ? splitByCuts(boundary, cuts) : []),
+    [mapped, boundary, cuts],
+  );
+
+  // With a boundary, the drawing decides where each parcel is and how big it is.
+  const displayParts = useMemo(
+    () =>
+      parts.map((part, index) =>
+        mapped && rings[index] ? { ...part, area_ha: Number(polygonAreaHa(rings[index]).toFixed(2)) } : part,
+      ),
+    [parts, mapped, rings],
+  );
+
+  const traced = !mapped || (cuts.length === parts.length - 1 && rings.length === parts.length);
+  const emptyPiece = traced && mapped && rings.some((ring) => pieceIsEmpty(ring));
+  const weights = useMemo(() => shareWeights(displayParts), [displayParts]);
+  const total = displayParts.reduce((sum, part) => sum + (Number(part.area_ha) || 0), 0);
+  const areaMismatch = !mapped && baseArea > 0 && Math.abs(total - baseArea) > 0.02;
   const named = parts.length > 1 && parts.every((part) => part.name?.trim());
-  const canDivide = !!usage && named && !areaMismatch && !blocked && !saving;
+  const canDivide = !!usage && named && !areaMismatch && !emptyPiece && traced && !blocked && !saving;
   const summary = useMemo(() => (usage ? summarizeUsage(usage) : null), [usage]);
+
+  const applyParts = (nextParts) => {
+    setParts(nextParts);
+    setCuts(equalCuts(nextParts));
+  };
 
   const updatePart = (index, key, value) =>
     setParts((prev) => prev.map((part, i) => (i === index ? { ...part, [key]: value } : part)));
+
+  const moveCut = (index, end, point) =>
+    setCuts((prev) => prev.map((cut, i) => (i === index ? { ...cut, [end]: point } : cut)));
 
   const varietyOptions = varieties
     .filter((variety) => !block?.crop_id || variety.crop_id === block.crop_id)
@@ -70,7 +105,7 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
     setSaving(true);
     setFailed(false);
     try {
-      await splitBlock({ block, parts, usage });
+      await splitBlock({ block, parts: displayParts, usage, cuts: mapped ? cuts : null });
       setSaving(false);
       onOpenChange(false);
       onDone();
@@ -106,10 +141,10 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
       wide
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => setParts(buildParts(2, block, baseArea, t))}>
+        <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => applyParts(buildParts(2, block, baseArea, t))}>
           <Scissors className="h-3.5 w-3.5" /> {t('blockSplit.into2')}
         </Button>
-        <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => setParts(buildParts(3, block, baseArea, t))}>
+        <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => applyParts(buildParts(3, block, baseArea, t))}>
           <Scissors className="h-3.5 w-3.5" /> {t('blockSplit.into3')}
         </Button>
         <Button
@@ -117,7 +152,7 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
           variant="ghost"
           size="sm"
           className="rounded-lg"
-          onClick={() => setParts([...parts, { name: '', area_ha: '', variety_id: '' }])}
+          onClick={() => applyParts([...parts, { name: '', area_ha: '', variety_id: '' }])}
         >
           <Plus className="h-3.5 w-3.5" /> {t('blockSplit.addPart')}
         </Button>
@@ -125,7 +160,7 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
 
       <Field label={t('blockSplit.parts')}>
         <div className="space-y-2">
-          {parts.map((part, index) => (
+          {displayParts.map((part, index) => (
             <div key={index} className="grid gap-2 rounded-xl border border-border/60 p-2 sm:grid-cols-[1fr_6.5rem_10rem_auto] sm:items-center sm:border-0 sm:p-0">
               <Input
                 value={part.name}
@@ -139,7 +174,8 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
                   step="0.01"
                   value={part.area_ha ?? ''}
                   onChange={(event) => updatePart(index, 'area_ha', event.target.value)}
-                  className="pe-8"
+                  className={cn('pe-8', mapped && 'bg-secondary/60 text-muted-foreground')}
+                  readOnly={mapped}
                   aria-label={t('blockSplit.area')}
                 />
                 <span className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-[11px] text-muted-foreground">ha</span>
@@ -156,7 +192,7 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                onClick={() => setParts(parts.filter((_, i) => i !== index))}
+                onClick={() => applyParts(parts.filter((_, i) => i !== index))}
                 disabled={parts.length <= 2}
                 aria-label={t('blockSplit.removePart')}
               >
@@ -167,8 +203,25 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
         </div>
       </Field>
 
+      <Field label={t('blockSplit.cuts')} hint={mapped ? t('blockSplit.cutsHint') : undefined}>
+        {mapped ? (
+          <CutLineMap
+            boundary={boundary}
+            cuts={cuts}
+            pieces={rings}
+            labels={displayParts.map((part) => part.name)}
+            areas={displayParts.map((part) => part.area_ha)}
+            onMoveCut={moveCut}
+          />
+        ) : (
+          <p className="rounded-xl border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
+            {t('blockSplit.noBoundary')}
+          </p>
+        )}
+      </Field>
+
       <div className="space-y-1.5 rounded-xl border border-border/70 bg-secondary/40 p-3">
-        {parts.map((part, index) => (
+        {displayParts.map((part, index) => (
           <p key={index} className="flex items-center justify-between gap-3 text-xs tabular-nums">
             <span className="truncate font-medium">{part.name || '—'}</span>
             <span className="text-muted-foreground">
@@ -179,13 +232,14 @@ export default function BlockSplitDialog({ open, onOpenChange, block, count = 2,
             </span>
           </p>
         ))}
-        <p className={cn('pt-1 text-[11px] tabular-nums', areaMismatch ? 'font-medium text-destructive' : 'text-muted-foreground')}>
+        <p className={cn('pt-1 text-[11px] tabular-nums', areaMismatch || emptyPiece ? 'font-medium text-destructive' : 'text-muted-foreground')}>
           {baseArea > 0
             ? areaMismatch
               ? t('blockSplit.areaMismatch', { area: fmtNum(baseArea, 2) })
               : t('blockSplit.total', { total: fmtNum(total, 2), area: fmtNum(baseArea, 2) })
             : t('blockSplit.noArea')}
         </p>
+        {emptyPiece && <p className="text-[11px] font-medium text-destructive">{t('blockSplit.degenerate')}</p>}
       </div>
 
       <Field label={t('blockSplit.redistribution')}>
