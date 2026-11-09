@@ -7,6 +7,7 @@ import SelectField from '@/components/SelectField';
 import BoundaryDrawer from '@/components/blocks/BoundaryDrawer';
 import IrrigationZones from '@/components/blocks/IrrigationZones';
 import SubBlocksEditor from '@/components/blocks/SubBlocksEditor';
+import BlockSplitDialog from '@/components/blocks/BlockSplitDialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
@@ -67,6 +68,8 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
   const [form, setForm] = useState(EMPTY);
   const [farms, setFarms] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
+  const [splitCount, setSplitCount] = useState(2);
   const lock = useParamLock('FarmBlock', block);
 
   useEffect(() => {
@@ -167,6 +170,7 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
     .map((variety) => ({ value: variety.id, label: variety.name }));
 
   return (
+    <>
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
@@ -241,6 +245,14 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
           blockName={form.name}
           cropId={form.crop_id}
           varieties={varieties}
+          onSplit={
+            block?.id
+              ? (count) => {
+                  setSplitCount(count);
+                  setSplitOpen(true);
+                }
+              : undefined
+          }
         />
       </Field>
 
@@ -266,5 +278,20 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
         </button>
       )}
     </FormDialog>
+
+    {block?.id && (
+      <BlockSplitDialog
+        open={splitOpen}
+        onOpenChange={setSplitOpen}
+        block={block}
+        count={splitCount}
+        varieties={varieties}
+        onDone={() => {
+          onOpenChange(false);
+          onSaved();
+        }}
+      />
+    )}
+    </>
   );
 }

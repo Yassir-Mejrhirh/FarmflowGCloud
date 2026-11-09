@@ -21,7 +21,7 @@ const buildSplit = (count, blockName, totalArea, t) => {
   });
 };
 
-export default function SubBlocksEditor({ subBlocks = [], onChange, totalArea = 0, blockName = '', cropId = '', varieties = [] }) {
+export default function SubBlocksEditor({ subBlocks = [], onChange, totalArea = 0, blockName = '', cropId = '', varieties = [], onSplit }) {
   const { t } = useI18n();
   const area = Number(totalArea) || 0;
   const total = subBlocks.reduce((sum, row) => sum + (Number(row.area_ha) || 0), 0);
@@ -45,10 +45,14 @@ export default function SubBlocksEditor({ subBlocks = [], onChange, totalArea = 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => onChange(buildSplit(2, blockName.trim(), area, t))}>
+            <DropdownMenuItem
+              onClick={() => (onSplit ? onSplit(2) : onChange(buildSplit(2, blockName.trim(), area, t)))}
+            >
               {t('blockDialog.splitInto2')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onChange(buildSplit(3, blockName.trim(), area, t))}>
+            <DropdownMenuItem
+              onClick={() => (onSplit ? onSplit(3) : onChange(buildSplit(3, blockName.trim(), area, t)))}
+            >
               {t('blockDialog.splitInto3')}
             </DropdownMenuItem>
           </DropdownMenuContent>
