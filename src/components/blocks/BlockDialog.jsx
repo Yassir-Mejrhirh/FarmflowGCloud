@@ -24,6 +24,12 @@ const EMPTY = {
 
 const STATUSES = ['active', 'preparing', 'harvest', 'fallow'];
 
+const farmCenter = (farms, farmName) => {
+  const farm = farms.find((item) => item.name === farmName);
+  if (!farm || farm.latitude == null || farm.longitude == null) return undefined;
+  return [Number(farm.latitude), Number(farm.longitude)];
+};
+
 const normalize = (value) => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 const letters = (value) => normalize(value).replace(/[^a-z0-9]/g, '');
@@ -226,7 +232,11 @@ export default function BlockDialog({ open, onOpenChange, block, varieties, onSa
       </Field>
 
       <Field label={t('blockDialog.boundary')} hint={t('blockDialog.boundaryHint')}>
-        <BoundaryDrawer points={form.boundary} onChange={(points) => update('boundary', points)} />
+        <BoundaryDrawer
+          points={form.boundary}
+          onChange={(points) => update('boundary', points)}
+          fallbackCenter={farmCenter(farms, form.farm)}
+        />
       </Field>
 
       <Field label={t('blockDialog.irrigationZones')} hint={t('blockDialog.irrigationHint')}>
