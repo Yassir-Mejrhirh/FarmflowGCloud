@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Map, Sprout, ListChecks, Users, Tractor, Boxes, Wallet, Leaf, Upload,
+  LayoutDashboard, Map, Sprout, ListChecks, Users, Tractor, Boxes, Wallet, Leaf, Upload, Gauge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
@@ -33,6 +33,10 @@ export default function Sidebar({ onNavigate }) {
     {
       label: t('nav.finance'),
       items: [{ to: '/costs', label: t('nav.costs'), icon: Wallet }],
+    },
+    {
+      label: t('nav.quality'),
+      items: [{ to: '/load-test', label: t('nav.loadTest'), icon: Gauge }],
     },
   ];
 

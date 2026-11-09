@@ -33,6 +33,7 @@ import BlockItinerary from '@/pages/BlockItinerary';
 import BlockPlans from '@/pages/BlockPlans';
 import MachineMaintenance from '@/pages/MachineMaintenance';
 import ImportCsv from '@/pages/ImportCsv';
+import LoadTestProtocol from '@/pages/LoadTestProtocol';
 import { I18nProvider } from '@/lib/I18nContext';
 
 const AuthenticatedApp = () => {
@@ -88,6 +89,7 @@ const AuthenticatedApp = () => {
         <Route path="/block-plans" element={<BlockPlans />} />
         <Route path="/machine-maintenance" element={<MachineMaintenance />} />
         <Route path="/import" element={<ImportCsv />} />
+        <Route path="/load-test" element={<LoadTestProtocol />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
