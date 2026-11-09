@@ -150,6 +150,10 @@
         }
       }
     },
+    "division_id": {
+      "type": "string",
+      "description": "Division that created this parcel, kept to show its history"
+    },
     "notes": {
       "type": "string"
     }

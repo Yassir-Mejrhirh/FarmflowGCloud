@@ -1,0 +1,166 @@
+{
+  "name": "BlockDivision",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the parcel was divided"
+    },
+    "group_id": {
+      "type": "string",
+      "description": "Division group shared by the parcels created together"
+    },
+    "mother_id": {
+      "type": "string",
+      "description": "Id of the parcel before division"
+    },
+    "mother_name": {
+      "type": "string",
+      "description": "Name of the parcel before division"
+    },
+    "mother_code": {
+      "type": "string",
+      "description": "Code of the parcel before division"
+    },
+    "mother_area_ha": {
+      "type": "number",
+      "description": "Area of the parcel before division"
+    },
+    "mother": {
+      "type": "object",
+      "description": "Everything needed to bring the original parcel back",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "farm": {
+          "type": "string"
+        },
+        "crop_id": {
+          "type": "string"
+        },
+        "variety_id": {
+          "type": "string"
+        },
+        "season_id": {
+          "type": "string"
+        },
+        "planting_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "crop_end_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "status": {
+          "type": "string"
+        },
+        "soil_type": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "area_ha": {
+          "type": "number"
+        },
+        "boundary": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "sub_blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "area_ha": {
+                "type": "number"
+              },
+              "variety_id": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "irrigation_zones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "area_ha": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "children": {
+      "type": "array",
+      "description": "Parcels created by the division",
+      "items": {
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "area_ha": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "child_ids": {
+      "type": "array",
+      "description": "Ids of the parcels created by the division, used to find the division from a parcel",
+      "items": {
+        "type": "string"
+      }
+    },
+    "restored_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the original parcel was brought back, empty while the division stands"
+    }
+  },
+  "required": [
+    "date"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}

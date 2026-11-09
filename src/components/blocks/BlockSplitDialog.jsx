@@ -20,7 +20,8 @@ const buildParts = (count, block, baseArea, t) => {
     const last = index === count - 1;
     const area = baseArea > 0 ? (last ? Number((baseArea - share * (count - 1)).toFixed(2)) : share) : '';
     return {
-      name: name ? `${name} ${index + 1}` : t('blockSplit.defaultName', { n: index + 1 }),
+      // The original name is kept and numbered: MNB1P1 becomes MNB1P1-1, MNB1P1-2…
+      name: name ? `${name}-${index + 1}` : t('blockSplit.defaultName', { n: index + 1 }),
       area_ha: area,
       variety_id: '',
     };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { History } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import FormDialog from '@/components/FormDialog';
 import ParamLockNotice from '@/components/ParamLockNotice';
@@ -9,6 +10,7 @@ import IrrigationZones from '@/components/blocks/IrrigationZones';
 import SubBlocksEditor from '@/components/blocks/SubBlocksEditor';
 import FarmSelect from '@/components/blocks/FarmSelect';
 import BlockSplitDialog from '@/components/blocks/BlockSplitDialog';
+import BlockHistoryDialog from '@/components/blocks/BlockHistoryDialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
@@ -71,6 +73,7 @@ export default function BlockDialog({ open, onOpenChange, block, varieties, onSa
   const [saving, setSaving] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const [splitCount, setSplitCount] = useState(2);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const lock = useParamLock('FarmBlock', block);
 
   useEffect(() => {
@@ -234,16 +237,39 @@ export default function BlockDialog({ open, onOpenChange, block, varieties, onSa
         <Textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} rows={2} placeholder={t('blockDialog.notesPlaceholder')} />
       </Field>
 
-      {block?.id && !lock.locked && (
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="text-xs font-medium text-destructive hover:underline"
-        >
-          {t('blockDialog.delete')}
-        </button>
+      {block?.id && (
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+          >
+            <History className="h-3.5 w-3.5" /> {t('blockDialog.history')}
+          </button>
+          {!lock.locked && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="text-xs font-medium text-destructive hover:underline"
+            >
+              {t('blockDialog.delete')}
+            </button>
+          )}
+        </div>
       )}
     </FormDialog>
+
+    {block?.id && (
+      <BlockHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        block={block}
+        onRestored={() => {
+          onOpenChange(false);
+          onSaved();
+        }}
+      />
+    )}
 
     {block?.id && (
       <BlockSplitDialog

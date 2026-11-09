@@ -125,6 +125,44 @@ export async function splitBlock({ block, parts, usage = emptyUsage, cuts = null
     );
   }
 
+  // The division itself is kept: it holds the parcel as it was before, so the
+  // original can be brought back later and the filiation stays readable.
+  const motherArea = Number(block.area_ha) || round(polygonAreaHa(block.boundary), 2);
+  const division = await base44.entities.BlockDivision.create({
+    company_id: block.company_id || '',
+    date: new Date().toISOString().slice(0, 10),
+    group_id: groupId,
+    mother_id: block.id,
+    mother_name: block.name || '',
+    mother_code: block.code || '',
+    mother_area_ha: motherArea,
+    mother: {
+      name: block.name || '',
+      code: block.code || '',
+      farm: block.farm || '',
+      crop_id: block.crop_id || '',
+      variety_id: block.variety_id || '',
+      season_id: block.season_id || '',
+      planting_date: block.planting_date || '',
+      crop_end_date: block.crop_end_date || '',
+      status: block.status || 'active',
+      soil_type: block.soil_type || '',
+      notes: block.notes || '',
+      area_ha: motherArea,
+      boundary: block.boundary || [],
+      sub_blocks: block.sub_blocks || [],
+      irrigation_zones: block.irrigation_zones || [],
+    },
+    children: created.map((child) => ({
+      block_id: child.id,
+      name: child.name,
+      code: child.code || '',
+      area_ha: child.area_ha,
+    })),
+    child_ids: created.map((child) => child.id),
+  });
+  await base44.entities.FarmBlock.bulkUpdate(created.map((child) => ({ id: child.id, division_id: division.id })));
+
   const reportParts = new Map();
   for (const report of usage.reports || []) {
     const rows = [];
