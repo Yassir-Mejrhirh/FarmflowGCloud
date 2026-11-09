@@ -4,12 +4,17 @@ import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function UsageEditor({
-  lines, onChange, options, idKey, qtyKey, qtyLabel, addLabel, emptyLabel, renderMeta,
+  lines, onChange, options, idKey, qtyKey, qtyLabel, addLabel, emptyLabel, renderMeta, onPick,
 }) {
   const { t } = useI18n();
   const update = (index, patch) => onChange(lines.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   const remove = (index) => onChange(lines.filter((_, i) => i !== index));
   const add = () => onChange([...lines, { [idKey]: '', [qtyKey]: '' }]);
+  // A refused choice leaves the line untouched, so nothing invalid is ever stored.
+  const pick = (index, value) => {
+    if (onPick && !onPick(value)) return;
+    update(index, { [idKey]: value });
+  };
 
   return (
     <div className="space-y-2">
@@ -22,7 +27,7 @@ export default function UsageEditor({
               <div className="min-w-0 flex-1 space-y-1">
                 <SelectField
                   value={line[idKey]}
-                  onChange={(value) => update(index, { [idKey]: value })}
+                  onChange={(value) => pick(index, value)}
                   options={options}
                 />
                 {renderMeta && renderMeta(line, (patch) => update(index, patch))}

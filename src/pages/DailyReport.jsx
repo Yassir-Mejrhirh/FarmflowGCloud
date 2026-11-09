@@ -136,10 +136,17 @@ export default function DailyReport() {
     () => [...items].sort((a, b) => Number(isLubricantItem(b)) - Number(isLubricantItem(a))).map(itemOption),
     [items],
   );
-  // Fuel and lubricants are entered on the machine that consumed them, never here.
+  // Fuel and lubricants are entered on the machine that consumed them: they are
+  // listed here only so the refusal can be explained, and are kept at the end.
   const otherInputOptions = useMemo(
-    () => items.filter((item) => !isMachineConsumableItem(item)).map(itemOption),
+    () => [...items]
+      .sort((a, b) => Number(isMachineConsumableItem(a)) - Number(isMachineConsumableItem(b)))
+      .map(itemOption),
     [items],
+  );
+  const blockedInputs = useMemo(
+    () => inputs.filter((line) => line.item_id && isMachineConsumableItem(itemMap[line.item_id])),
+    [inputs, itemMap],
   );
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
@@ -167,13 +174,18 @@ export default function DailyReport() {
   );
   const stockExceeded = shortages.length > 0;
   const canSubmit =
-    form.block_ids.length > 0 && !!form.task_id && (!machineRequired || machineryReady) && !stockExceeded;
+    form.block_ids.length > 0 &&
+    !!form.task_id &&
+    (!machineRequired || machineryReady) &&
+    !stockExceeded &&
+    blockedInputs.length === 0;
 
   const submit = async (event) => {
     event.preventDefault();
     if (!form.block_ids.length || !form.task_id) return;
     if (machineRequired && !machineryReady) return;
     if (stockExceeded) return;
+    if (blockedInputs.length) return;
 
     for (const id of form.block_ids) {
       const block = blockMap[id];
@@ -463,6 +475,7 @@ export default function DailyReport() {
               lines={inputs}
               onChange={setInputs}
               options={otherInputOptions}
+              items={items}
               renderMeta={(line) => (
                 <InputStockNote
                   item={itemMap[line.item_id]}
