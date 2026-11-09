@@ -63,7 +63,7 @@ const detectFarm = (labels, farms) => {
   return best;
 };
 
-export default function BlockDialog({ open, onOpenChange, block, crops, varieties, onSaved }) {
+export default function BlockDialog({ open, onOpenChange, block, varieties, onSaved }) {
   const { t } = useI18n();
   const [form, setForm] = useState(EMPTY);
   const [farms, setFarms] = useState([]);
@@ -128,8 +128,6 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
       name: form.name.trim(),
       code: form.code.trim(),
       farm: form.farm.trim(),
-      crop_id: form.crop_id,
-      variety_id: form.variety_id,
       status: form.status,
       soil_type: form.soil_type,
       notes: form.notes,
@@ -146,8 +144,6 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
         .filter((zone) => zone.name?.trim() || Number(zone.area_ha) > 0)
         .map((zone) => ({ name: zone.name?.trim() || '', area_ha: Number(zone.area_ha) || 0 })),
     };
-    if (form.planting_date) payload.planting_date = form.planting_date;
-
     if (block?.id) await base44.entities.FarmBlock.update(block.id, payload);
     else await base44.entities.FarmBlock.create(payload);
 
@@ -164,10 +160,6 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
     onOpenChange(false);
     onSaved();
   };
-
-  const varietyOptions = varieties
-    .filter((variety) => !form.crop_id || variety.crop_id === form.crop_id)
-    .map((variety) => ({ value: variety.id, label: variety.name }));
 
   return (
     <>
@@ -199,26 +191,6 @@ export default function BlockDialog({ open, onOpenChange, block, crops, varietie
             options={farmNames.map((name) => ({ value: name, label: name }))}
             placeholder={t('blockDialog.farmPlaceholder')}
           />
-        </Field>
-        <Field label={t('common.crop')}>
-          <SelectField
-            value={form.crop_id}
-            onChange={(value) => setForm((prev) => ({ ...prev, crop_id: value, variety_id: '' }))}
-            noneLabel={t('blockDialog.noCropYet')}
-            options={crops.map((crop) => ({ value: crop.id, label: crop.name }))}
-          />
-        </Field>
-        <Field label={t('blockDialog.variety')}>
-          <SelectField
-            value={form.variety_id}
-            onChange={(value) => update('variety_id', value)}
-            noneLabel={t('blockDialog.noVariety')}
-            options={varietyOptions}
-            placeholder={form.crop_id ? t('blockDialog.selectVariety') : t('blockDialog.pickCropFirst')}
-          />
-        </Field>
-        <Field label={t('blockDialog.plantingDate')}>
-          <Input type="date" value={form.planting_date} onChange={(e) => update('planting_date', e.target.value)} />
         </Field>
         <Field label={t('common.status')}>
           <SelectField
