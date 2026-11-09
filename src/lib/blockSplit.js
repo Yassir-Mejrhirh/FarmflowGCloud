@@ -181,13 +181,14 @@ export async function splitBlock({ block, parts, usage = emptyUsage, cuts = null
             worker_id: line.worker_id,
             days: distribute(line.days, weights)[index],
           })),
+          // Hours, fuel and lubricant all follow the surface, like labour and inputs.
           machinery: kept.map((line) => ({
             machine_id: line.machine_id,
             hours: distribute(line.hours, weights)[index],
-            fuel_item_id: index === 0 ? line.fuel_item_id || '' : '',
-            fuel_quantity: index === 0 ? Number(line.fuel_quantity) || 0 : 0,
-            lubricant_item_id: index === 0 ? line.lubricant_item_id || '' : '',
-            lubricant_quantity: index === 0 ? Number(line.lubricant_quantity) || 0 : 0,
+            fuel_item_id: line.fuel_item_id || '',
+            fuel_quantity: distribute(line.fuel_quantity, weights)[index],
+            lubricant_item_id: line.lubricant_item_id || '',
+            lubricant_quantity: distribute(line.lubricant_quantity, weights)[index],
           })),
           inputs: (report.inputs || []).map((line) => ({
             item_id: line.item_id,
@@ -201,19 +202,25 @@ export async function splitBlock({ block, parts, usage = emptyUsage, cuts = null
 
   for (const movement of usage.movements || []) {
     const reportRows = movement.report_id ? reportParts.get(movement.report_id) : null;
-    // Fuel and lubricant belong to the machine, not to the surface: they move as a
-    // whole onto the first new parcel, never multiplied by the number of parcels.
+    // Machine fuel and lubricant follow the same surface shares as the report
+    // lines they document, so consumption and its cost stay on the right parcel.
     if (reportRows && movement.machine_id) {
-      await base44.entities.StockMovement.create({
-        item_id: movement.item_id,
-        kind: movement.kind || 'out',
-        quantity: Number(movement.quantity) || 0,
-        date: movement.date,
-        storage_id: movement.storage_id || '',
-        machine_id: movement.machine_id,
-        report_id: reportRows[0].id,
-        notes: movement.notes || '',
-      });
+      const shares = distribute(movement.quantity, weights);
+      const costs = distribute(movement.cost, weights);
+      for (let index = 0; index < parts.length; index += 1) {
+        await base44.entities.StockMovement.create({
+          item_id: movement.item_id,
+          kind: movement.kind || 'out',
+          quantity: shares[index],
+          cost: costs[index],
+          date: movement.date,
+          storage_id: movement.storage_id || '',
+          block_id: created[index].id,
+          machine_id: movement.machine_id,
+          report_id: reportRows[index].id,
+          notes: movement.notes || '',
+        });
+      }
       continue;
     }
 
