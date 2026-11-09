@@ -7,6 +7,7 @@ import SelectField from '@/components/SelectField';
 import BoundaryDrawer from '@/components/blocks/BoundaryDrawer';
 import IrrigationZones from '@/components/blocks/IrrigationZones';
 import SubBlocksEditor from '@/components/blocks/SubBlocksEditor';
+import FarmSelect from '@/components/blocks/FarmSelect';
 import BlockSplitDialog from '@/components/blocks/BlockSplitDialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -110,14 +111,13 @@ export default function BlockDialog({ open, onOpenChange, block, varieties, onSa
   const withDetectedFarm = (prev, patch) => {
     const next = { ...prev, ...patch };
     const keepManual = prev.farm && prev.farm !== detectFarm([prev.name, prev.code], farms);
-    return { ...next, farm: keepManual ? prev.farm : detectFarm([next.name, next.code], farms) };
+    // A farm already assigned is never cleared: detection only fills or replaces it.
+    return { ...next, farm: keepManual ? prev.farm : detectFarm([next.name, next.code], farms) || prev.farm };
   };
 
   const handleNameChange = (value) => setForm((prev) => withDetectedFarm(prev, { name: value }));
   const handleCodeChange = (value) => setForm((prev) => withDetectedFarm(prev, { code: value }));
 
-  const farmNames = farms.map((farm) => farm.name);
-  if (form.farm && !farmNames.includes(form.farm)) farmNames.unshift(form.farm);
   const area = polygonAreaHa(form.boundary);
 
   const handleSubmit = async (event) => {
@@ -127,7 +127,7 @@ export default function BlockDialog({ open, onOpenChange, block, varieties, onSa
     const payload = {
       name: form.name.trim(),
       code: form.code.trim(),
-      farm: form.farm.trim(),
+      farm: form.farm.trim() || block?.farm || '',
       status: form.status,
       soil_type: form.soil_type,
       notes: form.notes,
@@ -184,13 +184,7 @@ export default function BlockDialog({ open, onOpenChange, block, varieties, onSa
           <Input value={form.code} onChange={(e) => handleCodeChange(e.target.value)} placeholder="OL-01" />
         </Field>
         <Field label={t('blockDialog.farm')}>
-          <SelectField
-            value={form.farm}
-            onChange={(value) => update('farm', value)}
-            noneLabel={t('blockDialog.farmNone')}
-            options={farmNames.map((name) => ({ value: name, label: name }))}
-            placeholder={t('blockDialog.farmPlaceholder')}
-          />
+          <FarmSelect value={form.farm} farms={farms} onChange={(value) => update('farm', value)} />
         </Field>
         <Field label={t('common.status')}>
           <SelectField
