@@ -7,7 +7,7 @@ import EmptyState from '@/components/EmptyState';
 import Segmented from '@/components/Segmented';
 import StorageDialog from '@/components/storages/StorageDialog';
 import ItemDialog from '@/components/inventory/ItemDialog';
-import CountList from '@/components/inventory/CountList';
+import CategoryList from '@/components/inventory/CategoryList';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
 import { buildInputTotals, buildOnHand } from '@/lib/inventory';
@@ -19,6 +19,7 @@ export default function Inventory() {
   const { t } = useI18n();
   const [tab, setTab] = useState('inputs');
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [storages, setStorages] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [movements, setMovements] = useState([]);
@@ -30,14 +31,16 @@ export default function Inventory() {
   const [editingStorage, setEditingStorage] = useState(null);
 
   const load = async () => {
-    const [itemRows, storageRows, invoiceRows, movementRows, countRows] = await Promise.all([
+    const [itemRows, categoryRows, storageRows, invoiceRows, movementRows, countRows] = await Promise.all([
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+      fetchList(base44.entities.InputCategory, {}, { sort: 'name' }),
       fetchList(base44.entities.Storage, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
       fetchList(base44.entities.StockMovement, {}),
       fetchList(base44.entities.InventoryCount, {}, { sort: '-date' }),
     ]);
     setItems(itemRows);
+    setCategories(categoryRows);
     setStorages(storageRows);
     setInvoices(invoiceRows);
     setMovements(movementRows);
@@ -71,11 +74,9 @@ export default function Inventory() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow={t('inv.eyebrow')}
         title={t('inv.title')}
-        description={t('inv.description')}
         action={
-          tab === 'counts' ? null : (
+          tab === 'categories' ? null : (
             <Button
               className="rounded-xl"
               onClick={() => {
@@ -106,7 +107,7 @@ export default function Inventory() {
         options={[
           { value: 'inputs', label: `${t('inv.tabInputs')} (${items.length})` },
           { value: 'storages', label: `${t('inv.tabStorages')} (${storages.length})` },
-          { value: 'counts', label: `${t('inv.tabCounts')} (${counts.length})` },
+          { value: 'categories', label: `${t('inv.tabCategories')} (${categories.length})` },
         ]}
       />
 
@@ -169,8 +170,8 @@ export default function Inventory() {
             })}
           </ul>
         )
-      ) : tab === 'counts' ? (
-        <CountList counts={counts} storages={storages} onDeleted={load} />
+      ) : tab === 'categories' ? (
+        <CategoryList categories={categories} items={items} onChanged={load} />
       ) : storages.length === 0 ? (
         <EmptyState
           icon={Warehouse}
