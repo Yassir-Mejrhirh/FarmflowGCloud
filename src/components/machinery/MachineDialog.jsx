@@ -39,6 +39,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
     setNewType('');
     setForm({
       name: machine?.name || '',
+      reference: machine?.reference || '',
       type: machine?.type || 'tractor',
       year: machine?.year ?? '',
       plate: machine?.plate || '',
@@ -75,6 +76,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
     setSaving(true);
     const payload = {
       name: form.name.trim(),
+      reference: form.reference?.trim() || '',
       type: form.type,
       year: form.year === '' || form.year == null ? null : Number(form.year),
       plate: form.plate || '',
@@ -145,6 +147,13 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
         </Field>
         <Field label={t('machDialog.plate')}>
           <Input value={form.plate || ''} onChange={(e) => setForm({ ...form, plate: e.target.value })} />
+        </Field>
+        <Field label={t('machDialog.reference')}>
+          <Input
+            value={form.reference || ''}
+            onChange={(e) => setForm({ ...form, reference: e.target.value })}
+            placeholder={t('machDialog.referencePlaceholder')}
+          />
         </Field>
         <Field label={t('common.status')}>
           <SelectField

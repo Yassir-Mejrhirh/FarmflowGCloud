@@ -131,6 +131,10 @@ export default function Machinery() {
                   <dt className="text-muted-foreground">{t('mach.hours')}</dt>
                   <dd className="mt-0.5 tabular-nums text-sm">{fmtNum(machine.hours, 0)}</dd>
                 </div>
+                <div className="col-span-2">
+                  <dt className="text-muted-foreground">{t('machDialog.reference')}</dt>
+                  <dd className="mt-0.5 truncate text-sm">{machine.reference || '—'}</dd>
+                </div>
               </dl>
 
               <div className="mt-3 rounded-xl bg-muted/50 px-3 py-2">

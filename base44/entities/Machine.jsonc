@@ -9,6 +9,10 @@
     "name": {
       "type": "string"
     },
+    "reference": {
+      "type": "string",
+      "description": "Machine reference or identifier"
+    },
     "type": {
       "type": "string",
       "description": "Machine type: tractor, harvester, sprayer, truck, implement, other, or a custom machine type name",
