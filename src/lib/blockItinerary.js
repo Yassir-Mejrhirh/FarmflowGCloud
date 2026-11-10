@@ -1,5 +1,6 @@
 import { avgCostOf, buildCountTotals, buildInputTotals, mergeTotals } from '@/lib/inventory';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
+import { buildRateIndex, labourRate } from '@/lib/wageRates';
 
 const num = (value) => Number(value) || 0;
 
@@ -14,10 +15,12 @@ export function buildBlockItinerary({
   items = [],
   invoices = [],
   counts = [],
+  wageRates = [],
   machineCosts = {},
 }) {
   // Same weighted average price as the stock status: purchases plus validated counts.
   const purchaseTotals = mergeTotals(buildInputTotals(invoices), buildCountTotals(counts));
+  const rateIndex = buildRateIndex(wageRates);
   const consumableIds = new Set(items.filter(isMachineConsumableItem).map((item) => item.id));
   const blockMap = new Map(blocks.map((block) => [block.id, block]));
   const workerMap = new Map(workers.map((worker) => [worker.id, worker]));
@@ -35,7 +38,8 @@ export function buildBlockItinerary({
       .map((line) => {
         const worker = workerMap.get(line.worker_id);
         const days = num(line.days);
-        const rate = num(worker?.daily_rate);
+        // The rate written with the report wins, so revising a wage never rewrites past costs.
+        const rate = labourRate(line, worker, rateIndex, report.date);
         return { key: line.worker_id, name: worker?.name || '', days, rate, cost: days * rate };
       });
 

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import WorkerSortDialog from '@/components/workers/WorkerSortDialog';
-import { fmtMoney } from '@/lib/format';
+import { fmtMoney, todayISO } from '@/lib/format';
+import { buildRateIndex, rateFor } from '@/lib/wageRates';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +25,7 @@ const SORT_VALUES = {
   farm: (worker) => (worker.farm || '').toLowerCase(),
   priority: (worker) => Number(worker.priority) || 9,
   team: (worker) => (worker.team || '\uffff').toLowerCase(),
-  rate: (worker) => Number(worker.daily_rate) || 0,
+  rate: (worker) => Number(worker.applied_rate) || 0,
   declared: (worker) => (worker.declared ? 1 : 0),
   transport: (worker) => (hasTransport(worker) ? 1 : 0),
 };
@@ -47,10 +48,14 @@ function Dot({ tone, label }) {
   );
 }
 
-export default function WorkerTable({ workers, onEdit }) {
+export default function WorkerTable({ workers, rates = [], onEdit, onRates }) {
   const { t } = useI18n();
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
   const [sortOpen, setSortOpen] = useState(false);
+
+  // The rate shown is the one in force today, taken from the dated history.
+  const rateIndex = buildRateIndex(rates);
+  const today = todayISO();
 
   const columns = [
     { key: 'name', label: t('workers.colWorker') },
@@ -62,12 +67,14 @@ export default function WorkerTable({ workers, onEdit }) {
     { key: 'transport', label: t('workers.colTransport') },
   ];
 
-  const rows = [...workers].sort((a, b) => {
-    if (!sort.key) {
-      return definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || '');
-    }
-    return compare(a, b, sort.key, sort.dir) || (a.name || '').localeCompare(b.name || '');
-  });
+  const rows = workers
+    .map((worker) => ({ ...worker, applied_rate: rateFor(worker, rateIndex, today) }))
+    .sort((a, b) => {
+      if (!sort.key) {
+        return definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || '');
+      }
+      return compare(a, b, sort.key, sort.dir) || (a.name || '').localeCompare(b.name || '');
+    });
 
   const activeColumn = columns.find((column) => column.key === sort.key);
 
@@ -116,7 +123,23 @@ export default function WorkerTable({ workers, onEdit }) {
                     {worker.team || t('workers.notApplicable')}
                   </TableCell>
                   <TableCell className="whitespace-nowrap tabular-nums">
-                    {worker.daily_rate ? fmtMoney(worker.daily_rate) : '—'}
+                    <span className="inline-flex items-center gap-1.5">
+                      {worker.applied_rate ? fmtMoney(worker.applied_rate) : '—'}
+                      {onRates && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onRates(worker);
+                          }}
+                          aria-label={t('wage.history')}
+                          title={t('wage.history')}
+                          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+                        >
+                          <History className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Dot tone={declared ? 'green' : 'red'} label={declared ? t('workers.declared') : t('workers.undeclared')} />

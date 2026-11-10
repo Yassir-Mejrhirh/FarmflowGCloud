@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { fetchList } from '@/lib/data';
 import { currentMonthKey, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import { buildRateIndex, labourRate } from '@/lib/wageRates';
 
 const monthStart = () => `${currentMonthKey()}-01`;
 
@@ -23,6 +24,7 @@ export default function LabourStatus() {
   const [farmNames, setFarmNames] = useState([]);
   const [selectedFarms, setSelectedFarms] = useState([]);
   const [workers, setWorkers] = useState([]);
+  const [wageRates, setWageRates] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,13 +58,15 @@ export default function LabourStatus() {
         if (from) query.date.$gte = from;
         if (to) query.date.$lte = to;
       }
-      const [workerRows, reportRows] = await Promise.all([
+      const [workerRows, reportRows, rateRows] = await Promise.all([
         fetchList(base44.entities.Worker, {}, { sort: 'name' }),
         fetchList(base44.entities.DailyReport, query),
+        fetchList(base44.entities.WageRate, {}),
       ]);
       if (!active) return;
       setWorkers(workerRows);
       setReports(reportRows);
+      setWageRates(rateRows);
       setLoading(false);
     };
     load();
@@ -73,6 +77,7 @@ export default function LabourStatus() {
 
   const blockMap = useMemo(() => new Map(blocks.map((block) => [block.id, block])), [blocks]);
   const workerMap = useMemo(() => new Map(workers.map((worker) => [worker.id, worker])), [workers]);
+  const rateIndex = useMemo(() => buildRateIndex(wageRates), [wageRates]);
 
   const filteredReports = useMemo(() => {
     if (!selectedFarms.length || !blocks.length) return reports;
@@ -85,21 +90,27 @@ export default function LabourStatus() {
   const rowsByWorker = {};
   filteredReports.forEach((report) => {
     (report.labour || []).forEach((line) => {
-      if (!line.worker_id) return;
-      rowsByWorker[line.worker_id] = (rowsByWorker[line.worker_id] || 0) + (Number(line.days) || 0);
+      const days = Number(line.days) || 0;
+      if (!line.worker_id || days <= 0) return;
+      const worker = workerMap.get(line.worker_id);
+      const current = rowsByWorker[line.worker_id] || { days: 0, cost: 0 };
+      rowsByWorker[line.worker_id] = {
+        days: current.days + days,
+        cost: current.cost + days * labourRate(line, worker, rateIndex, report.date),
+      };
     });
   });
 
   const rows = Object.entries(rowsByWorker)
-    .map(([workerId, days]) => {
+    .map(([workerId, { days, cost }]) => {
       const worker = workerMap.get(workerId);
       return {
         id: workerId,
         name: worker?.name || t('workers.unknown'),
         job: worker?.worker_function || '',
-        rate: Number(worker?.daily_rate) || 0,
+        rate: days ? cost / days : 0,
         days,
-        cost: days * (Number(worker?.daily_rate) || 0),
+        cost,
       };
     })
     .sort((a, b) => b.days - a.days);
@@ -131,7 +142,7 @@ export default function LabourStatus() {
         if (block?.name) entry.blocks.add(block.name);
         group.entries.set(line.worker_id, entry);
         group.days += days;
-        group.cost += days * (Number(worker?.daily_rate) || 0);
+        group.cost += days * labourRate(line, worker, rateIndex, report.date);
       });
     });
 
@@ -147,7 +158,7 @@ export default function LabourStatus() {
           .sort((a, b) => a.worker.localeCompare(b.worker)),
       }))
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [filteredReports, blockMap, workerMap, t]);
+  }, [filteredReports, blockMap, workerMap, rateIndex, t]);
 
   return (
     <div className="space-y-8">

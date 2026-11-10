@@ -1,0 +1,40 @@
+{
+  "name": "WageRate",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
+    "worker_id": {
+      "type": "string",
+      "description": "Worker the daily rate applies to"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date from which the rate applies"
+    },
+    "daily_rate": {
+      "type": "number",
+      "description": "Daily wage in force from the effective date"
+    },
+    "team": {
+      "type": "string",
+      "description": "Team of the worker when the rate was recorded"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "worker_id",
+    "effective_date"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}

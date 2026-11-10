@@ -41,7 +41,7 @@
     },
     "labour": {
       "type": "array",
-      "description": "Workers used and the days worked",
+      "description": "Workers used, the days worked, and the daily rate applied at the date of the report",
       "items": {
         "type": "object",
         "properties": {
@@ -50,6 +50,10 @@
           },
           "days": {
             "type": "number"
+          },
+          "daily_rate": {
+            "type": "number",
+            "description": "Daily rate kept with the line so the cost of the report never changes when a rate is revised"
           }
         }
       }

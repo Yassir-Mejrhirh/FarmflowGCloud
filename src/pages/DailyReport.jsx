@@ -24,6 +24,8 @@ import { fetchList, byId } from '@/lib/data';
 import { fmtDate, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { natureLabel } from '@/lib/taskNature';
+import { buildRateIndex, labourRate } from '@/lib/wageRates';
+import LabourRateNote from '@/components/dailyreport/LabourRateNote';
 
 export default function DailyReport() {
   const { t } = useI18n();
@@ -41,6 +43,7 @@ export default function DailyReport() {
   const [tasks, setTasks] = useState([]);
   const [natures, setNatures] = useState([]);
   const [reports, setReports] = useState([]);
+  const [wageRates, setWageRates] = useState([]);
   const [form, setForm] = useState({ date: todayISO(), block_ids: [], task_id: '', description: '', notes: '' });
   const [labour, setLabour] = useState([]);
   const [machinery, setMachinery] = useState([]);
@@ -51,7 +54,7 @@ export default function DailyReport() {
   const [editChoice, setEditChoice] = useState(null);
 
   const load = async () => {
-    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, countRows, storageRows, reportRows, taskRows, natureRows] = await Promise.all([
+    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, countRows, storageRows, reportRows, taskRows, natureRows, wageRateRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
@@ -65,6 +68,7 @@ export default function DailyReport() {
       fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
       fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
       fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
+      fetchList(base44.entities.WageRate, {}),
     ]);
     setBlocks(blockRows);
     setFarms(farmRows);
@@ -79,6 +83,7 @@ export default function DailyReport() {
     setReports(reportRows);
     setTasks(taskRows);
     setNatures(natureRows);
+    setWageRates(wageRateRows);
   };
 
   useEffect(() => {
@@ -86,6 +91,9 @@ export default function DailyReport() {
   }, []);
 
   const blockMap = useMemo(() => byId(blocks), [blocks]);
+  const workerMap = useMemo(() => byId(workers), [workers]);
+  // Rates are looked up at the date of the report, so a revision only applies to later reports.
+  const rateIndex = useMemo(() => buildRateIndex(wageRates), [wageRates]);
 
   // The resources are entered once for the whole report and shared between the
   // selected parcels in proportion to their area in hectares.
@@ -214,7 +222,12 @@ export default function DailyReport() {
         notes: form.notes,
         labour: labour
           .filter((line) => line.worker_id && Number(line.days) > 0)
-          .map((line) => ({ worker_id: line.worker_id, days: share(line.days) })),
+          .map((line) => ({
+            worker_id: line.worker_id,
+            days: share(line.days),
+            // The rate is frozen on the line: later revisions never change this report's cost.
+            daily_rate: labourRate(line, workerMap[line.worker_id], rateIndex, form.date),
+          })),
         machinery: machinery
           .filter((line) => line.machine_id && Number(line.hours) > 0)
           .map((line) => ({ machine_id: line.machine_id, hours: share(line.hours) })),
@@ -451,6 +464,14 @@ export default function DailyReport() {
               qtyLabel={t('report.days')}
               addLabel={t('report.addLabour')}
               emptyLabel={t('report.noLabour')}
+              renderMeta={(line) => (
+                <LabourRateNote
+                  line={line}
+                  worker={workerMap[line.worker_id]}
+                  rateIndex={rateIndex}
+                  date={form.date}
+                />
+              )}
             />
             <UsageField
               icon={Tractor}

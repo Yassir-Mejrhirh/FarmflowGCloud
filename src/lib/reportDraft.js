@@ -21,7 +21,22 @@ export function buildEditDraft(rows, movements, items) {
     return map;
   };
 
-  const labour = [...totals('labour', 'worker_id', 'days')].map(([worker_id, days]) => ({ worker_id, days }));
+  // The rate stored on the reopened report is kept as is: an existing line never
+  // switches to a newer rate when the report is edited.
+  const storedRates = new Map();
+  rows.forEach((row) => {
+    (row.labour || []).forEach((line) => {
+      const rate = line.daily_rate;
+      if (!line.worker_id || rate === undefined || rate === null || rate === '') return;
+      if (!storedRates.has(line.worker_id)) storedRates.set(line.worker_id, rate);
+    });
+  });
+
+  const labour = [...totals('labour', 'worker_id', 'days')].map(([worker_id, days]) => {
+    const line = { worker_id, days };
+    if (storedRates.has(worker_id)) line.daily_rate = storedRates.get(worker_id);
+    return line;
+  });
   const inputs = [...totals('inputs', 'item_id', 'quantity')].map(([item_id, quantity]) => ({ item_id, quantity }));
   const machinery = [...totals('machinery', 'machine_id', 'hours')].map(([machine_id, hours]) => ({
     machine_id,

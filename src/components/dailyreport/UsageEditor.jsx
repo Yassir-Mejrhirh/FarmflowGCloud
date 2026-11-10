@@ -11,9 +11,11 @@ export default function UsageEditor({
   const remove = (index) => onChange(lines.filter((_, i) => i !== index));
   const add = () => onChange([...lines, { [idKey]: '', [qtyKey]: '' }]);
   // A refused choice leaves the line untouched, so nothing invalid is ever stored.
+  // Changing the worker drops the rate kept on the line: the new worker has its own.
   const pick = (index, value) => {
+    if (lines[index]?.[idKey] === value) return;
     if (onPick && !onPick(value)) return;
-    update(index, { [idKey]: value });
+    update(index, { [idKey]: value, daily_rate: undefined });
   };
 
   return (

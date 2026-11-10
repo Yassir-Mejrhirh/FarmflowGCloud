@@ -1,6 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { TRANSLATIONS } from '@/lib/translations';
+import { WAGE_TRANSLATIONS } from '@/lib/translationsWage';
 import { setLocale } from '@/lib/format';
+
+const DICTIONARIES = {
+  fr: { ...TRANSLATIONS.fr, ...WAGE_TRANSLATIONS.fr },
+  ar: { ...TRANSLATIONS.ar, ...WAGE_TRANSLATIONS.ar },
+};
 
 const I18nContext = createContext(null);
 export const LANGUAGES = [
@@ -24,7 +30,7 @@ export function I18nProvider({ children }) {
 
   const t = useCallback(
     (key, vars) => {
-      let text = TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.fr[key] ?? key;
+      let text = DICTIONARIES[lang]?.[key] ?? DICTIONARIES.fr[key] ?? key;
       if (vars) {
         Object.entries(vars).forEach(([name, value]) => {
           text = text.split(`{${name}}`).join(String(value));

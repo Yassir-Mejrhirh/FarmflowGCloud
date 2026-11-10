@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, Wallet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import WorkerDialog from '@/components/workers/WorkerDialog';
 import WorkerTable from '@/components/workers/WorkerTable';
+import WageHistoryDialog from '@/components/workers/WageHistoryDialog';
+import TeamRateDialog from '@/components/workers/TeamRateDialog';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -18,17 +20,26 @@ export default function Workers() {
   const [loading, setLoading] = useState(true);
   const [workerDialog, setWorkerDialog] = useState(false);
   const [editingWorker, setEditingWorker] = useState(null);
+  const [rateWorker, setRateWorker] = useState(null);
+  const [teamRateOpen, setTeamRateOpen] = useState(false);
+  const [wageRates, setWageRates] = useState([]);
 
   const load = async () => {
-    const [workerRows, farmRows, functionRows] = await Promise.all([
+    const [workerRows, farmRows, functionRows, rateRows] = await Promise.all([
       fetchList(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.WorkerFunction, {}, { sort: 'name' }),
+      fetchList(base44.entities.WageRate, {}, { sort: '-effective_date' }),
     ]);
     setWorkers(workerRows);
     setFarms(farmRows);
     setFunctions(functionRows);
+    setWageRates(rateRows);
     setLoading(false);
+  };
+
+  const reloadRates = async () => {
+    setWageRates(await fetchList(base44.entities.WageRate, {}, { sort: '-effective_date' }));
   };
 
   const reloadFunctions = async () => {
@@ -50,15 +61,20 @@ export default function Workers() {
         title={t('workers.title')}
         description={t('workers.description')}
         action={
-          <Button
-            className="rounded-xl"
-            onClick={() => {
-              setEditingWorker(null);
-              setWorkerDialog(true);
-            }}
-          >
-            <Plus className="mr-1.5 h-4 w-4" /> {t('workers.newWorker')}
-          </Button>
+          <>
+            <Button variant="outline" className="rounded-xl" onClick={() => setTeamRateOpen(true)}>
+              <Wallet className="mr-1.5 h-4 w-4" /> {t('wage.newRateBtn')}
+            </Button>
+            <Button
+              className="rounded-xl"
+              onClick={() => {
+                setEditingWorker(null);
+                setWorkerDialog(true);
+              }}
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> {t('workers.newWorker')}
+            </Button>
+          </>
         }
       />
 
@@ -80,12 +96,30 @@ export default function Workers() {
       ) : (
         <WorkerTable
           workers={workers}
+          rates={wageRates}
+          onRates={setRateWorker}
           onEdit={(worker) => {
             setEditingWorker(worker);
             setWorkerDialog(true);
           }}
         />
       )}
+
+      <WageHistoryDialog
+        open={Boolean(rateWorker)}
+        onOpenChange={(open) => !open && setRateWorker(null)}
+        worker={rateWorker}
+        rates={wageRates}
+        onSaved={reloadRates}
+      />
+
+      <TeamRateDialog
+        open={teamRateOpen}
+        onOpenChange={setTeamRateOpen}
+        workers={workers}
+        rates={wageRates}
+        onSaved={reloadRates}
+      />
 
       <WorkerDialog
         open={workerDialog}

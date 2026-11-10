@@ -122,6 +122,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
   const remove = async () => {
     if (!worker?.id || lock.locked) return;
     setSaving(true);
+    await base44.entities.WageRate.deleteMany({ worker_id: worker.id });
     await base44.entities.Worker.delete(worker.id);
     setSaving(false);
     onOpenChange(false);
@@ -232,7 +233,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
             ))}
           </datalist>
         </Field>
-        <Field label={t('workerDialog.dailyRate')}>
+        <Field label={t('workerDialog.dailyRate')} hint={t('wage.baseRateHint')}>
           <Input
             type="number"
             value={form.daily_rate}
