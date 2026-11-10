@@ -54,6 +54,10 @@
       "type": "string",
       "description": "Maintenance operation that withdrew the parts and lubricants, if any"
     },
+    "transfer_id": {
+      "type": "string",
+      "description": "Transfer between two storages: the departure and the arrival movements of one transfer share this reference"
+    },
     "notes": {
       "type": "string"
     }

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Boxes, PackageSearch, Wallet } from 'lucide-react';
+import { ArrowLeftRight, Boxes, PackageSearch, Wallet } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
+import { Button } from '@/components/ui/button';
 import ItemOperationsDialog from '@/components/stock/ItemOperationsDialog';
 import StockFilters from '@/components/stock/StockFilters';
+import TransferDialog from '@/components/stock/TransferDialog';
 import { fetchList } from '@/lib/data';
 import { avgCostOf, buildCountTotals, buildInputTotals, buildOnHand, buildStorageOnHand, mergeTotals } from '@/lib/inventory';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
@@ -29,7 +31,9 @@ export default function StockStatus() {
   const [storageFilter, setStorageFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [selected, setSelected] = useState(null);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -58,7 +62,7 @@ export default function StockStatus() {
       setLoading(false);
     };
     load();
-  }, []);
+  }, [refreshKey]);
 
   const categories = useMemo(
     () => [...new Set(items.map((item) => (item.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -144,7 +148,7 @@ export default function StockStatus() {
         return {
           key: movement.id,
           kind: movement.kind === 'out' ? 'out' : 'in',
-          source: t('stock.movement'),
+          source: movement.transfer_id ? t('stock.transfer') : t('stock.movement'),
           date: movement.date,
           quantity: Number(movement.quantity) || 0,
           amount: 0,
@@ -186,6 +190,17 @@ export default function StockStatus() {
         eyebrow={t('stock.eyebrow')}
         title={t('stock.title')}
         description={t('stock.description')}
+        action={
+          <Button
+            variant="outline"
+            className="rounded-xl"
+            onClick={() => setTransferOpen(true)}
+            disabled={!items.length || storages.length < 2}
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+            {t('stock.transferAction')}
+          </Button>
+        }
       />
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -261,6 +276,15 @@ export default function StockStatus() {
         operations={operations}
         groupBy={selected && machineConsumables.has(selected.id) ? 'machine' : 'farm'}
         onClose={() => setSelected(null)}
+      />
+
+      <TransferDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        items={items}
+        storages={storages}
+        storageOnHand={storageOnHand}
+        onSaved={() => setRefreshKey((key) => key + 1)}
       />
     </div>
   );
