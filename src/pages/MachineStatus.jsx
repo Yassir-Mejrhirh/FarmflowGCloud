@@ -11,6 +11,8 @@ import { fetchList, byId } from '@/lib/data';
 import { buildMachineCosts, isMachineConsumableItem } from '@/lib/machineryCosts';
 import { avgCostOf, buildCountTotals, buildInputTotals, mergeTotals } from '@/lib/inventory';
 import MachineStatusDetail from '@/components/machinery/MachineStatusDetail';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 import { currentMonthKey, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -156,9 +158,29 @@ export default function MachineStatus() {
   const totalCost = rows.reduce((sum, row) => sum + row.totalCost, 0);
   const averageChmp = totalHours > 0 ? totalCost / totalHours : null;
 
+  const exportBase = t('ms.title');
+  const exportColumns = [
+    { key: 'name', label: t('common.machine'), width: 28 },
+    { key: 'hours', label: t('ms.hoursShort'), digits: 1, align: 'end', width: 14 },
+    { key: 'fuelTotal', label: t('exp.colFuel'), digits: 2, align: 'end', width: 16 },
+    { key: 'fuelCost', label: t('ms.fuelCost'), money: true, align: 'end', width: 18 },
+    { key: 'maintenanceCost', label: t('ms.maintenanceCost'), money: true, align: 'end', width: 20 },
+    { key: 'totalCost', label: t('ms.totalCost'), money: true, align: 'end', width: 18 },
+    { key: 'chmp', label: t('ms.chmp'), money: true, align: 'end', width: 16 },
+  ];
+  const exportSubtitle = t('exp.period', { from: from || '—', to: to || '—' });
+  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows });
+  const runPdf = () =>
+    exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: exportColumns, rows });
+
   return (
     <div className="space-y-8">
-      <PageHeader eyebrow={t('ms.eyebrow')} title={t('ms.title')} description={t('ms.description')} />
+      <PageHeader
+        eyebrow={t('ms.eyebrow')}
+        title={t('ms.title')}
+        description={t('ms.description')}
+        action={<ExportMenu hasData={rows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />}
+      />
 
       <section className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-3">

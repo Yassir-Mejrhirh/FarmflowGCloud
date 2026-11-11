@@ -13,6 +13,8 @@ import { fetchList } from '@/lib/data';
 import { buildMachineReport, trackingStart } from '@/lib/machineTracking';
 import { currentMonthKey, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 
 const monthStart = () => `${currentMonthKey()}-01`;
 
@@ -81,9 +83,45 @@ export default function MachineTracking() {
 
   const options = data.machines.map((machine) => ({ value: machine.id, label: machine.name }));
 
+  const exportBase = `${t('mtr.title')} ${selected?.name || ''}`.trim();
+  const exportColumns = [
+    { key: 'date', label: t('mtr.date'), width: 14 },
+    { key: 'counter', label: t('mtr.counterHour'), digits: 0, align: 'end', width: 14 },
+    { key: 'hours', label: t('mtr.hours'), digits: 1, align: 'end', width: 12 },
+    { key: 'works', label: t('mtr.works'), width: 26 },
+    { key: 'vidange', label: t('mtr.vidangeCol'), width: 16 },
+    { key: 'maintenance', label: t('mtr.maintenanceCol'), width: 22 },
+    { key: 'fuel', label: t('mtr.fuelCol'), digits: 1, align: 'end', width: 14 },
+    { key: 'consumption', label: t('mtr.consumption'), digits: 2, align: 'end', width: 14 },
+  ];
+  const exportRows = report.rows.map((row) => ({
+    date: row.date,
+    counter: Number(row.counter) || 0,
+    hours: row.hours,
+    works: row.works.map((work) => work.label || t(`tt.${work.type}`)).filter(Boolean).join(', '),
+    vidange: row.vidange
+      .map((entry) => (entry.reading > 0 ? `${t('mtr.reading')} ${fmtNum(entry.reading, 0)} h` : `${fmtNum(entry.since, 0)} h`))
+      .join(', '),
+    maintenance: row.maintenance.map((log) => `${t(`mk.${log.kind}`)}${log.description ? ` — ${log.description}` : ''}`).join(', '),
+    fuel: row.fuel,
+    consumption: row.consumption ?? '',
+  }));
+  const exportSubtitle = [
+    selected?.name || '',
+    t('exp.period', { from: from || '—', to: to || '—' }),
+  ].filter(Boolean).join(' · ');
+  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows: exportRows });
+  const runPdf = () =>
+    exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: exportColumns, rows: exportRows });
+
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow={t('mtr.eyebrow')} title={t('mtr.title')} description={t('mtr.description')} />
+      <PageHeader
+        eyebrow={t('mtr.eyebrow')}
+        title={t('mtr.title')}
+        description={t('mtr.description')}
+        action={<ExportMenu hasData={exportRows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />}
+      />
 
       <section className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

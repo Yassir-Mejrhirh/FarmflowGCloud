@@ -12,6 +12,8 @@ import { logTotalCost, partsCostOf } from '@/lib/machineryCosts';
 import { clearMaintenanceMovements } from '@/lib/maintenanceStock';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 
 export default function MachineMaintenance() {
   const { t } = useI18n();
@@ -69,6 +71,39 @@ export default function MachineMaintenance() {
     await base44.entities.MaintenanceLog.delete(log.id);
   };
 
+  const exportBase = t('maint.title');
+  const exportColumns = [
+    { key: 'date', label: t('exp.colDate'), width: 14 },
+    { key: 'machine', label: t('common.machine'), width: 24 },
+    { key: 'kind', label: t('exp.colKind'), width: 18 },
+    { key: 'description', label: t('exp.colDescription'), width: 32 },
+    { key: 'storage', label: t('exp.colStorage'), width: 20 },
+    { key: 'parts', label: t('exp.colParts'), money: true, align: 'end', width: 16 },
+    { key: 'other', label: t('exp.colOther'), money: true, align: 'end', width: 16 },
+    { key: 'total', label: t('maint.total'), money: true, align: 'end', width: 16 },
+    { key: 'hours', label: t('exp.colHoursReading'), digits: 0, align: 'end', width: 14 },
+  ];
+  const exportRows = logs.map((log) => ({
+    date: log.date,
+    machine: machineMap[log.machine_id]?.name || t('mach.unknown'),
+    kind: t(`mk.${log.kind}`),
+    description: log.description || '',
+    storage: storageMap[log.storage_id]?.name || '',
+    parts: Number(partsCostOf(log)) || 0,
+    other: Number(log.cost) || 0,
+    total: Number(logTotalCost(log)) || 0,
+    hours: Number(log.hours_reading) || 0,
+  }));
+  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows: exportRows });
+  const runPdf = () =>
+    exportPdf({
+      base: exportBase,
+      title: exportBase,
+      subtitle: `${logs.length} · ${fmtMoney(totalCost)}`,
+      columns: exportColumns,
+      rows: exportRows,
+    });
+
   const openNew = () => {
     setEditing(null);
     setDialog(true);
@@ -86,9 +121,12 @@ export default function MachineMaintenance() {
         title={t('maint.title')}
         description={t('maint.description')}
         action={
-          <Button className="rounded-xl" onClick={openNew} disabled={machines.length === 0}>
-            <Plus className="mr-1.5 h-4 w-4" /> {t('maint.new')}
-          </Button>
+          <>
+            <ExportMenu hasData={exportRows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />
+            <Button className="rounded-xl" onClick={openNew} disabled={machines.length === 0}>
+              <Plus className="mr-1.5 h-4 w-4" /> {t('maint.new')}
+            </Button>
+          </>
         }
       />
 

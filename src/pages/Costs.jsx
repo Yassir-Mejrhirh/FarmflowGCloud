@@ -12,6 +12,8 @@ import { fetchList } from '@/lib/data';
 import { getMonthlyCosts } from '@/lib/costs';
 import { currentMonthKey, fmtDate, fmtMoney, monthLabel, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 
 const CATEGORIES = ['labour', 'inputs', 'machinery', 'transport', 'utilities', 'other'];
 const BAR_COLORS = ['bg-primary', 'bg-clay', 'bg-sage', 'bg-amber-500', 'bg-muted-foreground'];
@@ -60,6 +62,53 @@ export default function Costs() {
   const PrevIcon = dir === 'rtl' ? ChevronRight : ChevronLeft;
   const NextIcon = dir === 'rtl' ? ChevronLeft : ChevronRight;
 
+  const exportBase = t('costs.title');
+  const exportSubtitle = `${monthLabel(month)} · ${t('costs.totalSpend')} ${fmtMoney(total)}`;
+  const exportColumns = [
+    { key: 'date', label: t('exp.colDate'), width: 14 },
+    { key: 'category', label: t('exp.colCategory'), width: 18 },
+    { key: 'description', label: t('exp.colDescription'), width: 40 },
+    { key: 'block', label: t('exp.colBlock'), width: 22 },
+    { key: 'amount', label: t('exp.colAmount'), money: true, align: 'end', width: 18 },
+  ];
+  const exportRows = (data?.expenses || []).map((expense) => ({
+    date: expense.date,
+    category: t(`ccat.${expense.category}`),
+    description: expense.description || t('costs.expense'),
+    block: blocks.find((block) => block.id === expense.block_id)?.name || '',
+    amount: Number(expense.amount) || 0,
+  }));
+  const runExcel = () =>
+    exportExcel({
+      base: exportBase,
+      sheets: [
+        {
+          name: t('costs.otherExpenses'),
+          columns: exportColumns.map((column) => ({ label: column.label, width: column.width })),
+          rows: exportRows.map((row) => exportColumns.map((column) => row[column.key] ?? '')),
+        },
+        {
+          name: t('exp.sheetTotals'),
+          columns: [
+            { label: t('exp.colCategoryTotals'), width: 34 },
+            { label: t('exp.colAmount'), width: 18 },
+          ],
+          rows: [...(data?.parts || []).map((part) => [t(`costs.part.${part.key}`), Number(part.amount) || 0]), [
+            t('costs.totalSpend'),
+            total,
+          ]],
+        },
+      ],
+    });
+  const runPdf = () =>
+    exportPdf({
+      base: exportBase,
+      title: `${exportBase} · ${monthLabel(month)}`,
+      subtitle: exportSubtitle,
+      columns: exportColumns,
+      rows: exportRows,
+    });
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -67,9 +116,12 @@ export default function Costs() {
         title={t('costs.title')}
         description={t('costs.description')}
         action={
-          <Button className="rounded-xl" onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-1.5 h-4 w-4" /> {t('costs.addExpense')}
-          </Button>
+          <>
+            <ExportMenu hasData={exportRows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />
+            <Button className="rounded-xl" onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-1.5 h-4 w-4" /> {t('costs.addExpense')}
+            </Button>
+          </>
         }
       />
 

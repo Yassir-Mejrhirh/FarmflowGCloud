@@ -14,6 +14,8 @@ import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 
 export default function StockStatus() {
   const { t } = useI18n();
@@ -99,6 +101,23 @@ export default function StockStatus() {
   const totalValue = rows.reduce((sum, row) => sum + row.value, 0);
   const lowRows = rows.filter((row) => row.low);
   const inStock = rows.filter((row) => row.quantity > 0).length;
+
+  const exportBase = t('stock.title');
+  const exportColumns = [
+    { key: 'name', label: t('param.inputs'), width: 30 },
+    { key: 'category', label: t('exp.colCategory'), width: 18 },
+    { key: 'quantity', label: t('stock.onHand'), digits: 2, align: 'end', width: 14 },
+    { key: 'unit', label: t('exp.colUnit'), width: 10 },
+    { key: 'price', label: t('stock.unitPrice'), money: true, align: 'end', width: 16 },
+    { key: 'value', label: t('inv.stockValue'), money: true, align: 'end', width: 18 },
+  ];
+  const exportSubtitle = [
+    storageFilter ? storages.find((storage) => storage.id === storageFilter)?.name : t('stock.allStorages'),
+    categoryFilter || t('stock.allCategories'),
+  ].join(' · ');
+  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows });
+  const runPdf = () =>
+    exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: exportColumns, rows });
 
   const machineConsumables = useMemo(
     () => new Set(items.filter(isMachineConsumableItem).map((item) => item.id)),
@@ -191,15 +210,18 @@ export default function StockStatus() {
         title={t('stock.title')}
         description={t('stock.description')}
         action={
-          <Button
-            variant="outline"
-            className="rounded-xl"
-            onClick={() => setTransferOpen(true)}
-            disabled={!items.length || storages.length < 2}
-          >
-            <ArrowLeftRight className="h-4 w-4" />
-            {t('stock.transferAction')}
-          </Button>
+          <>
+            <ExportMenu hasData={rows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setTransferOpen(true)}
+              disabled={!items.length || storages.length < 2}
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              {t('stock.transferAction')}
+            </Button>
+          </>
         }
       />
 

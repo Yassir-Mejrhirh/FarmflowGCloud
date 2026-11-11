@@ -25,6 +25,8 @@ import { fetchList, byId } from '@/lib/data';
 import { fmtDate, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { natureLabel } from '@/lib/taskNature';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
 import LabourRateNote from '@/components/dailyreport/LabourRateNote';
 
@@ -339,12 +341,36 @@ export default function DailyReport() {
     setReports(reportRows);
   };
 
+  const exportBase = t('report.recent');
+  const exportColumns = [
+    { key: 'date', label: t('exp.colDate'), width: 14 },
+    { key: 'block', label: t('exp.colBlock'), width: 22 },
+    { key: 'operation', label: t('exp.colOperation'), width: 18 },
+    { key: 'description', label: t('exp.colDescription'), width: 36 },
+    { key: 'labour', label: t('report.labour'), digits: 0, align: 'end', width: 12 },
+    { key: 'machinery', label: t('report.machinery'), digits: 0, align: 'end', width: 12 },
+    { key: 'inputs', label: t('report.inputs'), digits: 0, align: 'end', width: 12 },
+  ];
+  const exportRows = reports.map((report) => ({
+    date: report.date,
+    block: blockMap[report.block_id]?.name || '',
+    operation: natureLabel(report.operation, natures, t),
+    description: report.description || '',
+    labour: report.labour?.length || 0,
+    machinery: report.machinery?.length || 0,
+    inputs: report.inputs?.length || 0,
+  }));
+  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows: exportRows });
+  const runPdf = () =>
+    exportPdf({ base: exportBase, title: exportBase, columns: exportColumns, rows: exportRows });
+
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow={t('report.eyebrow')}
         title={t('report.title')}
         description={t('report.description')}
+        action={<ExportMenu hasData={exportRows.length > 0} onExcel={runExcel} onPdf={runPdf} />}
       />
 
       <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">

@@ -15,6 +15,8 @@ import { buildBlockItinerary } from '@/lib/blockItinerary';
 import { buildMachineCosts } from '@/lib/machineryCosts';
 import { currentMonthKey, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 
 const monthStart = () => `${currentMonthKey()}-01`;
 
@@ -121,9 +123,50 @@ export default function BlockItinerary() {
 
   const activeEntry = entries.find((entry) => entry.block.id === blockId) || entries[0];
 
+  const exportBase = t('itt.title');
+  const exportColumns = [
+    { key: 'block', label: t('itt.block'), width: 24 },
+    { key: 'farm', label: t('exp.colFarm'), width: 20 },
+    { key: 'operations', label: t('itt.operations'), digits: 0, align: 'end', width: 12 },
+    { key: 'days', label: t('itt.days'), digits: 1, align: 'end', width: 10 },
+    { key: 'hours', label: t('itt.hours'), digits: 1, align: 'end', width: 10 },
+    { key: 'labour', label: t('itt.labour'), money: true, align: 'end', width: 16 },
+    { key: 'machinery', label: t('itt.machinery'), money: true, align: 'end', width: 16 },
+    { key: 'inputs', label: t('itt.inputs'), money: true, align: 'end', width: 16 },
+    { key: 'cost', label: t('itt.totalCost'), money: true, align: 'end', width: 16 },
+    { key: 'perHa', label: t('itt.costPerHa'), money: true, align: 'end', width: 14 },
+  ];
+  const exportRows = entries.map((entry) => {
+    const area = Number(entry.block.area_ha) || 0;
+    return {
+      block: entry.block.name,
+      farm: entry.block.farm || '',
+      operations: entry.totals.operations,
+      days: entry.totals.days,
+      hours: entry.totals.hours,
+      labour: entry.totals.labour,
+      machinery: entry.totals.machinery,
+      inputs: entry.totals.inputs,
+      cost: entry.totals.cost,
+      perHa: area > 0 ? entry.totals.cost / area : '',
+    };
+  });
+  const exportSubtitle = [
+    t('exp.period', { from: from || '—', to: to || '—' }),
+    farmName || t('itt.allFarms'),
+  ].join(' · ');
+  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows: exportRows });
+  const runPdf = () =>
+    exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: exportColumns, rows: exportRows });
+
   return (
     <div className="space-y-8">
-      <PageHeader eyebrow={t('itt.eyebrow')} title={t('itt.title')} description={t('itt.description')} />
+      <PageHeader
+        eyebrow={t('itt.eyebrow')}
+        title={t('itt.title')}
+        description={t('itt.description')}
+        action={<ExportMenu hasData={exportRows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />}
+      />
 
       <section className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

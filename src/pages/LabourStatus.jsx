@@ -13,6 +13,8 @@ import { fetchList } from '@/lib/data';
 import { currentMonthKey, fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 
 const monthStart = () => `${currentMonthKey()}-01`;
 
@@ -118,6 +120,23 @@ export default function LabourStatus() {
   const totalDays = rows.reduce((sum, row) => sum + row.days, 0);
   const totalCost = rows.reduce((sum, row) => sum + row.cost, 0);
 
+  // Export of the whole period, not only the rows visible on screen.
+  const exportBase = t('lab.title');
+  const exportColumns = [
+    { key: 'name', label: t('common.worker'), width: 30 },
+    { key: 'job', label: t('exp.function'), width: 22 },
+    { key: 'days', label: t('lab.days'), digits: 1, align: 'end', width: 14 },
+    { key: 'rate', label: t('lab.rate'), money: true, align: 'end', width: 18 },
+    { key: 'cost', label: t('lab.cost'), money: true, align: 'end', width: 18 },
+  ];
+  const exportSubtitle = [
+    t('exp.period', { from: from || '—', to: to || '—' }),
+    selectedFarms.length ? selectedFarms.join(', ') : t('lab.allFarms'),
+  ].join(' · ');
+  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows });
+  const runPdf = () =>
+    exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: exportColumns, rows });
+
   const dayGroups = useMemo(() => {
     const byDate = new Map();
     filteredReports.forEach((report) => {
@@ -162,7 +181,12 @@ export default function LabourStatus() {
 
   return (
     <div className="space-y-8">
-      <PageHeader eyebrow={t('lab.eyebrow')} title={t('lab.title')} description={t('lab.description')} />
+      <PageHeader
+        eyebrow={t('lab.eyebrow')}
+        title={t('lab.title')}
+        description={t('lab.description')}
+        action={<ExportMenu hasData={rows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />}
+      />
 
       <section className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

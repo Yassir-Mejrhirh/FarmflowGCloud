@@ -11,6 +11,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { fetchList, byId, sumBy } from '@/lib/data';
 import { fmtMoney } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
+import ExportMenu from '@/components/ExportMenu';
+import { exportExcel, exportPdf } from '@/lib/reportExport';
 
 export default function InputInvoicesList() {
   const { t } = useI18n();
@@ -44,6 +46,31 @@ export default function InputInvoicesList() {
   const itemMap = byId(items);
   const storageMap = byId(storages);
 
+  const exportBase = t('invInvoices.allTitle');
+  const exportColumns = [
+    { key: 'date', label: t('exp.colDate'), width: 14 },
+    { key: 'number', label: t('exp.colInvoice'), width: 18 },
+    { key: 'supplier', label: t('exp.colSupplier'), width: 26 },
+    { key: 'storage', label: t('exp.colStorage'), width: 22 },
+    { key: 'amount', label: t('invInvoices.amount'), money: true, align: 'end', width: 18 },
+  ];
+  const exportRows = invoices.map((invoice) => ({
+    date: invoice.date,
+    number: invoice.invoice_number || t('invInvoices.noNumber'),
+    supplier: supplierMap[invoice.supplier_id]?.name || t('invInvoices.unknownSupplier'),
+    storage: storageMap[invoice.storage_id]?.name || '',
+    amount: Number(invoice.amount) || 0,
+  }));
+  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows: exportRows });
+  const runPdf = () =>
+    exportPdf({
+      base: exportBase,
+      title: exportBase,
+      subtitle: `${invoices.length} · ${fmtMoney(sumBy(invoices, 'amount'))}`,
+      columns: exportColumns,
+      rows: exportRows,
+    });
+
   const handleSaved = async () => {
     setEditing(null);
     await load();
@@ -63,11 +90,14 @@ export default function InputInvoicesList() {
         title={t('invInvoices.allTitle')}
         description={t('invInvoices.allDesc')}
         action={
-          <Button asChild className="rounded-xl">
-            <Link to="/input-invoices">
-              <Plus className="mr-1.5 h-4 w-4" /> {t('invInvoices.newInvoice')}
-            </Link>
-          </Button>
+          <>
+            <ExportMenu hasData={exportRows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />
+            <Button asChild className="rounded-xl">
+              <Link to="/input-invoices">
+                <Plus className="mr-1.5 h-4 w-4" /> {t('invInvoices.newInvoice')}
+              </Link>
+            </Button>
+          </>
         }
       />
 
