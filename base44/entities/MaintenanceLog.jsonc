@@ -17,8 +17,15 @@
       "type": "string",
       "enum": [
         "service",
+        "vidange",
         "repair",
         "inspection"
+      ],
+      "enumColors": [
+        "blue",
+        "yellow",
+        "red",
+        "gray"
       ],
       "default": "service"
     },

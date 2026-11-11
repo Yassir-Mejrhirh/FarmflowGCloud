@@ -12,7 +12,7 @@ import { syncMaintenanceMovements } from '@/lib/maintenanceStock';
 import { fmtMoney, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
-export const MAINTENANCE_KINDS = ['service', 'repair', 'inspection'];
+export const MAINTENANCE_KINDS = ['service', 'vidange', 'repair', 'inspection'];
 
 export default function MaintenanceLogDialog({
   open, onOpenChange, log, machines, items = [], storages = [], unitCostFor, onHandFor, onSaved,

@@ -267,7 +267,7 @@ const TABLES = [
     fields: [
       f('machine_id', 'Machine', 'string', { required: true, ref: 'Machine' }),
       f('date', 'Date', 'date', { required: true }),
-      f('kind', 'Type', 'enum', { options: ['service', 'repair', 'inspection'] }),
+      f('kind', 'Type', 'enum', { options: ['service', 'vidange', 'repair', 'inspection'] }),
       f('description', 'Description'),
       f('cost', 'Coût', 'number'),
       f('hours_reading', 'Relevé des heures', 'number'),

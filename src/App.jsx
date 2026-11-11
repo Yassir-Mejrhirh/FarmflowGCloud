@@ -29,6 +29,7 @@ import StockCount from '@/pages/StockCount';
 import LabourStatus from '@/pages/LabourStatus';
 import StockStatus from '@/pages/StockStatus';
 import MachineStatus from '@/pages/MachineStatus';
+import MachineTracking from '@/pages/MachineTracking';
 import BlockItinerary from '@/pages/BlockItinerary';
 import BlockPlans from '@/pages/BlockPlans';
 import MachineMaintenance from '@/pages/MachineMaintenance';
@@ -85,6 +86,7 @@ const AuthenticatedApp = () => {
         <Route path="/labour-status" element={<LabourStatus />} />
         <Route path="/stock-status" element={<StockStatus />} />
         <Route path="/machine-status" element={<MachineStatus />} />
+        <Route path="/machine-tracking" element={<MachineTracking />} />
         <Route path="/block-itinerary" element={<BlockItinerary />} />
         <Route path="/block-plans" element={<BlockPlans />} />
         <Route path="/machine-maintenance" element={<MachineMaintenance />} />
