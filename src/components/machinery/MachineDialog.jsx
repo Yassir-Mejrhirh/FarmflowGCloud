@@ -45,6 +45,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
       plate: machine?.plate || '',
       photo_uri: machine?.photo_uri || '',
       status: machine?.status || 'operational',
+      hours: machine?.hours ?? '',
       notes: machine?.notes || '',
       spare_parts: (machine?.spare_parts || []).map((row) => ({ ...row })),
     });
@@ -70,9 +71,22 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
     setForm((prev) => ({ ...prev, type: created?.name || name }));
   };
 
+  // Relevé du compteur d'heures : toujours modifiable, même sur une machine verrouillée.
+  const hoursValue = form.hours === '' || form.hours == null ? 0 : Number(form.hours) || 0;
+  const hoursChanged = hoursValue !== (Number(machine?.hours) || 0);
+
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name?.trim() || lock.locked) return;
+    if (!form.name?.trim()) return;
+    if (lock.locked) {
+      if (!machine?.id || !hoursChanged) return;
+      setSaving(true);
+      await base44.entities.Machine.update(machine.id, { hours: hoursValue });
+      setSaving(false);
+      onOpenChange(false);
+      onSaved();
+      return;
+    }
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -82,6 +96,7 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
       plate: form.plate || '',
       photo_uri: form.photo_uri || '',
       status: form.status,
+      hours: hoursValue,
       notes: form.notes || '',
       spare_parts: (form.spare_parts || []).filter((row) => row.kind || row.brand || row.reference),
     };
@@ -109,8 +124,14 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
       title={machine ? t('machDialog.editTitle') : t('machDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitDisabled={lock.locked}
-      submitLabel={machine ? t('machDialog.save') : t('machDialog.add')}
+      submitDisabled={lock.locked && !hoursChanged}
+      submitLabel={
+        lock.locked
+          ? t('machDialog.saveHours')
+          : machine
+            ? t('machDialog.save')
+            : t('machDialog.add')
+      }
     >
       <ParamLockNotice usage={lock.usage} />
 
@@ -153,6 +174,16 @@ export default function MachineDialog({ open, onOpenChange, machine, types = [],
             value={form.reference || ''}
             onChange={(e) => setForm({ ...form, reference: e.target.value })}
             placeholder={t('machDialog.referencePlaceholder')}
+          />
+        </Field>
+        <Field label={t('machDialog.hoursCounter')} hint={t('machDialog.hoursCounterHint')}>
+          <Input
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.hours ?? ''}
+            onChange={(e) => setForm({ ...form, hours: e.target.value })}
+            placeholder="0"
           />
         </Field>
         <Field label={t('common.status')}>

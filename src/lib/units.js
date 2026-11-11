@@ -13,6 +13,7 @@ export const PREDEFINED_UNITS = [
   { value: 'Carton', family: 'pack', factor: null },
   { value: 'Bidon', family: 'pack', factor: null },
   { value: 'Flacon', family: 'pack', factor: null },
+  { value: 'Bouteille', family: 'pack', factor: null },
   { value: 'Palette', family: 'pack', factor: null },
   { value: 'Unité', family: 'pack', factor: null },
 ];
