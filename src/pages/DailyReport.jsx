@@ -13,6 +13,7 @@ import StockShortageAlert from '@/components/stock/StockShortageAlert';
 import { aggregateQuantities, findShortages } from '@/lib/stockGuard';
 import { buildOnHand } from '@/lib/inventory';
 import { buildReportMovements, buildReportOutflow } from '@/lib/reportStock';
+import { applyReportHours, reportHoursByMachine } from '@/lib/machineCounter';
 import { buildEditDraft, entryReports } from '@/lib/reportDraft';
 import ReportEditDialog from '@/components/dailyreport/ReportEditDialog';
 import { isFuelItem, isLubricantItem, isMachineConsumableItem } from '@/lib/machineryCosts';
@@ -282,6 +283,14 @@ export default function DailyReport() {
       );
     }
 
+    // The hours written for each machine add to its counter: a revised report only
+    // moves it by the difference, so replaying an entry never counts twice.
+    await applyReportHours({
+      machines,
+      added: reportHoursByMachine(writtenRows),
+      removed: editing ? reportHoursByMachine(editing.rows) : null,
+    });
+
     setSaving(false);
     cancelEdit();
     load();
@@ -327,6 +336,7 @@ export default function DailyReport() {
     setReports((prev) => prev.filter((row) => row.id !== report.id));
     setMovements((prev) => prev.filter((row) => row.report_id !== report.id));
     await base44.entities.StockMovement.deleteMany({ report_id: report.id });
+    await applyReportHours({ machines, removed: reportHoursByMachine([report]) });
     await base44.entities.DailyReport.delete(report.id);
     const [movementRows, reportRows] = await Promise.all([
       fetchList(base44.entities.StockMovement, {}),
