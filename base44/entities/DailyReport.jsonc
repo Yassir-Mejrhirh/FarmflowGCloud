@@ -39,6 +39,18 @@
     "description": {
       "type": "string"
     },
+    "pump_station_id": {
+      "type": "string",
+      "description": "Pumping station used when the operation is irrigation or fertigation"
+    },
+    "pump_hours": {
+      "type": "number",
+      "description": "Hours the pumping station ran for this operation"
+    },
+    "water_m3": {
+      "type": "number",
+      "description": "Water pumped for this operation, in cubic metres"
+    },
     "labour": {
       "type": "array",
       "description": "Workers used, the days worked, and the daily rate applied at the date of the report",

@@ -29,6 +29,9 @@ import ExportMenu from '@/components/ExportMenu';
 import { exportExcel, exportPdf } from '@/lib/reportExport';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
 import LabourRateNote from '@/components/dailyreport/LabourRateNote';
+import PumpStationPanel from '@/components/dailyreport/PumpStationPanel';
+import { requiresPumpStation } from '@/lib/irrigation';
+import { isPumpingMachine } from '@/lib/machineInputs';
 
 export default function DailyReport() {
   const { t } = useI18n();
@@ -51,6 +54,7 @@ export default function DailyReport() {
   const [labour, setLabour] = useState([]);
   const [machinery, setMachinery] = useState([]);
   const [inputs, setInputs] = useState([]);
+  const [pump, setPump] = useState({ machine_id: '', hours: '', m3: '' });
   const [saving, setSaving] = useState(false);
   const [rangeError, setRangeError] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -155,6 +159,11 @@ export default function DailyReport() {
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
   const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
+  // Irrigation and fertigation only happen through a pumping station: its hours and
+  // the water volume are part of the report, not an optional detail.
+  const pumpStations = useMemo(() => machines.filter(isPumpingMachine), [machines]);
+  const irrigationRequired = requiresPumpStation(taskMap[form.task_id]);
+  const pumpReady = !!pump.machine_id && Number(pump.hours) > 0 && Number(pump.m3) > 0;
   // A reopened report replaces its own movements: those quantities come back into
   // the available stock before the new amounts are checked against it.
   const replaced = useMemo(() => {
@@ -181,6 +190,7 @@ export default function DailyReport() {
     form.block_ids.length > 0 &&
     !!form.task_id &&
     (!machineRequired || machineryReady) &&
+    (!irrigationRequired || pumpReady) &&
     !stockExceeded &&
     blockedInputs.length === 0;
 
@@ -188,6 +198,7 @@ export default function DailyReport() {
     event.preventDefault();
     if (!form.block_ids.length || !form.task_id) return;
     if (machineRequired && !machineryReady) return;
+    if (irrigationRequired && !pumpReady) return;
     if (stockExceeded) return;
     if (blockedInputs.length) return;
 
@@ -216,6 +227,9 @@ export default function DailyReport() {
         operation: taskMap[form.task_id]?.type || 'other',
         description: form.description.trim(),
         notes: form.notes,
+        pump_station_id: irrigationRequired ? pump.machine_id : '',
+        pump_hours: irrigationRequired ? share(pump.hours) : 0,
+        water_m3: irrigationRequired ? share(pump.m3) : 0,
         labour: labour
           .filter((line) => line.worker_id && Number(line.days) > 0)
           .map((line) => ({
@@ -303,6 +317,16 @@ export default function DailyReport() {
     setLabour(draft.labour);
     setMachinery(draft.machinery);
     setInputs(draft.inputs);
+    // The pumping station values were shared between the parcels: they are added back.
+    const storedTotal = (key) => {
+      const sum = rows.reduce((acc, row) => acc + (Number(row[key]) || 0), 0);
+      return sum > 0 ? String(Math.round(sum * 1000) / 1000) : '';
+    };
+    setPump({
+      machine_id: rows[0]?.pump_station_id || '',
+      hours: storedTotal('pump_hours'),
+      m3: storedTotal('water_m3'),
+    });
     setEditing({ rows });
     setEditChoice(null);
     setRangeError(null);
@@ -314,6 +338,7 @@ export default function DailyReport() {
     setLabour([]);
     setMachinery([]);
     setInputs([]);
+    setPump({ machine_id: '', hours: '', m3: '' });
     setRangeError(null);
   };
 
@@ -350,6 +375,9 @@ export default function DailyReport() {
     { key: 'labour', label: t('report.labour'), digits: 0, align: 'end', width: 12 },
     { key: 'machinery', label: t('report.machinery'), digits: 0, align: 'end', width: 12 },
     { key: 'inputs', label: t('report.inputs'), digits: 0, align: 'end', width: 12 },
+    { key: 'station', label: t('exp.colStation'), width: 18 },
+    { key: 'pumpHours', label: t('exp.colPumpHours'), digits: 1, align: 'end', width: 10 },
+    { key: 'water', label: t('exp.colWater'), digits: 1, align: 'end', width: 10 },
   ];
   const exportRows = reports.map((report) => ({
     date: report.date,
@@ -359,6 +387,9 @@ export default function DailyReport() {
     labour: report.labour?.length || 0,
     machinery: report.machinery?.length || 0,
     inputs: report.inputs?.length || 0,
+    station: machineMap[report.pump_station_id]?.name || '',
+    pumpHours: Number(report.pump_hours) || 0,
+    water: Number(report.water_m3) || 0,
   }));
   const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows: exportRows });
   const runPdf = () =>
@@ -471,6 +502,15 @@ export default function DailyReport() {
             )}
           </Field>
 
+          {irrigationRequired && (
+            <PumpStationPanel
+              stations={pumpStations}
+              value={pump}
+              onChange={setPump}
+              missing={!pumpReady}
+            />
+          )}
+
           <Field label={t('report.descLabel')}>
             <Textarea
               value={form.description}
@@ -558,6 +598,9 @@ export default function DailyReport() {
             {machineRequired && !machineryReady && (
               <span className="text-[11px] font-medium text-destructive">{t('report.machineRequired')}</span>
             )}
+            {irrigationRequired && !pumpReady && (
+              <span className="text-[11px] font-medium text-destructive">{t('report.pumpRequired')}</span>
+            )}
           </div>
         </form>
 
@@ -580,6 +623,12 @@ export default function DailyReport() {
                   </div>
                   {report.description && (
                     <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{report.description}</p>
+                  )}
+                  {(Number(report.pump_hours) > 0 || Number(report.water_m3) > 0) && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {machineMap[report.pump_station_id]?.name || t('report.pumpStation')} ·{' '}
+                      {Number(report.pump_hours) || 0} H · {Number(report.water_m3) || 0} m³
+                    </p>
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                     <span>{t('report.labourCount', { n: report.labour?.length || 0 })}</span>
