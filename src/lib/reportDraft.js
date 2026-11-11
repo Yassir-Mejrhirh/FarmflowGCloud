@@ -1,4 +1,5 @@
 import { isFuelItem, isLubricantItem } from '@/lib/machineryCosts';
+import { isButaneItem } from '@/lib/machineInputs';
 
 // Reports written in one entry share a group id, so the whole entry can be reopened
 // together. Reports saved before groups existed stand alone.
@@ -57,7 +58,8 @@ export function buildEditDraft(rows, movements, items) {
       const line = machinery.find((row) => row.machine_id === movement.machine_id);
       if (!item || !line) return;
       const quantity = Number(movement.quantity) || 0;
-      if (isFuelItem(item) && !line.fuel_item_id) {
+      // A pumping station's fuel is butane, not gasoil.
+      if ((isFuelItem(item) || isButaneItem(item)) && !line.fuel_item_id) {
         line.fuel_item_id = item.id;
         line.fuel_quantity = quantity;
       } else if (isLubricantItem(item) && !line.lubricant_item_id) {

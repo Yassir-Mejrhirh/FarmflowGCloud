@@ -16,7 +16,7 @@ import { buildReportMovements, buildReportOutflow } from '@/lib/reportStock';
 import { applyReportHours, reportHoursByMachine } from '@/lib/machineCounter';
 import { buildEditDraft, entryReports } from '@/lib/reportDraft';
 import ReportEditDialog from '@/components/dailyreport/ReportEditDialog';
-import { isFuelItem, isLubricantItem, isMachineConsumableItem } from '@/lib/machineryCosts';
+import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -131,20 +131,13 @@ export default function DailyReport() {
   }, [visibleBlocks, crops, t]);
   const taskMap = useMemo(() => byId(tasks), [tasks]);
   const itemMap = useMemo(() => byId(items), [items]);
+  const machineMap = useMemo(() => byId(machines), [machines]);
   const stockTotals = useMemo(
     () => buildOnHand(invoices, movements, counts),
     [invoices, movements, counts],
   );
   const outflow = useMemo(() => buildReportOutflow(inputs, machinery), [inputs, machinery]);
   const itemOption = (item) => ({ value: item.id, label: `${item.name}${item.unit ? ` (${item.unit})` : ''}` });
-  const fuelOptions = useMemo(
-    () => [...items].sort((a, b) => Number(isFuelItem(b)) - Number(isFuelItem(a))).map(itemOption),
-    [items],
-  );
-  const lubricantOptions = useMemo(
-    () => [...items].sort((a, b) => Number(isLubricantItem(b)) - Number(isLubricantItem(a))).map(itemOption),
-    [items],
-  );
   // Fuel and lubricants are entered on the machine that consumed them: they are
   // listed here only so the refusal can be explained, and are kept at the end.
   const otherInputOptions = useMemo(
@@ -495,8 +488,14 @@ export default function DailyReport() {
               qtyLabel={t('report.hours')}
               addLabel={t('report.addMachine')}
               emptyLabel={t('report.noMachine')}
+              pickExtras={() => ({
+                fuel_item_id: '',
+                fuel_quantity: '',
+                lubricant_item_id: '',
+                lubricant_quantity: '',
+              })}
               renderMeta={(line, patch) => (
-                <FuelLine line={line} patch={patch} fuelOptions={fuelOptions} lubricantOptions={lubricantOptions} />
+                <FuelLine line={line} patch={patch} machine={machineMap[line.machine_id]} items={items} />
               )}
             />
             {machineryReady && (

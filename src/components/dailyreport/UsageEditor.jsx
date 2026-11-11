@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function UsageEditor({
-  lines, onChange, options, idKey, qtyKey, qtyLabel, addLabel, emptyLabel, renderMeta, onPick,
+  lines, onChange, options, idKey, qtyKey, qtyLabel, addLabel, emptyLabel, renderMeta, onPick, pickExtras,
 }) {
   const { t } = useI18n();
   const update = (index, patch) => onChange(lines.map((line, i) => (i === index ? { ...line, ...patch } : line)));
@@ -15,7 +15,8 @@ export default function UsageEditor({
   const pick = (index, value) => {
     if (lines[index]?.[idKey] === value) return;
     if (onPick && !onPick(value)) return;
-    update(index, { [idKey]: value, daily_rate: undefined });
+    // Changing the chosen resource can also reset fields that depend on it.
+    update(index, { [idKey]: value, daily_rate: undefined, ...(pickExtras ? pickExtras(value) : {}) });
   };
 
   return (

@@ -1,11 +1,16 @@
+import { useMemo } from 'react';
 import { Droplets, Fuel } from 'lucide-react';
 import SelectField from '@/components/SelectField';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/I18nContext';
+import { machineConsumables } from '@/lib/machineInputs';
 
 // Fuel and lubricant a machine drew from stock, entered on the machine's own line.
-export default function FuelLine({ line, patch, fuelOptions, lubricantOptions }) {
+// The choices follow the machine type: a tractor only gets gasoil, a pumping
+// station only butane, and both get lubricants.
+export default function FuelLine({ line, patch, machine, items }) {
   const { t } = useI18n();
+  const consumables = useMemo(() => machineConsumables(machine, items), [machine, items]);
 
   if (!line.machine_id) return null;
 
@@ -17,7 +22,7 @@ export default function FuelLine({ line, patch, fuelOptions, lubricantOptions })
           <SelectField
             value={line.fuel_item_id || ''}
             onChange={(value) => patch({ fuel_item_id: value })}
-            options={fuelOptions}
+            options={consumables.fuel}
             noneLabel={t('report.noFuelItem')}
           />
         </div>
@@ -36,7 +41,7 @@ export default function FuelLine({ line, patch, fuelOptions, lubricantOptions })
           <SelectField
             value={line.lubricant_item_id || ''}
             onChange={(value) => patch({ lubricant_item_id: value })}
-            options={lubricantOptions}
+            options={consumables.lubricants}
             noneLabel={t('report.noLubricantItem')}
           />
         </div>

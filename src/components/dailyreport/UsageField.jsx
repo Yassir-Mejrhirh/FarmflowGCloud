@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
 
 export default function UsageField({
-  icon: Icon, title, placeholder, lines, onChange, options, idKey, qtyKey, qtyLabel, addLabel, emptyLabel, renderMeta,
+  icon: Icon, title, placeholder, lines, onChange, options, idKey, qtyKey, qtyLabel, addLabel, emptyLabel, renderMeta, pickExtras,
 }) {
   const { t } = useI18n();
 
@@ -38,6 +38,7 @@ export default function UsageField({
             addLabel={addLabel}
             emptyLabel={emptyLabel}
             renderMeta={renderMeta}
+            pickExtras={pickExtras}
           />
         </PopoverContent>
       </Popover>
