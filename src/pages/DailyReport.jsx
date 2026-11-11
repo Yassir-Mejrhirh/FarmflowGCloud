@@ -158,12 +158,16 @@ export default function DailyReport() {
   );
 
   const machineRequired = !!taskMap[form.task_id]?.machine_required;
-  const machineryReady = machinery.some((line) => line.machine_id && Number(line.hours) > 0);
   // Irrigation and fertigation only happen through a pumping station: its hours and
   // the water volume are part of the report, not an optional detail.
   const pumpStations = useMemo(() => machines.filter(isPumpingMachine), [machines]);
   const irrigationRequired = requiresPumpStation(taskMap[form.task_id]);
   const pumpReady = !!pump.machine_id && Number(pump.hours) > 0 && Number(pump.m3) > 0;
+  // A pumping station is a machine: naming one satisfies the "machine required" rule,
+  // so an irrigation report needs no second machine line.
+  const machineryReady =
+    machinery.some((line) => line.machine_id && Number(line.hours) > 0) ||
+    (irrigationRequired && !!pump.machine_id);
   // A reopened report replaces its own movements: those quantities come back into
   // the available stock before the new amounts are checked against it.
   const replaced = useMemo(() => {
@@ -564,7 +568,7 @@ export default function DailyReport() {
                 <FuelLine line={line} patch={patch} machine={machineMap[line.machine_id]} items={items} />
               )}
             />
-            {machineryReady && (
+            {machinery.some((line) => line.machine_id && Number(line.hours) > 0) && (
               <p className="ps-1 text-[11px] text-muted-foreground">{t('report.fuelHint')}</p>
             )}
             <OtherInputsPanel
