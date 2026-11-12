@@ -88,6 +88,12 @@ export default function WorkerDialog({
       (form.transport_rate_type || 'fixed') !== currentTransportMode ||
       (form.transporter_name || '') !== (currentTransport.transporter || ''));
 
+  // Transport switched on means the transporter, the pricing mode and the amount are all
+  // needed: a report cannot cost the transport without them.
+  const transportIncomplete =
+    Boolean(form.transport_enabled) &&
+    (!form.transporter_name?.trim() || !form.transport_rate_type || !(Number(form.transport_rate) > 0));
+
   // A transporter already carrying another team cannot be given to this one.
   const conflict = useMemo(() => {
     if (!form.transport_enabled) return null;
@@ -209,6 +215,7 @@ export default function WorkerDialog({
     event.preventDefault();
     if (!form.name?.trim()) return;
     if (conflict) return;
+    if (transportIncomplete) return;
     const typedRate = Number(form.daily_rate) || 0;
     const salaryChanged = Boolean(worker?.id) && typedRate !== currentRate;
     if (lock.locked && !salaryChanged && !transportChanged) return;
@@ -291,7 +298,9 @@ export default function WorkerDialog({
       title={worker ? t('workerDialog.editTitle') : t('workerDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitDisabled={(lock.locked && !rateChanged && !transportChanged) || Boolean(conflict)}
+      submitDisabled={
+        (lock.locked && !rateChanged && !transportChanged) || Boolean(conflict) || transportIncomplete
+      }
       submitLabel={worker ? t('workerDialog.save') : t('workerDialog.add')}
     >
       <ParamLockNotice usage={lock.usage} note={lock.locked ? t('wage.salaryOnly') : ''} />
@@ -463,9 +472,15 @@ export default function WorkerDialog({
             }
           />
         </div>
+        {form.transport_enabled && transportIncomplete && (
+          <p className="flex items-start gap-1.5 text-[11px] leading-snug text-destructive">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {t('workerDialog.transportRequired')}
+          </p>
+        )}
         {form.transport_enabled && (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={t('workerDialog.transporterName')}>
+            <Field label={`${t('workerDialog.transporterName')} *`}>
               <SelectField
                 value={form.transporter_name}
                 onChange={(value) => setForm({ ...form, transporter_name: value })}
@@ -504,7 +519,7 @@ export default function WorkerDialog({
                 </Button>
               )}
             </Field>
-            <Field label={t('workerDialog.transportRateType')}>
+            <Field label={`${t('workerDialog.transportRateType')} *`}>
               <SelectField
                 value={form.transport_rate_type}
                 onChange={(value) => setForm({ ...form, transport_rate_type: value })}
@@ -514,7 +529,10 @@ export default function WorkerDialog({
                 ]}
               />
             </Field>
-            <Field label={t('workerDialog.transportAmount')} hint={worker?.id ? t('workerDialog.transportHint') : ''}>
+            <Field
+              label={`${t('workerDialog.transportAmount')} *`}
+              hint={worker?.id ? t('workerDialog.transportHint') : ''}
+            >
               <Input
                 type="number"
                 value={form.transport_rate}
