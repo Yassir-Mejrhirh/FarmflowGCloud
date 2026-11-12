@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ClipboardList, Pencil, Tractor, Trash2, Users } from 'lucide-react';
+import { ClipboardList, Pencil, Tractor, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import StatusPill from '@/components/StatusPill';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import UsageField from '@/components/dailyreport/UsageField';
+import LabourField from '@/components/dailyreport/LabourField';
 import InputStockNote from '@/components/dailyreport/InputStockNote';
 import FuelLine from '@/components/dailyreport/FuelLine';
 import OtherInputsPanel from '@/components/dailyreport/OtherInputsPanel';
@@ -124,6 +125,51 @@ export default function DailyReport() {
     () => (farmName ? blocks.filter((block) => block.farm === farmName) : blocks),
     [blocks, farmName],
   );
+
+  // A worker clocked in any report of the same day cannot be pointed a second time,
+  // whatever the farm or the task. The reports being edited keep their own workers.
+  const takenWorkers = useMemo(() => {
+    const taken = new Set();
+    const reopened = new Set(editing ? editing.rows.map((row) => row.id) : []);
+    reports
+      .filter((report) => report.date === form.date && !reopened.has(report.id))
+      .forEach((report) => (report.labour || []).forEach((line) => line.worker_id && taken.add(line.worker_id)));
+    return taken;
+  }, [reports, form.date, editing]);
+
+  // The farm the entry is written for, used to bring its own workers to the top.
+  const reportFarmName = useMemo(() => {
+    const chosen = farms.find((farm) => farm.id === farmId)?.name;
+    if (chosen) return chosen;
+    const names = new Set(form.block_ids.map((id) => blockMap[id]?.farm).filter(Boolean));
+    return names.size === 1 ? [...names][0] : '';
+  }, [farmId, farms, form.block_ids, blockMap]);
+
+  const labourGroups = useMemo(() => {
+    const available = workers.filter((worker) => !takenWorkers.has(worker.id));
+    const fixed = reportFarmName ? available.filter((worker) => worker.farm === reportFarmName) : [];
+    const rest = available.filter((worker) => !fixed.includes(worker));
+    const groups = [];
+    if (fixed.length) {
+      groups.push({ key: 'farm', label: t('report.labourFarmFixed', { farm: reportFarmName }), workers: fixed });
+    }
+    const byTeam = new Map();
+    rest.forEach((worker) => {
+      const key = (worker.team || '').trim() || 'none';
+      if (!byTeam.has(key)) byTeam.set(key, []);
+      byTeam.get(key).push(worker);
+    });
+    [...byTeam.keys()]
+      .sort((a, b) => (a === 'none' ? 1 : b === 'none' ? -1 : a.localeCompare(b)))
+      .forEach((key) => {
+        groups.push({
+          key: `team:${key}`,
+          label: key === 'none' ? t('report.noTeam') : key,
+          workers: byTeam.get(key),
+        });
+      });
+    return groups;
+  }, [workers, takenWorkers, reportFarmName, t]);
 
   const blockGroups = useMemo(() => {
     const cropMap = byId(crops);
@@ -539,17 +585,14 @@ export default function DailyReport() {
           </Field>
 
           <div className="space-y-2">
-            <UsageField
-              icon={Users}
+            <LabourField
               title={t('report.labour')}
               placeholder={t('report.chooseLabour')}
               lines={labour}
               onChange={setLabour}
-              options={workers.map((worker) => ({ value: worker.id, label: worker.name }))}
-              idKey="worker_id"
-              qtyKey="days"
+              groups={labourGroups}
+              workerMap={workerMap}
               qtyLabel={t('report.days')}
-              addLabel={t('report.addLabour')}
               emptyLabel={t('report.noLabour')}
               renderMeta={(line) => (
                 <LabourRateNote
