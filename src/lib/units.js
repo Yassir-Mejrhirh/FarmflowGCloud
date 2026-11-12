@@ -16,6 +16,8 @@ export const PREDEFINED_UNITS = [
   { value: 'Bouteille', family: 'pack', factor: null },
   { value: 'Palette', family: 'pack', factor: null },
   { value: 'Unité', family: 'pack', factor: null },
+  { value: 'Bobine', family: 'pack', factor: null },
+  { value: 'Mètre linéaire', family: 'length', factor: 1 },
 ];
 
 export const UNIT_OPTIONS = PREDEFINED_UNITS.map((unit) => ({ value: unit.value, label: unit.value }));
