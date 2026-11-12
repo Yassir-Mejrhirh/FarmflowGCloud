@@ -23,18 +23,21 @@ export default function Workers() {
   const [rateWorker, setRateWorker] = useState(null);
   const [teamRateOpen, setTeamRateOpen] = useState(false);
   const [wageRates, setWageRates] = useState([]);
+  const [transportRates, setTransportRates] = useState([]);
 
   const load = async () => {
-    const [workerRows, farmRows, functionRows, rateRows] = await Promise.all([
+    const [workerRows, farmRows, functionRows, rateRows, transportRows] = await Promise.all([
       fetchList(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.WorkerFunction, {}, { sort: 'name' }),
       fetchList(base44.entities.WageRate, {}, { sort: '-effective_date' }),
+      fetchList(base44.entities.TransportRate, {}, { sort: '-effective_date' }),
     ]);
     setWorkers(workerRows);
     setFarms(farmRows);
     setFunctions(functionRows);
     setWageRates(rateRows);
+    setTransportRates(transportRows);
     setLoading(false);
   };
 
@@ -129,6 +132,7 @@ export default function Workers() {
         functions={functions}
         teams={teamNames}
         rates={wageRates}
+        transportRates={transportRates}
         onFunctionsChanged={reloadFunctions}
         onSaved={load}
       />

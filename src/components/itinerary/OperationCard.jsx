@@ -1,4 +1,4 @@
-import { Boxes, Tractor, Users } from 'lucide-react';
+import { Boxes, Tractor, Truck, Users } from 'lucide-react';
 import StatusPill from '@/components/StatusPill';
 import ResourceGroup from '@/components/itinerary/ResourceGroup';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
@@ -28,6 +28,12 @@ export default function OperationCard({ operation, natures = [] }) {
     meta: `${fmtNum(line.quantity, 1)} ${line.unit}`,
   }));
 
+  const transportRows = (operation.transport || []).map((line) => ({
+    key: line.key,
+    label: line.name || t('lab.unknownTransporter'),
+    meta: line.mode === 'per_person' ? t('lab.modePerPerson') : t('lab.modeFixed'),
+  }));
+
   return (
     <li className="rounded-2xl border border-border/70 bg-card p-3.5 sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -45,8 +51,14 @@ export default function OperationCard({ operation, natures = [] }) {
         <p className="text-sm font-medium tabular-nums">{fmtMoney(operation.totals.cost)}</p>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <ResourceGroup icon={Users} title={t('itt.labour')} rows={labourRows} total={operation.totals.labour} />
+        <ResourceGroup
+          icon={Truck}
+          title={t('itt.transport')}
+          rows={transportRows}
+          total={operation.totals.transport || 0}
+        />
         <ResourceGroup
           icon={Tractor}
           title={t('itt.machinery')}

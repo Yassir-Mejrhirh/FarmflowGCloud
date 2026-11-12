@@ -28,6 +28,7 @@ export default function LabourDailyDetail({ groups, loading }) {
                     days: `${fmtNum(group.days, 1)} ${t('lab.daysUnit')}`,
                     cost: fmtMoney(group.cost),
                   })}
+                  {group.transport > 0 && ` · ${t('lab.transport')} ${fmtMoney(group.transport)}`}
                 </p>
               </div>
               <ul className="mt-2 space-y-1.5">
@@ -37,6 +38,9 @@ export default function LabourDailyDetail({ groups, loading }) {
                     <span className="tabular-nums text-muted-foreground">
                       {fmtNum(entry.days, 1)} {t('lab.daysUnit')}
                     </span>
+                    {entry.transport > 0 && (
+                      <span className="tabular-nums text-clay">{fmtMoney(entry.transport)}</span>
+                    )}
                     <span className="ms-auto text-[11px] text-muted-foreground">
                       {[entry.place, entry.block].filter(Boolean).join(' · ')}
                     </span>

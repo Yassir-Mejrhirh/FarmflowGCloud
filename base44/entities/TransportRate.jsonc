@@ -1,0 +1,57 @@
+{
+  "name": "TransportRate",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
+    "worker_id": {
+      "type": "string",
+      "description": "Worker the transport applies to"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date from which the transport applies"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "per_person"
+      ],
+      "enumColors": [
+        "blue",
+        "purple"
+      ],
+      "default": "fixed",
+      "description": "Fixed amount per transporter and team per day, or amount per person transported per day"
+    },
+    "transporter_name": {
+      "type": "string",
+      "description": "Transporter providing the transport"
+    },
+    "team": {
+      "type": "string",
+      "description": "Team of the worker when the transport rate was recorded"
+    },
+    "rate": {
+      "type": "number",
+      "description": "Transport amount in force from the effective date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "worker_id",
+    "effective_date"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}

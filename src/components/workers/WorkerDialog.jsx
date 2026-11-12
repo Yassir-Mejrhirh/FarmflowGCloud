@@ -14,6 +14,8 @@ import { useParamLock } from '@/lib/paramUsage';
 import { useUndo } from '@/lib/undoContext';
 import { todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
+import { buildTransportIndex, transportFor } from '@/lib/transportRates';
+import TransportHistory from '@/components/workers/TransportHistory';
 
 const PRIORITIES = ['1', '2', '3'];
 const DEFINITIONS = ['nominative', 'salary_band'];
@@ -40,7 +42,7 @@ const emptyForm = {
 };
 
 export default function WorkerDialog({
-  open, onOpenChange, worker, farms, functions, teams, rates = [], onFunctionsChanged, onSaved,
+  open, onOpenChange, worker, farms, functions, teams, rates = [], transportRates = [], onFunctionsChanged, onSaved,
 }) {
   const { t } = useI18n();
   const [form, setForm] = useState(emptyForm);
@@ -49,6 +51,7 @@ export default function WorkerDialog({
   const [newFunction, setNewFunction] = useState('');
   const [creatingFunction, setCreatingFunction] = useState(false);
   const [rateDate, setRateDate] = useState(todayISO());
+  const [transportDate, setTransportDate] = useState(todayISO());
   const lock = useParamLock('Worker', worker);
   const { offerUndo } = useUndo();
 
@@ -61,8 +64,24 @@ export default function WorkerDialog({
   );
   const rateChanged = Boolean(worker?.id) && (Number(form.daily_rate) || 0) !== currentRate;
 
+  // Transport follows the salary rule: a change is written as a dated rate, so the
+  // reports already costed keep the amount they were written with.
+  const transportIndex = useMemo(() => buildTransportIndex(transportRates), [transportRates]);
+  const currentTransport = useMemo(
+    () => (worker ? transportFor(worker, transportIndex, todayISO()) : { mode: 'none', rate: 0, transporter: '' }),
+    [worker, transportIndex],
+  );
+  const currentTransportMode = currentTransport.mode === 'none' ? 'fixed' : currentTransport.mode;
+  const transportChanged =
+    Boolean(worker?.id) &&
+    Boolean(form.transport_enabled) &&
+    ((Number(form.transport_rate) || 0) !== currentTransport.rate ||
+      (form.transport_rate_type || 'fixed') !== currentTransportMode ||
+      (form.transporter_name || '') !== (currentTransport.transporter || ''));
+
   useEffect(() => {
     if (!open) return;
+    const transport = worker ? transportFor(worker, transportIndex, todayISO()) : null;
     setForm(
       worker
         ? {
@@ -77,9 +96,9 @@ export default function WorkerDialog({
             transport_enabled: Boolean(
               worker.transport_enabled || worker.transporter_name || worker.transport_rate,
             ),
-            transporter_name: worker.transporter_name || '',
-            transport_rate_type: worker.transport_rate_type || 'fixed',
-            transport_rate: worker.transport_rate ?? '',
+            transporter_name: transport.transporter || '',
+            transport_rate_type: transport.mode === 'none' ? worker.transport_rate_type || 'fixed' : transport.mode,
+            transport_rate: transport.rate || worker.transport_rate || '',
             phone: worker.phone || '',
             daily_rate: currentRate || '',
             start_date: worker.start_date || '',
@@ -91,7 +110,8 @@ export default function WorkerDialog({
     setShowNewFunction(false);
     setNewFunction('');
     setRateDate(todayISO());
-  }, [open, worker, currentRate]);
+    setTransportDate(todayISO());
+  }, [open, worker, currentRate, transportIndex]);
 
   const createFunction = async () => {
     const name = newFunction.trim();
@@ -114,13 +134,29 @@ export default function WorkerDialog({
     else await base44.entities.WageRate.create({ ...values, worker_id: worker.id, effective_date: date });
   };
 
+  // Same for the transport: the amount of the day is written as a dated transport rate.
+  const saveTransport = async (amount, mode, transporter, date) => {
+    const existing = transportRates.find((row) => row.worker_id === worker.id && row.effective_date === date);
+    const values = { mode, rate: amount, transporter_name: transporter, team: form.team || '' };
+    if (existing) await base44.entities.TransportRate.update(existing.id, values);
+    else await base44.entities.TransportRate.create({ ...values, worker_id: worker.id, effective_date: date });
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     if (!form.name?.trim()) return;
     const typedRate = Number(form.daily_rate) || 0;
     const salaryChanged = Boolean(worker?.id) && typedRate !== currentRate;
-    if (lock.locked && !salaryChanged) return;
+    if (lock.locked && !salaryChanged && !transportChanged) return;
     if (worker?.id && salaryChanged) await saveRate(typedRate, rateDate || todayISO());
+    if (worker?.id && transportChanged) {
+      await saveTransport(
+        Number(form.transport_rate) || 0,
+        form.transport_rate_type || 'fixed',
+        form.transporter_name || '',
+        transportDate || todayISO(),
+      );
+    }
     if (worker?.id && lock.locked) {
       onOpenChange(false);
       onSaved();
@@ -162,6 +198,7 @@ export default function WorkerDialog({
     if (!worker?.id || lock.locked) return;
     setSaving(true);
     await base44.entities.WageRate.deleteMany({ worker_id: worker.id });
+    await base44.entities.TransportRate.deleteMany({ worker_id: worker.id });
     await base44.entities.Worker.delete(worker.id);
     setSaving(false);
     onOpenChange(false);
@@ -180,7 +217,7 @@ export default function WorkerDialog({
       title={worker ? t('workerDialog.editTitle') : t('workerDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitDisabled={lock.locked && !rateChanged}
+      submitDisabled={lock.locked && !rateChanged && !transportChanged}
       submitLabel={worker ? t('workerDialog.save') : t('workerDialog.add')}
     >
       <ParamLockNotice usage={lock.usage} note={lock.locked ? t('wage.salaryOnly') : ''} />
@@ -345,13 +382,23 @@ export default function WorkerDialog({
                 ]}
               />
             </Field>
-            <Field label={t('workerDialog.transportAmount')}>
+            <Field label={t('workerDialog.transportAmount')} hint={worker?.id ? t('workerDialog.transportHint') : ''}>
               <Input
                 type="number"
                 value={form.transport_rate}
                 onChange={(e) => setForm({ ...form, transport_rate: e.target.value })}
               />
             </Field>
+            {worker?.id && (
+              <Field label={t('workerDialog.transportEffective')}>
+                <Input
+                  type="date"
+                  value={transportDate}
+                  onChange={(e) => setTransportDate(e.target.value)}
+                />
+              </Field>
+            )}
+            <TransportHistory worker={worker} rates={transportRates} onChanged={onSaved} />
           </div>
         )}
       </div>

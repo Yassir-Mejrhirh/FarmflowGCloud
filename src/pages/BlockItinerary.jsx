@@ -39,12 +39,13 @@ export default function BlockItinerary() {
   const [movements, setMovements] = useState([]);
   const [costReports, setCostReports] = useState([]);
   const [wageRates, setWageRates] = useState([]);
+  const [transportRates, setTransportRates] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [blockRows, farmRows, workerRows, machineRows, itemRows, invoiceRows, countRows, natureRows, logRows, costReportRows, movementRows, wageRateRows] =
+      const [blockRows, farmRows, workerRows, machineRows, itemRows, invoiceRows, countRows, natureRows, logRows, costReportRows, movementRows, wageRateRows, transportRateRows] =
         await Promise.all([
           fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
           fetchList(base44.entities.Farm, {}, { sort: 'name' }),
@@ -58,6 +59,7 @@ export default function BlockItinerary() {
           fetchList(base44.entities.DailyReport, {}, { sort: '-date' }),
           fetchList(base44.entities.StockMovement, {}),
           fetchList(base44.entities.WageRate, {}),
+          fetchList(base44.entities.TransportRate, {}),
         ]);
       setBlocks(blockRows);
       setFarms(farmRows);
@@ -71,6 +73,7 @@ export default function BlockItinerary() {
       setCostReports(costReportRows);
       setMovements(movementRows);
       setWageRates(wageRateRows);
+      setTransportRates(transportRateRows);
     };
     load();
   }, []);
@@ -116,9 +119,10 @@ export default function BlockItinerary() {
         invoices,
         counts,
         wageRates,
+        transportRates,
         machineCosts,
       }),
-    [scopedReports, blocks, workers, machines, items, invoices, counts, wageRates, machineCosts],
+    [scopedReports, blocks, workers, machines, items, invoices, counts, wageRates, transportRates, machineCosts],
   );
 
   const activeEntry = entries.find((entry) => entry.block.id === blockId) || entries[0];
@@ -131,6 +135,7 @@ export default function BlockItinerary() {
     { key: 'days', label: t('itt.days'), digits: 1, align: 'end', width: 10 },
     { key: 'hours', label: t('itt.hours'), digits: 1, align: 'end', width: 10 },
     { key: 'labour', label: t('itt.labour'), money: true, align: 'end', width: 16 },
+    { key: 'transport', label: t('itt.transport'), money: true, align: 'end', width: 16 },
     { key: 'machinery', label: t('itt.machinery'), money: true, align: 'end', width: 16 },
     { key: 'inputs', label: t('itt.inputs'), money: true, align: 'end', width: 16 },
     { key: 'cost', label: t('itt.totalCost'), money: true, align: 'end', width: 16 },
@@ -145,6 +150,7 @@ export default function BlockItinerary() {
       days: entry.totals.days,
       hours: entry.totals.hours,
       labour: entry.totals.labour,
+      transport: entry.totals.transport || 0,
       machinery: entry.totals.machinery,
       inputs: entry.totals.inputs,
       cost: entry.totals.cost,

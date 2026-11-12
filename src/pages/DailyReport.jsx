@@ -28,6 +28,7 @@ import { natureLabel } from '@/lib/taskNature';
 import ExportMenu from '@/components/ExportMenu';
 import { exportExcel, exportPdf } from '@/lib/reportExport';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
+import { buildTransportIndex, transportFor } from '@/lib/transportRates';
 import LabourRateNote from '@/components/dailyreport/LabourRateNote';
 import PumpStationPanel from '@/components/dailyreport/PumpStationPanel';
 import { requiresPumpStation } from '@/lib/irrigation';
@@ -50,6 +51,7 @@ export default function DailyReport() {
   const [natures, setNatures] = useState([]);
   const [reports, setReports] = useState([]);
   const [wageRates, setWageRates] = useState([]);
+  const [transportRates, setTransportRates] = useState([]);
   const [form, setForm] = useState({ date: todayISO(), block_ids: [], task_id: '', description: '', notes: '' });
   const [labour, setLabour] = useState([]);
   const [machinery, setMachinery] = useState([]);
@@ -61,7 +63,7 @@ export default function DailyReport() {
   const [editChoice, setEditChoice] = useState(null);
 
   const load = async () => {
-    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, countRows, storageRows, reportRows, taskRows, natureRows, wageRateRows] = await Promise.all([
+    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, countRows, storageRows, reportRows, taskRows, natureRows, wageRateRows, transportRateRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
@@ -76,6 +78,7 @@ export default function DailyReport() {
       fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
       fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
       fetchList(base44.entities.WageRate, {}),
+      fetchList(base44.entities.TransportRate, {}),
     ]);
     setBlocks(blockRows);
     setFarms(farmRows);
@@ -91,6 +94,7 @@ export default function DailyReport() {
     setTasks(taskRows);
     setNatures(natureRows);
     setWageRates(wageRateRows);
+    setTransportRates(transportRateRows);
   };
 
   useEffect(() => {
@@ -101,6 +105,7 @@ export default function DailyReport() {
   const workerMap = useMemo(() => byId(workers), [workers]);
   // Rates are looked up at the date of the report, so a revision only applies to later reports.
   const rateIndex = useMemo(() => buildRateIndex(wageRates), [wageRates]);
+  const transportIndex = useMemo(() => buildTransportIndex(transportRates), [transportRates]);
 
   // The resources are entered once for the whole report and shared between the
   // selected parcels in proportion to their area in hectares.
@@ -236,12 +241,21 @@ export default function DailyReport() {
         water_m3: irrigationRequired ? share(pump.m3) : 0,
         labour: labour
           .filter((line) => line.worker_id && Number(line.days) > 0)
-          .map((line) => ({
-            worker_id: line.worker_id,
-            days: share(line.days),
-            // The rate is frozen on the line: later revisions never change this report's cost.
-            daily_rate: labourRate(line, workerMap[line.worker_id], rateIndex, form.date),
-          })),
+          .map((line) => {
+            // The rate and the transport are frozen on the line: later revisions never
+            // change the cost this report was written with.
+            const worker = workerMap[line.worker_id];
+            const transport = transportFor(worker, transportIndex, form.date);
+            return {
+              worker_id: line.worker_id,
+              days: share(line.days),
+              daily_rate: labourRate(line, worker, rateIndex, form.date),
+              transport_mode: transport.mode,
+              transport_rate: transport.rate,
+              transporter_name: transport.transporter,
+              transport_team: transport.team || worker?.team || '',
+            };
+          }),
         machinery: machinery
           .filter((line) => line.machine_id && Number(line.hours) > 0)
           .map((line) => ({ machine_id: line.machine_id, hours: share(line.hours) })),
@@ -542,6 +556,7 @@ export default function DailyReport() {
                   line={line}
                   worker={workerMap[line.worker_id]}
                   rateIndex={rateIndex}
+                  transportIndex={transportIndex}
                   date={form.date}
                 />
               )}

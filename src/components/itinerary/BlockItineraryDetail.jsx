@@ -1,4 +1,4 @@
-import { Boxes, Tractor, Users } from 'lucide-react';
+import { Boxes, Tractor, Truck, Users } from 'lucide-react';
 import StatCard from '@/components/StatCard';
 import OperationCard from '@/components/itinerary/OperationCard';
 import { fmtMoney, fmtNum } from '@/lib/format';
@@ -31,12 +31,18 @@ export default function BlockItineraryDetail({ entry, natures = [] }) {
 
       <section className="rounded-2xl border border-border/70 bg-card p-3.5 sm:p-4">
         <h2 className="font-display text-lg tracking-tight">{t('itt.totalsTitle')}</h2>
-        <dl className="mt-3 grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
+        <dl className="mt-3 grid grid-cols-2 gap-3 text-sm lg:grid-cols-5">
           <div className="rounded-xl border border-border/60 bg-background/40 p-3">
             <dt className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               <Users className="h-3 w-3" /> {t('itt.labour')}
             </dt>
             <dd className="mt-1 font-medium tabular-nums">{fmtMoney(totals.labour)}</dd>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-background/40 p-3">
+            <dt className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              <Truck className="h-3 w-3" /> {t('itt.transport')}
+            </dt>
+            <dd className="mt-1 font-medium tabular-nums">{fmtMoney(totals.transport || 0)}</dd>
           </div>
           <div className="rounded-xl border border-border/60 bg-background/40 p-3">
             <dt className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">

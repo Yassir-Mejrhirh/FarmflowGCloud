@@ -1,6 +1,7 @@
 import { avgCostOf, buildCountTotals, buildInputTotals, mergeTotals } from '@/lib/inventory';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
+import { buildTransportCosts } from '@/lib/transportRates';
 
 const num = (value) => Number(value) || 0;
 
@@ -16,11 +17,15 @@ export function buildBlockItinerary({
   invoices = [],
   counts = [],
   wageRates = [],
+  transportRates = [],
   machineCosts = {},
 }) {
   // Same weighted average price as the stock status: purchases plus validated counts.
   const purchaseTotals = mergeTotals(buildInputTotals(invoices), buildCountTotals(counts));
   const rateIndex = buildRateIndex(wageRates);
+  // Transport of every operation: per-person for each day worked, or a fixed amount
+  // once for the transporter and the team of the day.
+  const transportCosts = buildTransportCosts({ reports, workers, rates: transportRates });
   const consumableIds = new Set(items.filter(isMachineConsumableItem).map((item) => item.id));
   const blockMap = new Map(blocks.map((block) => [block.id, block]));
   const workerMap = new Map(workers.map((worker) => [worker.id, worker]));
@@ -92,34 +97,54 @@ export function buildBlockItinerary({
         };
       });
 
+    const transportRows = new Map();
+    transportCosts.lines.forEach((line) => {
+      if (line.reportId !== report.id) return;
+      const key = `${line.transporter || line.workerId}-${line.mode}`;
+      const row = transportRows.get(key) || {
+        key,
+        name: line.transporter || workerMap.get(line.workerId)?.name || '',
+        mode: line.mode,
+        rate: line.rate,
+        amount: 0,
+      };
+      row.amount += line.cost;
+      transportRows.set(key, row);
+    });
+    const transport = [...transportRows.values()];
+
     const operation = {
       id: report.id,
       date: report.date,
       operation: report.operation,
       description: report.description || '',
       labour,
+      transport,
       machinery,
       inputs,
       totals: {
         labour: labour.reduce((sum, line) => sum + line.cost, 0),
+        transport: transport.reduce((sum, line) => sum + line.amount, 0),
         machinery: machinery.reduce((sum, line) => sum + line.cost, 0),
         inputs: inputs.reduce((sum, line) => sum + line.cost, 0),
         days: labour.reduce((sum, line) => sum + line.days, 0),
         hours: machinery.reduce((sum, line) => sum + line.hours, 0),
       },
     };
-    operation.totals.cost = operation.totals.labour + operation.totals.machinery + operation.totals.inputs;
+    operation.totals.cost =
+      operation.totals.labour + operation.totals.transport + operation.totals.machinery + operation.totals.inputs;
 
     const entry = entries.get(block.id) || {
       block,
       operations: [],
-      totals: { operations: 0, days: 0, hours: 0, labour: 0, machinery: 0, inputs: 0, cost: 0 },
+      totals: { operations: 0, days: 0, hours: 0, labour: 0, transport: 0, machinery: 0, inputs: 0, cost: 0 },
     };
     entry.operations.push(operation);
     entry.totals.operations += 1;
     entry.totals.days += operation.totals.days;
     entry.totals.hours += operation.totals.hours;
     entry.totals.labour += operation.totals.labour;
+    entry.totals.transport += operation.totals.transport;
     entry.totals.machinery += operation.totals.machinery;
     entry.totals.inputs += operation.totals.inputs;
     entry.totals.cost += operation.totals.cost;
