@@ -1,11 +1,12 @@
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import SelectField from '@/components/SelectField';
+import FilterSelect from '@/components/workers/FilterSelect';
 import { useI18n } from '@/lib/I18nContext';
 
 // Dropdown filters of the labour list: every value selected narrows the list further.
 export default function WorkerFilters({ filters, onChange, onReset, options, shown, total }) {
   const { t } = useI18n();
+  const all = t('wfilters.all');
   const set = (key) => (value) =>
     onChange({
       ...filters,
@@ -28,67 +29,72 @@ export default function WorkerFilters({ filters, onChange, onReset, options, sho
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <SelectField
+        <FilterSelect
+          label={t('wfilters.team')}
           value={filters.team}
           onChange={set('team')}
-          noneLabel={t('wfilters.allTeams')}
-          placeholder={t('wfilters.team')}
+          noneLabel={all}
           options={toOptions(options.teams)}
         />
-        <SelectField
+        <FilterSelect
+          label={t('wfilters.transporter')}
           value={filters.transporter}
           onChange={set('transporter')}
-          noneLabel={t('wfilters.allTransporters')}
-          placeholder={t('wfilters.transporter')}
+          noneLabel={all}
           options={toOptions(options.transporters)}
         />
-        <SelectField
+        <FilterSelect
+          label={t('wfilters.mobility')}
           value={filters.mobility}
           onChange={set('mobility')}
-          noneLabel={t('wfilters.allMobility')}
-          placeholder={t('wfilters.mobility')}
+          noneLabel={all}
           options={[
             { value: 'mobile', label: t('wfilters.mobile') },
             { value: 'fixed', label: t('wfilters.fixed') },
           ]}
         />
         {filters.mobility === 'fixed' && (
-          <SelectField
+          <FilterSelect
+            label={t('wfilters.farm')}
             value={filters.farm}
             onChange={set('farm')}
-            noneLabel={t('wfilters.allFarms')}
-            placeholder={t('wfilters.farm')}
+            noneLabel={all}
             options={toOptions(options.farms)}
           />
         )}
-        <SelectField
+        <FilterSelect
+          label={t('wfilters.fn')}
           value={filters.fn}
           onChange={set('fn')}
-          noneLabel={t('wfilters.allFunctions')}
-          placeholder={t('wfilters.fn')}
+          noneLabel={all}
           options={toOptions(options.functions)}
         />
-        <SelectField
+        <FilterSelect
+          label={t('wfilters.priority')}
           value={filters.priority}
           onChange={set('priority')}
-          noneLabel={t('wfilters.allPriorities')}
-          placeholder={t('wfilters.priority')}
+          noneLabel={all}
           options={['1', '2', '3'].map((value) => ({
             value,
             label: t('wfilters.priorityValue', { value }),
           }))}
         />
-        <SelectField
+        <FilterSelect
+          label={t('wfilters.declared')}
           value={filters.declared}
           onChange={set('declared')}
-          noneLabel={t('wfilters.allDeclared')}
-          placeholder={t('wfilters.declared')}
+          noneLabel={all}
           options={[
             { value: 'declared', label: t('wfilters.declaredOn') },
             { value: 'undeclared', label: t('wfilters.declaredOff') },
           ]}
         />
-        <Button type="button" variant="ghost" className="rounded-xl" onClick={onReset}>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-9 self-end rounded-xl"
+          onClick={onReset}
+        >
           <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> {t('wfilters.reset')}
         </Button>
       </div>
