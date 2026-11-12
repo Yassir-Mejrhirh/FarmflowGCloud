@@ -23,6 +23,10 @@ export const TRANSPORT_TRANSLATIONS = {
     'lab.transportEmptyDesc':
       'Activez le transport sur la fiche des ouvriers pour voir ici le coût par transporteur.',
     'itt.transport': 'Transport',
+    'workerDialog.transporterTaken':
+      'Ce transporteur est déjà affecté à l’équipe {team} ({worker}). Un transporteur ne peut transporter qu’une seule équipe.',
+    'workerDialog.transporterTakenNoTeam':
+      'Ce transporteur est déjà affecté à un autre ouvrier sans équipe ({worker}). Un transporteur ne peut transporter qu’une seule équipe.',
   },
   ar: {
     'lab.transport': 'النقل',
@@ -45,5 +49,9 @@ export const TRANSPORT_TRANSLATIONS = {
     'lab.transportEmpty': 'لا نقل خلال الفترة',
     'lab.transportEmptyDesc': 'فعّل النقل في بطاقة العمال لتظهر هنا تكلفة كل ناقل.',
     'itt.transport': 'النقل',
+    'workerDialog.transporterTaken':
+      'هذا الناقل مرتبط بالفعل بالفريق {team} ({worker}). لا يمكن للناقل أن ينقل أكثر من فريق واحد.',
+    'workerDialog.transporterTakenNoTeam':
+      'هذا الناقل مرتبط بالفعل بعامل آخر بدون فريق ({worker}). لا يمكن للناقل أن ينقل أكثر من فريق واحد.',
   },
 };

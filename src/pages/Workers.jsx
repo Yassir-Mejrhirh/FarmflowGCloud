@@ -133,6 +133,7 @@ export default function Workers() {
         teams={teamNames}
         rates={wageRates}
         transportRates={transportRates}
+        workers={workers}
         onFunctionsChanged={reloadFunctions}
         onSaved={load}
       />

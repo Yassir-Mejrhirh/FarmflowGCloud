@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus } from 'lucide-react';
+import { AlertTriangle, Plus } from 'lucide-react';
 import FormDialog from '@/components/FormDialog';
 import ParamLockNotice from '@/components/ParamLockNotice';
 import Field from '@/components/Field';
@@ -14,7 +14,7 @@ import { useParamLock } from '@/lib/paramUsage';
 import { useUndo } from '@/lib/undoContext';
 import { todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
-import { buildTransportIndex, transportFor } from '@/lib/transportRates';
+import { buildTransportIndex, transportFor, transporterTeamConflicts } from '@/lib/transportRates';
 import TransportHistory from '@/components/workers/TransportHistory';
 
 const PRIORITIES = ['1', '2', '3'];
@@ -42,7 +42,8 @@ const emptyForm = {
 };
 
 export default function WorkerDialog({
-  open, onOpenChange, worker, farms, functions, teams, rates = [], transportRates = [], onFunctionsChanged, onSaved,
+  open, onOpenChange, worker, farms, functions, teams, rates = [], transportRates = [], workers = [],
+  onFunctionsChanged, onSaved,
 }) {
   const { t } = useI18n();
   const [form, setForm] = useState(emptyForm);
@@ -78,6 +79,19 @@ export default function WorkerDialog({
     ((Number(form.transport_rate) || 0) !== currentTransport.rate ||
       (form.transport_rate_type || 'fixed') !== currentTransportMode ||
       (form.transporter_name || '') !== (currentTransport.transporter || ''));
+
+  // A transporter already carrying another team cannot be given to this one.
+  const conflict = useMemo(() => {
+    if (!form.transport_enabled) return null;
+    const found = transporterTeamConflicts({
+      transporter: form.transporter_name,
+      team: form.team,
+      workers,
+      rates: transportRates,
+      excludeWorkerId: worker?.id,
+    });
+    return found.length ? found[0] : null;
+  }, [form.transport_enabled, form.transporter_name, form.team, workers, transportRates, worker?.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -145,6 +159,7 @@ export default function WorkerDialog({
   const submit = async (event) => {
     event.preventDefault();
     if (!form.name?.trim()) return;
+    if (conflict) return;
     const typedRate = Number(form.daily_rate) || 0;
     const salaryChanged = Boolean(worker?.id) && typedRate !== currentRate;
     if (lock.locked && !salaryChanged && !transportChanged) return;
@@ -217,7 +232,7 @@ export default function WorkerDialog({
       title={worker ? t('workerDialog.editTitle') : t('workerDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitDisabled={lock.locked && !rateChanged && !transportChanged}
+      submitDisabled={(lock.locked && !rateChanged && !transportChanged) || Boolean(conflict)}
       submitLabel={worker ? t('workerDialog.save') : t('workerDialog.add')}
     >
       <ParamLockNotice usage={lock.usage} note={lock.locked ? t('wage.salaryOnly') : ''} />
@@ -399,6 +414,14 @@ export default function WorkerDialog({
               </Field>
             )}
             <TransportHistory worker={worker} rates={transportRates} onChanged={onSaved} />
+            {conflict && (
+              <p className="flex items-start gap-1.5 text-xs font-medium text-destructive sm:col-span-2">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {conflict.team
+                  ? t('workerDialog.transporterTaken', { team: conflict.team, worker: conflict.workerName })
+                  : t('workerDialog.transporterTakenNoTeam', { worker: conflict.workerName })}
+              </p>
+            )}
           </div>
         )}
       </div>

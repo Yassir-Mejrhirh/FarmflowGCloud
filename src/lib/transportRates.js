@@ -51,6 +51,27 @@ export function transportFor(worker, index, date) {
   };
 }
 
+// Transporter names are compared ignoring case and extra spaces.
+export function normalizeTransporterName(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+// One transporter only serves one team. The transport in force today on the other
+// workers' cards is checked, so a rate revised with a date keeps working as expected.
+export function transporterTeamConflicts({ transporter, team, workers = [], rates = [], excludeWorkerId }) {
+  const name = normalizeTransporterName(transporter);
+  if (!name) return [];
+  const targetTeam = normalizeTransporterName(team);
+  const index = buildTransportIndex(rates);
+  const date = new Date().toISOString().slice(0, 10);
+  return workers
+    .filter((worker) => worker?.id && worker.id !== excludeWorkerId)
+    .map((worker) => ({ worker, transport: transportFor(worker, index, date) }))
+    .filter(({ transport }) => transport.mode !== 'none' && normalizeTransporterName(transport.transporter) === name)
+    .filter(({ transport }) => normalizeTransporterName(transport.team) !== targetTeam)
+    .map(({ worker, transport }) => ({ workerName: worker.name || '', team: transport.team || '' }));
+}
+
 // Values frozen on the report line win, so revising a transport rate never rewrites
 // the cost already recorded.
 export function transportLine(line, worker, index, date) {
