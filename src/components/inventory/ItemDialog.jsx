@@ -13,6 +13,7 @@ import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
 import { useParamLock } from '@/lib/paramUsage';
 import { UNIT_OPTIONS, suggestedFactor } from '@/lib/units';
+import { fetchGlobalOptions, rememberGlobalOption, rememberGlobalOptions } from '@/lib/globalOptions';
 import { cn } from '@/lib/utils';
 
 const FORMULATIONS = ['Liquide', 'Poudre', 'Granulé', 'Suspension', 'Émulsion', 'Gel', 'Appât'];
@@ -36,6 +37,8 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [newCategory, setNewCategory] = useState('');
+  const [units, setUnits] = useState([]);
+  const [newUnit, setNewUnit] = useState('');
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const lock = useParamLock('InputItem', item);
@@ -55,13 +58,16 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
       notes: item?.notes || '',
     });
     setNewCategory('');
+    setNewUnit('');
     (async () => {
-      const [categoryRows, supplierRows] = await Promise.all([
+      const [categoryRows, supplierRows, unitNames] = await Promise.all([
         fetchList(base44.entities.InputCategory, {}, { sort: 'name' }),
         fetchList(base44.entities.Supplier, {}, { sort: 'name' }),
+        fetchGlobalOptions('unit'),
       ]);
       setCategories(categoryRows);
       setSuppliers(supplierRows);
+      setUnits(unitNames);
     })();
   }, [open, item]);
 
@@ -79,10 +85,10 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
       return next;
     });
 
-  // Unités proposées : les prédéfinies, plus la valeur déjà enregistrée si elle est libre.
+  // Unités proposées : les prédéfinies, les unités mémorisées, plus les valeurs déjà saisies.
   const unitOptions = (exclude) => {
     const options = UNIT_OPTIONS.filter((option) => option.value !== exclude);
-    [form.unit, form.secondary_unit].forEach((value) => {
+    [...units, form.unit, form.secondary_unit].forEach((value) => {
       if (value && !options.some((option) => option.value === value)) {
         options.push({ value, label: value });
       }
@@ -97,6 +103,20 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
         ? prev.supplier_ids.filter((value) => value !== id)
         : [...prev.supplier_ids, id],
     }));
+
+  // Nouvelle unité : mémorisée globalement et proposée dans les fiches suivantes.
+  const createUnit = async () => {
+    const name = newUnit.trim();
+    if (!name) return;
+    setCreating(true);
+    await rememberGlobalOption('unit', name);
+    setUnits((prev) =>
+      prev.some((value) => value.toLowerCase() === name.toLowerCase()) ? prev : [...prev, name].sort((a, b) => a.localeCompare(b)),
+    );
+    setUnit('unit', name);
+    setNewUnit('');
+    setCreating(false);
+  };
 
   const createCategory = async () => {
     const name = newCategory.trim();
@@ -113,6 +133,7 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
     event.preventDefault();
     if (!form.name.trim() || lock.locked) return;
     setSaving(true);
+    await rememberGlobalOptions('unit', [form.unit, form.secondary_unit]);
     const payload = {
       name: form.name.trim(),
       category: form.category,
@@ -192,6 +213,24 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
             noneLabel={t('itemDialog.noUnit')}
             options={unitOptions()}
           />
+          <div className="flex gap-1.5 pt-1.5">
+            <Input
+              value={newUnit}
+              onChange={(e) => setNewUnit(e.target.value)}
+              placeholder={t('itemDialog.unitPlaceholder')}
+              className="h-8 text-xs"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 rounded-lg px-2 text-[11px]"
+              onClick={createUnit}
+              disabled={creating || !newUnit.trim()}
+            >
+              <Plus className="mr-1 h-3 w-3" /> {t('itemDialog.create')}
+            </Button>
+          </div>
         </Field>
 
         <Field label={t('itemDialog.secondaryUnit')} hint={t('itemDialog.secondaryUnitHint')}>

@@ -1,0 +1,34 @@
+{
+  "name": "GlobalOption",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "unit",
+        "team",
+        "transporter"
+      ],
+      "enumColors": [
+        "blue",
+        "green",
+        "purple"
+      ],
+      "description": "List the value belongs to: input unit, work team or transporter"
+    },
+    "name": {
+      "type": "string",
+      "description": "Value proposed again in the next forms"
+    }
+  },
+  "required": [
+    "kind",
+    "name"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}

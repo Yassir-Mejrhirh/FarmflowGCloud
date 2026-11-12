@@ -15,6 +15,7 @@ import { useUndo } from '@/lib/undoContext';
 import { todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
 import { buildTransportIndex, transportFor, transporterTeamConflicts } from '@/lib/transportRates';
+import { fetchGlobalOptions, mergeOptions, rememberGlobalOption, rememberGlobalOptions } from '@/lib/globalOptions';
 import TransportHistory from '@/components/workers/TransportHistory';
 
 const PRIORITIES = ['1', '2', '3'];
@@ -51,6 +52,13 @@ export default function WorkerDialog({
   const [showNewFunction, setShowNewFunction] = useState(false);
   const [newFunction, setNewFunction] = useState('');
   const [creatingFunction, setCreatingFunction] = useState(false);
+  const [globalTeams, setGlobalTeams] = useState([]);
+  const [globalTransporters, setGlobalTransporters] = useState([]);
+  const [showNewTeam, setShowNewTeam] = useState(false);
+  const [newTeam, setNewTeam] = useState('');
+  const [showNewTransporter, setShowNewTransporter] = useState(false);
+  const [newTransporter, setNewTransporter] = useState('');
+  const [creating, setCreating] = useState(false);
   const [rateDate, setRateDate] = useState(todayISO());
   const [transportDate, setTransportDate] = useState(todayISO());
   const lock = useParamLock('Worker', worker);
@@ -125,6 +133,18 @@ export default function WorkerDialog({
     setNewFunction('');
     setRateDate(todayISO());
     setTransportDate(todayISO());
+    setShowNewTeam(false);
+    setNewTeam('');
+    setShowNewTransporter(false);
+    setNewTransporter('');
+    (async () => {
+      const [teamNames, transporterNames] = await Promise.all([
+        fetchGlobalOptions('team'),
+        fetchGlobalOptions('transporter'),
+      ]);
+      setGlobalTeams(teamNames);
+      setGlobalTransporters(transporterNames);
+    })();
   }, [open, worker, currentRate, transportIndex]);
 
   const createFunction = async () => {
@@ -137,6 +157,35 @@ export default function WorkerDialog({
     setNewFunction('');
     setShowNewFunction(false);
     setForm((prev) => ({ ...prev, worker_function: created?.name || name }));
+  };
+
+  // Équipe et transporteur : la valeur saisie est mémorisée globalement pour les fiches suivantes.
+  const createTeam = async () => {
+    const name = newTeam.trim();
+    if (!name) return;
+    setCreating(true);
+    await rememberGlobalOption('team', name);
+    setGlobalTeams((prev) =>
+      prev.some((value) => value.toLowerCase() === name.toLowerCase()) ? prev : [...prev, name].sort((a, b) => a.localeCompare(b)),
+    );
+    setForm((prev) => ({ ...prev, team: name }));
+    setNewTeam('');
+    setShowNewTeam(false);
+    setCreating(false);
+  };
+
+  const createTransporter = async () => {
+    const name = newTransporter.trim();
+    if (!name) return;
+    setCreating(true);
+    await rememberGlobalOption('transporter', name);
+    setGlobalTransporters((prev) =>
+      prev.some((value) => value.toLowerCase() === name.toLowerCase()) ? prev : [...prev, name].sort((a, b) => a.localeCompare(b)),
+    );
+    setForm((prev) => ({ ...prev, transporter_name: name }));
+    setNewTransporter('');
+    setShowNewTransporter(false);
+    setCreating(false);
   };
 
   // A salary change becomes a dated rate: the previous rate keeps its period and the
@@ -178,6 +227,8 @@ export default function WorkerDialog({
       return;
     }
     setSaving(true);
+    await rememberGlobalOptions('team', [form.team]);
+    await rememberGlobalOptions('transporter', [form.transport_enabled ? form.transporter_name : '']);
     const payload = {
       name: form.name.trim(),
       priority: form.priority || '1',
@@ -224,6 +275,14 @@ export default function WorkerDialog({
     ...functions.map((item) => ({ value: item.name, label: item.name })),
     { value: NEW_FUNCTION, label: t('workerDialog.newFunction') },
   ];
+
+  const teamOptions = mergeOptions(teams, globalTeams, form.team);
+  const transporterOptions = mergeOptions(
+    globalTransporters,
+    workers.map((row) => row.transporter_name),
+    transportRates.map((row) => row.transporter_name),
+    form.transporter_name,
+  );
 
   return (
     <FormDialog
@@ -311,18 +370,43 @@ export default function WorkerDialog({
           />
         </Field>
         <Field label={t('workerDialog.team')} hint={t('workerDialog.teamHint')}>
-          <Input
+          <SelectField
             value={form.team}
-            onChange={(e) => setForm({ ...form, team: e.target.value })}
-            list="worker-teams"
+            onChange={(value) => setForm({ ...form, team: value })}
+            noneLabel={t('workerDialog.noTeam')}
             placeholder={t('workerDialog.teamPlaceholder')}
+            options={teamOptions}
           />
-
-          <datalist id="worker-teams">
-            {teams.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
+          {showNewTeam ? (
+            <div className="flex gap-1.5 pt-1.5">
+              <Input
+                value={newTeam}
+                onChange={(e) => setNewTeam(e.target.value)}
+                placeholder={t('workerDialog.newTeamPlaceholder')}
+                className="h-8 text-xs"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 rounded-lg px-2 text-[11px]"
+                onClick={createTeam}
+                disabled={creating || !newTeam.trim()}
+              >
+                <Plus className="mr-1 h-3 w-3" /> {t('itemDialog.create')}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-1 h-7 gap-1 rounded-lg px-2 text-xs text-primary hover:text-primary"
+              onClick={() => setShowNewTeam(true)}
+            >
+              <Plus className="h-3.5 w-3.5" /> {t('workerDialog.addTeam')}
+            </Button>
+          )}
         </Field>
         <Field
           label={t('workerDialog.dailyRate')}
@@ -382,10 +466,43 @@ export default function WorkerDialog({
         {form.transport_enabled && (
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label={t('workerDialog.transporterName')}>
-              <Input
+              <SelectField
                 value={form.transporter_name}
-                onChange={(e) => setForm({ ...form, transporter_name: e.target.value })}
+                onChange={(value) => setForm({ ...form, transporter_name: value })}
+                noneLabel={t('workerDialog.noTransporter')}
+                placeholder={t('workerDialog.transporterPlaceholder')}
+                options={transporterOptions}
               />
+              {showNewTransporter ? (
+                <div className="flex gap-1.5 pt-1.5">
+                  <Input
+                    value={newTransporter}
+                    onChange={(e) => setNewTransporter(e.target.value)}
+                    placeholder={t('workerDialog.newTransporterPlaceholder')}
+                    className="h-8 text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 rounded-lg px-2 text-[11px]"
+                    onClick={createTransporter}
+                    disabled={creating || !newTransporter.trim()}
+                  >
+                    <Plus className="mr-1 h-3 w-3" /> {t('itemDialog.create')}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 h-7 gap-1 rounded-lg px-2 text-xs text-primary hover:text-primary"
+                  onClick={() => setShowNewTransporter(true)}
+                >
+                  <Plus className="h-3.5 w-3.5" /> {t('workerDialog.addTransporter')}
+                </Button>
+              )}
             </Field>
             <Field label={t('workerDialog.transportRateType')}>
               <SelectField
