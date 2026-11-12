@@ -100,6 +100,7 @@ export default function Workers() {
         <WorkerTable
           workers={workers}
           rates={wageRates}
+          transportRates={transportRates}
           onRates={setRateWorker}
           onEdit={(worker) => {
             setEditingWorker(worker);

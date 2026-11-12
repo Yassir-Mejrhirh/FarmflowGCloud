@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { ArrowUpDown, History } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { History } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import WorkerSortDialog from '@/components/workers/WorkerSortDialog';
+import WorkerFilters from '@/components/workers/WorkerFilters';
 import { fmtMoney, todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
+import { buildTransportIndex } from '@/lib/transportRates';
+import {
+  EMPTY_WORKER_FILTERS,
+  filterOptions,
+  hasActiveFilters,
+  workerMatchesFilters,
+} from '@/lib/workerFilters';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
@@ -20,25 +26,6 @@ const DOTS = {
   orange: 'bg-amber-500',
 };
 
-const SORT_VALUES = {
-  name: (worker) => (worker.name || '').toLowerCase(),
-  farm: (worker) => (worker.farm || '').toLowerCase(),
-  priority: (worker) => Number(worker.priority) || 9,
-  team: (worker) => (worker.team || '\uffff').toLowerCase(),
-  rate: (worker) => Number(worker.applied_rate) || 0,
-  declared: (worker) => (worker.declared ? 1 : 0),
-  transport: (worker) => (hasTransport(worker) ? 1 : 0),
-};
-
-const compare = (a, b, key, dir) => {
-  const valueA = SORT_VALUES[key](a);
-  const valueB = SORT_VALUES[key](b);
-  let result = 0;
-  if (valueA < valueB) result = -1;
-  if (valueA > valueB) result = 1;
-  return dir === 'desc' ? -result : result;
-};
-
 function Dot({ tone, label }) {
   return (
     <span className="inline-flex items-center gap-2">
@@ -48,63 +35,71 @@ function Dot({ tone, label }) {
   );
 }
 
-export default function WorkerTable({ workers, rates = [], onEdit, onRates }) {
+export default function WorkerTable({ workers, rates = [], transportRates = [], onEdit, onRates }) {
   const { t } = useI18n();
-  const [sort, setSort] = useState({ key: null, dir: 'asc' });
-  const [sortOpen, setSortOpen] = useState(false);
+  const [filters, setFilters] = useState(EMPTY_WORKER_FILTERS);
 
   // The rate shown is the one in force today, taken from the dated history.
   const rateIndex = buildRateIndex(rates);
+  const transportIndex = buildTransportIndex(transportRates);
   const today = todayISO();
 
   const columns = [
-    { key: 'name', label: t('workers.colWorker') },
-    { key: 'farm', label: t('workers.colFarm') },
-    { key: 'priority', label: t('workers.colPriority') },
-    { key: 'team', label: t('workers.colTeam') },
-    { key: 'rate', label: t('workers.colRate') },
-    { key: 'declared', label: t('workers.colDeclared') },
-    { key: 'transport', label: t('workers.colTransport') },
+    t('workers.colWorker'),
+    t('workers.colFarm'),
+    t('workers.colPriority'),
+    t('workers.colTeam'),
+    t('workers.colRate'),
+    t('workers.colDeclared'),
+    t('workers.colTransport'),
   ];
 
+  // Default order: nominatives first, then by name.
   const rows = workers
     .map((worker) => ({ ...worker, applied_rate: rateFor(worker, rateIndex, today) }))
-    .sort((a, b) => {
-      if (!sort.key) {
-        return definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || '');
-      }
-      return compare(a, b, sort.key, sort.dir) || (a.name || '').localeCompare(b.name || '');
-    });
+    .sort(
+      (a, b) =>
+        definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || ''),
+    );
 
-  const activeColumn = columns.find((column) => column.key === sort.key);
+  const visible = rows.filter((worker) =>
+    workerMatchesFilters(worker, filters, transportIndex, today),
+  );
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          {activeColumn ? `${t('workers.sortedBy')} ${activeColumn.label}` : t('workers.sortDefault')}
-        </p>
-        <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setSortOpen(true)}>
-          <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" /> {t('workers.sortOpen')}
-        </Button>
-      </div>
+      <WorkerFilters
+        filters={filters}
+        onChange={setFilters}
+        onReset={() => setFilters(EMPTY_WORKER_FILTERS)}
+        options={filterOptions(rows, transportIndex, today)}
+        shown={visible.length}
+        total={rows.length}
+      />
 
       <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              {columns.map((column) => (
+              {columns.map((label) => (
                 <TableHead
-                  key={column.key}
+                  key={label}
                   className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
                 >
-                  {column.label}
+                  {label}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((worker) => {
+            {visible.length === 0 && hasActiveFilters(filters) && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
+                  {t('wfilters.none')}
+                </TableCell>
+              </TableRow>
+            )}
+            {visible.map((worker) => {
               const declared = Boolean(worker.declared);
               const transport = hasTransport(worker);
               return (
@@ -153,14 +148,6 @@ export default function WorkerTable({ workers, rates = [], onEdit, onRates }) {
           </TableBody>
         </Table>
       </div>
-
-      <WorkerSortDialog
-        open={sortOpen}
-        onOpenChange={setSortOpen}
-        options={columns}
-        sort={sort}
-        onChange={setSort}
-      />
     </div>
   );
 }
