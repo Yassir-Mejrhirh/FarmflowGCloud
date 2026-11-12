@@ -3,11 +3,24 @@ import { TRANSLATIONS } from '@/lib/translations';
 import { WAGE_TRANSLATIONS } from '@/lib/translationsWage';
 import { TRACKING_TRANSLATIONS } from '@/lib/translationsTracking';
 import { EXPORT_TRANSLATIONS } from '@/lib/translationsExport';
+import { TRANSPORT_TRANSLATIONS } from '@/lib/translationsTransport';
 import { setLocale } from '@/lib/format';
 
 const DICTIONARIES = {
-  fr: { ...TRANSLATIONS.fr, ...WAGE_TRANSLATIONS.fr, ...TRACKING_TRANSLATIONS.fr, ...EXPORT_TRANSLATIONS.fr },
-  ar: { ...TRANSLATIONS.ar, ...WAGE_TRANSLATIONS.ar, ...TRACKING_TRANSLATIONS.ar, ...EXPORT_TRANSLATIONS.ar },
+  fr: {
+    ...TRANSLATIONS.fr,
+    ...WAGE_TRANSLATIONS.fr,
+    ...TRACKING_TRANSLATIONS.fr,
+    ...EXPORT_TRANSLATIONS.fr,
+    ...TRANSPORT_TRANSLATIONS.fr,
+  },
+  ar: {
+    ...TRANSLATIONS.ar,
+    ...WAGE_TRANSLATIONS.ar,
+    ...TRACKING_TRANSLATIONS.ar,
+    ...EXPORT_TRANSLATIONS.ar,
+    ...TRANSPORT_TRANSLATIONS.ar,
+  },
 };
 
 const I18nContext = createContext(null);

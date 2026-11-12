@@ -27,6 +27,10 @@ export function transportRateOn(index, workerId, date) {
 // Transport in force on a date: the dated rate, or the worker's own settings when
 // nothing was recorded in the history yet.
 export function transportFor(worker, index, date) {
+  // Transport switched off on the card stops the cost, whatever the dated history holds.
+  if (worker?.transport_enabled === false) {
+    return { mode: 'none', rate: 0, transporter: '', team: '' };
+  }
   const dated = transportRateOn(index, worker?.id, date);
   if (dated) {
     return {

@@ -10,6 +10,7 @@ export default function ItineraryCompareTable({ entries, onSelect }) {
     t('itt.days'),
     t('itt.hours'),
     t('itt.labour'),
+    t('itt.transport'),
     t('itt.machinery'),
     t('itt.inputs'),
     t('itt.totalCost'),
@@ -54,6 +55,7 @@ export default function ItineraryCompareTable({ entries, onSelect }) {
                   <td className="px-3 py-3 text-end tabular-nums">{fmtNum(entry.totals.days, 1)}</td>
                   <td className="px-3 py-3 text-end tabular-nums">{fmtNum(entry.totals.hours, 1)}</td>
                   <td className="px-3 py-3 text-end tabular-nums">{fmtMoney(entry.totals.labour)}</td>
+                  <td className="px-3 py-3 text-end tabular-nums">{fmtMoney(entry.totals.transport || 0)}</td>
                   <td className="px-3 py-3 text-end tabular-nums">{fmtMoney(entry.totals.machinery)}</td>
                   <td className="px-3 py-3 text-end tabular-nums">{fmtMoney(entry.totals.inputs)}</td>
                   <td className="px-3 py-3 text-end font-medium tabular-nums">{fmtMoney(entry.totals.cost)}</td>

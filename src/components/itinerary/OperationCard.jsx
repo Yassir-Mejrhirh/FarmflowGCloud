@@ -4,6 +4,7 @@ import ResourceGroup from '@/components/itinerary/ResourceGroup';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { natureLabel } from '@/lib/taskNature';
+import { cn } from '@/lib/utils';
 
 export default function OperationCard({ operation, natures = [] }) {
   const { t } = useI18n();
@@ -33,6 +34,7 @@ export default function OperationCard({ operation, natures = [] }) {
     label: line.name || t('lab.unknownTransporter'),
     meta: line.mode === 'per_person' ? t('lab.modePerPerson') : t('lab.modeFixed'),
   }));
+  const billedTransport = (operation.totals.transport || 0) > 0;
 
   return (
     <li className="rounded-2xl border border-border/70 bg-card p-3.5 sm:p-4">
@@ -51,14 +53,21 @@ export default function OperationCard({ operation, natures = [] }) {
         <p className="text-sm font-medium tabular-nums">{fmtMoney(operation.totals.cost)}</p>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={cn(
+          'mt-3 grid gap-2 sm:grid-cols-2',
+          billedTransport ? 'lg:grid-cols-4' : 'lg:grid-cols-3',
+        )}
+      >
         <ResourceGroup icon={Users} title={t('itt.labour')} rows={labourRows} total={operation.totals.labour} />
-        <ResourceGroup
-          icon={Truck}
-          title={t('itt.transport')}
-          rows={transportRows}
-          total={operation.totals.transport || 0}
-        />
+        {billedTransport && (
+          <ResourceGroup
+            icon={Truck}
+            title={t('itt.transport')}
+            rows={transportRows}
+            total={operation.totals.transport}
+          />
+        )}
         <ResourceGroup
           icon={Tractor}
           title={t('itt.machinery')}
