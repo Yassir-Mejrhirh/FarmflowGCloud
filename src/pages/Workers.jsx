@@ -128,6 +128,7 @@ export default function Workers() {
         farms={farms}
         functions={functions}
         teams={teamNames}
+        rates={wageRates}
         onFunctionsChanged={reloadFunctions}
         onSaved={load}
       />

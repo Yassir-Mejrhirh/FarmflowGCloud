@@ -24,6 +24,8 @@ export const WAGE_TRANSLATIONS = {
     'wage.skipped': '{n} ouvrier(s) ont déjà un taux à cette date et sont ignorés.',
     'wage.apply': 'Appliquer le taux',
     'wage.newRateBtn': 'Taux d’équipe',
+    'wage.salaryOnly': 'Seul le salaire reste modifiable ici : il est enregistré comme nouveau taux daté, et le taux précédent reste dans l’historique.',
+    'workerDialog.rateHint': 'Enregistré comme nouveau taux à partir de cette date ; le taux précédent reste dans l’historique.',
   },
   ar: {
     'wage.history': 'سجل الأجور',
@@ -48,5 +50,7 @@ export const WAGE_TRANSLATIONS = {
     'wage.skipped': '{n} عامل لديهم أجر بهذا التاريخ وتم تجاهلهم.',
     'wage.apply': 'تطبيق الأجر',
     'wage.newRateBtn': 'أجر الفريق',
+    'wage.salaryOnly': 'الأجر وحده قابل للتعديل هنا: يُحفظ كأجر جديد مؤرخ ويبقى الأجر السابق في السجل.',
+    'workerDialog.rateHint': 'يُحفظ كأجر جديد ابتداءً من هذا التاريخ، ويبقى الأجر السابق في السجل.',
   },
 };

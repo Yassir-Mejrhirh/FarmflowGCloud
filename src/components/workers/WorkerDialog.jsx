@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus } from 'lucide-react';
 import FormDialog from '@/components/FormDialog';
@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useI18n } from '@/lib/I18nContext';
 import { useParamLock } from '@/lib/paramUsage';
 import { useUndo } from '@/lib/undoContext';
+import { todayISO } from '@/lib/format';
+import { buildRateIndex, rateFor } from '@/lib/wageRates';
 
 const PRIORITIES = ['1', '2', '3'];
 const DEFINITIONS = ['nominative', 'salary_band'];
@@ -37,15 +39,27 @@ const emptyForm = {
   notes: '',
 };
 
-export default function WorkerDialog({ open, onOpenChange, worker, farms, functions, teams, onFunctionsChanged, onSaved }) {
+export default function WorkerDialog({
+  open, onOpenChange, worker, farms, functions, teams, rates = [], onFunctionsChanged, onSaved,
+}) {
   const { t } = useI18n();
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [showNewFunction, setShowNewFunction] = useState(false);
   const [newFunction, setNewFunction] = useState('');
   const [creatingFunction, setCreatingFunction] = useState(false);
+  const [rateDate, setRateDate] = useState(todayISO());
   const lock = useParamLock('Worker', worker);
   const { offerUndo } = useUndo();
+
+  // The salary shown is the rate in force today: a change made here is written as a
+  // dated rate, so the previous one stays in the history.
+  const rateIndex = useMemo(() => buildRateIndex(rates), [rates]);
+  const currentRate = useMemo(
+    () => (worker ? rateFor(worker, rateIndex, todayISO()) : 0),
+    [worker, rateIndex],
+  );
+  const rateChanged = Boolean(worker?.id) && (Number(form.daily_rate) || 0) !== currentRate;
 
   useEffect(() => {
     if (!open) return;
@@ -67,7 +81,7 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
             transport_rate_type: worker.transport_rate_type || 'fixed',
             transport_rate: worker.transport_rate ?? '',
             phone: worker.phone || '',
-            daily_rate: worker.daily_rate ?? '',
+            daily_rate: currentRate || '',
             start_date: worker.start_date || '',
             active: worker.active !== false,
             notes: worker.notes || '',
@@ -76,7 +90,8 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
     );
     setShowNewFunction(false);
     setNewFunction('');
-  }, [open, worker]);
+    setRateDate(todayISO());
+  }, [open, worker, currentRate]);
 
   const createFunction = async () => {
     const name = newFunction.trim();
@@ -90,9 +105,27 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
     setForm((prev) => ({ ...prev, worker_function: created?.name || name }));
   };
 
+  // A salary change becomes a dated rate: the previous rate keeps its period and the
+  // reports already costed keep the rate they were written with.
+  const saveRate = async (amount, date) => {
+    const existing = rates.find((rate) => rate.worker_id === worker.id && rate.effective_date === date);
+    const values = { daily_rate: amount, team: worker.team || '' };
+    if (existing) await base44.entities.WageRate.update(existing.id, values);
+    else await base44.entities.WageRate.create({ ...values, worker_id: worker.id, effective_date: date });
+  };
+
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name?.trim() || lock.locked) return;
+    if (!form.name?.trim()) return;
+    const typedRate = Number(form.daily_rate) || 0;
+    const salaryChanged = Boolean(worker?.id) && typedRate !== currentRate;
+    if (lock.locked && !salaryChanged) return;
+    if (worker?.id && salaryChanged) await saveRate(typedRate, rateDate || todayISO());
+    if (worker?.id && lock.locked) {
+      onOpenChange(false);
+      onSaved();
+      return;
+    }
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -112,8 +145,14 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       notes: form.notes || '',
     };
     if (form.start_date) payload.start_date = form.start_date;
-    if (worker?.id) await base44.entities.Worker.update(worker.id, payload);
-    else await base44.entities.Worker.create(payload);
+    if (worker?.id) {
+      // The rate lives in the dated history now, so the base rate stays untouched.
+      const changes = { ...payload };
+      delete changes.daily_rate;
+      await base44.entities.Worker.update(worker.id, changes);
+    } else {
+      await base44.entities.Worker.create(payload);
+    }
     setSaving(false);
     onOpenChange(false);
     onSaved();
@@ -141,10 +180,10 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
       title={worker ? t('workerDialog.editTitle') : t('workerDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitDisabled={lock.locked}
+      submitDisabled={lock.locked && !rateChanged}
       submitLabel={worker ? t('workerDialog.save') : t('workerDialog.add')}
     >
-      <ParamLockNotice usage={lock.usage} />
+      <ParamLockNotice usage={lock.usage} note={lock.locked ? t('wage.salaryOnly') : ''} />
 
       <Field label={t('workerDialog.fullName')}>
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -233,13 +272,21 @@ export default function WorkerDialog({ open, onOpenChange, worker, farms, functi
             ))}
           </datalist>
         </Field>
-        <Field label={t('workerDialog.dailyRate')} hint={t('wage.baseRateHint')}>
+        <Field
+          label={t('workerDialog.dailyRate')}
+          hint={worker?.id ? t('workerDialog.rateHint') : t('wage.baseRateHint')}
+        >
           <Input
             type="number"
             value={form.daily_rate}
             onChange={(e) => setForm({ ...form, daily_rate: e.target.value })}
           />
         </Field>
+        {worker?.id && (
+          <Field label={t('wage.effectiveDate')}>
+            <Input type="date" value={rateDate} onChange={(e) => setRateDate(e.target.value)} />
+          </Field>
+        )}
         <Field label={t('workerDialog.registration')}>
           <Input
             value={form.registration_number}

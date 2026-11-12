@@ -2,7 +2,7 @@ import { Lock } from 'lucide-react';
 import { usageLabel } from '@/lib/paramUsage';
 import { useI18n } from '@/lib/I18nContext';
 
-export default function ParamLockNotice({ usage }) {
+export default function ParamLockNotice({ usage, note }) {
   const { t } = useI18n();
   if (!usage?.length) return null;
 
@@ -14,6 +14,7 @@ export default function ParamLockNotice({ usage }) {
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
         {t('paramLock.body', { list: usageLabel(usage, t) })}
       </p>
+      {note && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{note}</p>}
     </div>
   );
 }
