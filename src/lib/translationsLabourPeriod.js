@@ -22,6 +22,10 @@ export const LABOUR_PERIOD_TRANSLATIONS = {
     'lab.groupDays': '{days} jours',
     'lab.transportLabel': 'Transporteur',
     'lab.unknownLabel': 'Ouvrier inconnu',
+    'lab.simulate': 'Aperçu simulé',
+    'lab.simulateOff': 'Quitter l’aperçu',
+    'lab.simulated': 'Aperçu simulé',
+    'lab.simulatedDesc': 'Rapports d’exemple du 1er au 7 novembre 2026, affichés à l’écran sans aucune donnée enregistrée.',
   },
   ar: {
     'lab.mode': 'الفترة',
@@ -45,5 +49,9 @@ export const LABOUR_PERIOD_TRANSLATIONS = {
     'lab.groupDays': '{days} يوم',
     'lab.transportLabel': 'الناقل',
     'lab.unknownLabel': 'عامل غير معروف',
+    'lab.simulate': 'عرض تجريبي',
+    'lab.simulateOff': 'الخروج من العرض',
+    'lab.simulated': 'عرض تجريبي',
+    'lab.simulatedDesc': 'تقارير نموذجية من 1 إلى 7 نونبر 2026، تُعرض على الشاشة دون تسجيل أي بيانات.',
   },
 };

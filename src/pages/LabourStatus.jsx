@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Truck, Users } from 'lucide-react';
+import { CalendarDays, Sparkles, Truck, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
+import { Button } from '@/components/ui/button';
 import Field from '@/components/Field';
 import FarmFilter from '@/components/labour/FarmFilter';
 import LabourDailyDetail from '@/components/labour/LabourDailyDetail';
@@ -19,6 +20,7 @@ import { useI18n } from '@/lib/I18nContext';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
 import { buildTransportCosts } from '@/lib/transportRates';
 import { buildLabourGroups, periodDays } from '@/lib/labourGrid';
+import { buildSampleReports, SAMPLE_RANGE } from '@/lib/labourSample';
 import ExportMenu from '@/components/ExportMenu';
 import { exportExcel, exportPdf } from '@/lib/reportExport';
 
@@ -37,6 +39,7 @@ export default function LabourStatus() {
   const [transportRates, setTransportRates] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [simulated, setSimulated] = useState(false);
 
   const halfOptions = [
     { value: 'first', label: t('lab.halfFirst') },
@@ -57,8 +60,11 @@ export default function LabourStatus() {
       : { from: `${month}-16`, to: `${month}-${String(lastDay).padStart(2, '0')}` };
   }, [mode, month, half, freeFrom, freeTo]);
 
-  const from = period?.from || '';
-  const to = period?.to || '';
+  // The simulated preview shows sample reports for 1–7 November 2026 and saves nothing.
+  const range = simulated ? SAMPLE_RANGE : period;
+
+  const from = range?.from || '';
+  const to = range?.to || '';
 
   useEffect(() => {
     let active = true;
@@ -83,7 +89,7 @@ export default function LabourStatus() {
   useEffect(() => {
     let active = true;
     // Before a period is chosen, nothing is loaded and nothing is shown.
-    if (!period) {
+    if (!range) {
       setReports([]);
       setLoading(false);
       return () => {
@@ -92,7 +98,7 @@ export default function LabourStatus() {
     }
     const load = async () => {
       setLoading(true);
-      const query = { date: { $gte: period.from, $lte: period.to } };
+      const query = { date: { $gte: range.from, $lte: range.to } };
       const [workerRows, reportRows, rateRows, transportRows] = await Promise.all([
         fetchList(base44.entities.Worker, {}, { sort: 'name' }),
         fetchList(base44.entities.DailyReport, query),
@@ -110,19 +116,20 @@ export default function LabourStatus() {
     return () => {
       active = false;
     };
-  }, [period]);
+  }, [range]);
 
   const blockMap = useMemo(() => new Map(blocks.map((block) => [block.id, block])), [blocks]);
   const workerMap = useMemo(() => new Map(workers.map((worker) => [worker.id, worker])), [workers]);
   const rateIndex = useMemo(() => buildRateIndex(wageRates), [wageRates]);
 
   const filteredReports = useMemo(() => {
+    if (simulated) return buildSampleReports({ workers, blocks });
     if (!selectedFarms.length || !blocks.length) return reports;
     return reports.filter((report) => {
       const farm = blockMap.get(report.block_id)?.farm;
       return farm ? selectedFarms.includes(farm) : false;
     });
-  }, [reports, selectedFarms, blocks.length, blockMap]);
+  }, [simulated, reports, workers, blocks, selectedFarms, blockMap]);
 
   // Transport is valued apart from the wage: a per-person amount for each day worked,
   // or a fixed amount counted once for the transporter and the team of the day.
@@ -254,7 +261,7 @@ export default function LabourStatus() {
         action={
           <ExportMenu
             hasData={rows.length > 0}
-            disabled={loading || !period}
+            disabled={loading || !range}
             onExcel={runExcel}
             onPdf={runPdf}
           />
@@ -272,6 +279,16 @@ export default function LabourStatus() {
               { value: 'free', label: t('lab.modeFree') },
             ]}
           />
+          <Button
+            type="button"
+            size="sm"
+            variant={simulated ? 'default' : 'outline'}
+            className="ms-auto rounded-full"
+            onClick={() => setSimulated((value) => !value)}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            {simulated ? t('lab.simulateOff') : t('lab.simulate')}
+          </Button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {mode === 'month' ? (
@@ -298,13 +315,13 @@ export default function LabourStatus() {
           </Field>
           <div className="flex items-end">
             <p className="w-full rounded-xl border border-dashed border-border/70 px-3 py-2 text-center text-xs tabular-nums text-muted-foreground">
-              {period ? `${from} → ${to}` : '—'}
+              {range ? `${from} → ${to}` : '—'}
             </p>
           </div>
         </div>
       </section>
 
-      {!period ? (
+      {!range ? (
         <EmptyState
           icon={CalendarDays}
           title={t('lab.periodRequiredTitle')}
@@ -312,6 +329,13 @@ export default function LabourStatus() {
         />
       ) : (
         <>
+      {simulated && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-clay/40 bg-clay/5 px-4 py-3 text-sm">
+          <Sparkles className="h-4 w-4 text-clay" />
+          <span className="font-medium">{t('lab.simulated')}</span>
+          <span className="text-muted-foreground">{t('lab.simulatedDesc')}</span>
+        </div>
+      )}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label={t('lab.workers')} value={rows.length} tone="moss" />
         <StatCard label={t('lab.days')} value={fmtNum(totalDays, 1)} tone="sand" />
