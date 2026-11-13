@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ClipboardList, History, Pencil, Trash2 } from 'lucide-react';
+import { ClipboardList, History } from 'lucide-react';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import ExportMenu from '@/components/ExportMenu';
-import StatusPill from '@/components/StatusPill';
+import HistoryGroupItem from '@/components/dailyreport/HistoryGroupItem';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
-import { fmtDate } from '@/lib/format';
 import { natureLabel } from '@/lib/taskNature';
+import { groupReports } from '@/lib/reportHistory';
 import { exportExcel, exportPdf } from '@/lib/reportExport';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -21,9 +21,14 @@ export default function ReportHistory({ farms, blocks, machines, natures, refres
   const [farmId, setFarmId] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [openKey, setOpenKey] = useState('');
 
   const blockMap = useMemo(() => byId(blocks), [blocks]);
   const machineMap = useMemo(() => byId(machines), [machines]);
+  const groups = useMemo(
+    () => groupReports(rows, blockMap, natures, t),
+    [rows, blockMap, natures, t],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +91,7 @@ export default function ReportHistory({ farms, blocks, machines, natures, refres
           <History className="h-4 w-4 text-clay" strokeWidth={1.8} />
           {t('report.historyTitle')}
           <span className="text-[11px] font-normal text-muted-foreground">
-            {t('report.historyCount', { n: rows.length })}
+            {t('report.historyCount', { n: groups.length })}
           </span>
         </h2>
         <ExportMenu
@@ -123,47 +128,20 @@ export default function ReportHistory({ farms, blocks, machines, natures, refres
       ) : rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('report.historyEmpty')}</p>
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
-          {rows.map((report) => (
-            <li key={report.id} className="rounded-xl border border-border/60 p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{blockMap[report.block_id]?.name || '—'}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    {fmtDate(report.date)} · {blockMap[report.block_id]?.farm || '—'}
-                  </p>
-                </div>
-                <StatusPill tone="moss">{natureLabel(report.operation, natures, t)}</StatusPill>
-              </div>
-              {report.description && (
-                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{report.description}</p>
-              )}
-              {(Number(report.pump_hours) > 0 || Number(report.water_m3) > 0) && (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {machineMap[report.pump_station_id]?.name || t('report.pumpStation')} ·{' '}
-                  {Number(report.pump_hours) || 0} H · {Number(report.water_m3) || 0} m³
-                </p>
-              )}
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                <span>{t('report.labourCount', { n: report.labour?.length || 0 })}</span>
-                <span>{t('report.machineCount', { n: report.machinery?.length || 0 })}</span>
-                <span>{t('report.inputCount', { n: report.inputs?.length || 0 })}</span>
-                <button
-                  type="button"
-                  onClick={() => onEdit(report)}
-                  className="ms-auto inline-flex items-center gap-1 text-primary hover:underline"
-                >
-                  <Pencil className="h-3 w-3" /> {t('common.edit')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(report)}
-                  className="inline-flex items-center gap-1 text-destructive hover:underline"
-                >
-                  <Trash2 className="h-3 w-3" /> {t('common.delete')}
-                </button>
-              </div>
-            </li>
+        <ul className="space-y-2">
+          {groups.map((group) => (
+            <HistoryGroupItem
+              key={group.key}
+              group={group}
+              open={openKey === group.key}
+              onToggle={() => setOpenKey((current) => (current === group.key ? '' : group.key))}
+              blockMap={blockMap}
+              machineMap={machineMap}
+              natures={natures}
+              t={t}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
           ))}
         </ul>
       )}
