@@ -2,8 +2,9 @@ import { base44 } from '@/api/base44Client';
 
 const STORAGE_KEY = 'terra.company_id';
 
-// Company itself, and the platform User entity, are never scoped.
-const UNSCOPED = new Set(['Company', 'User']);
+// Company itself, the platform User entity and the global option lists (shared by
+// every company) are never scoped.
+const UNSCOPED = new Set(['Company', 'User', 'GlobalOption']);
 
 const SCOPED_ENTITIES = [
   'Farm',
