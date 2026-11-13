@@ -22,6 +22,9 @@ const PRIORITIES = ['1', '2', '3'];
 const DEFINITIONS = ['nominative', 'salary_band'];
 const NEW_FUNCTION = '__new_function__';
 
+// Le montant saisi peut arriver avec une virgule décimale.
+const parseAmount = (value) => Number(String(value ?? '').replace(',', '.').trim()) || 0;
+
 const emptyForm = {
   name: '',
   priority: '1',
@@ -84,7 +87,7 @@ export default function WorkerDialog({
   const transportChanged =
     Boolean(worker?.id) &&
     Boolean(form.transport_enabled) &&
-    ((Number(form.transport_rate) || 0) !== currentTransport.rate ||
+    (parseAmount(form.transport_rate) !== currentTransport.rate ||
       (form.transport_rate_type || 'fixed') !== currentTransportMode ||
       (form.transporter_name || '') !== (currentTransport.transporter || ''));
 
@@ -92,7 +95,7 @@ export default function WorkerDialog({
   // needed: a report cannot cost the transport without them.
   const transportIncomplete =
     Boolean(form.transport_enabled) &&
-    (!form.transporter_name?.trim() || !form.transport_rate_type || !(Number(form.transport_rate) > 0));
+    (!form.transporter_name?.trim() || !form.transport_rate_type || !(parseAmount(form.transport_rate) > 0));
 
   // A transporter already carrying another team cannot be given to this one.
   const conflict = useMemo(() => {
@@ -106,6 +109,20 @@ export default function WorkerDialog({
     });
     return found.length ? found[0] : null;
   }, [form.transport_enabled, form.transporter_name, form.team, workers, transportRates, worker?.id]);
+
+  // Why the form cannot be saved right now: the missing transport data, the
+  // transporter already taken by another team, or a card locked with nothing to save.
+  const lockedWithoutChange = lock.locked && !rateChanged && !transportChanged;
+  const submitBlocked = transportIncomplete || Boolean(conflict) || lockedWithoutChange;
+  const blockReason = transportIncomplete
+    ? t('workerDialog.transportRequired')
+    : conflict
+      ? conflict.team
+        ? t('workerDialog.transporterTaken', { team: conflict.team, worker: conflict.workerName })
+        : t('workerDialog.transporterTakenNoTeam', { worker: conflict.workerName })
+      : lockedWithoutChange
+        ? t('workerDialog.lockedNoChange')
+        : '';
 
   useEffect(() => {
     if (!open) return;
@@ -222,7 +239,7 @@ export default function WorkerDialog({
     if (worker?.id && salaryChanged) await saveRate(typedRate, rateDate || todayISO());
     if (worker?.id && transportChanged) {
       await saveTransport(
-        Number(form.transport_rate) || 0,
+        parseAmount(form.transport_rate),
         form.transport_rate_type || 'fixed',
         form.transporter_name || '',
         transportDate || todayISO(),
@@ -248,7 +265,7 @@ export default function WorkerDialog({
       transport_enabled: Boolean(form.transport_enabled),
       transporter_name: form.transport_enabled ? form.transporter_name || '' : '',
       transport_rate_type: form.transport_enabled ? form.transport_rate_type || 'fixed' : 'fixed',
-      transport_rate: form.transport_enabled ? Number(form.transport_rate) || 0 : 0,
+      transport_rate: form.transport_enabled ? parseAmount(form.transport_rate) : 0,
       phone: form.phone || '',
       daily_rate: Number(form.daily_rate) || 0,
       notes: form.notes || '',
@@ -298,9 +315,8 @@ export default function WorkerDialog({
       title={worker ? t('workerDialog.editTitle') : t('workerDialog.newTitle')}
       onSubmit={submit}
       saving={saving}
-      submitDisabled={
-        (lock.locked && !rateChanged && !transportChanged) || Boolean(conflict) || transportIncomplete
-      }
+      submitDisabled={submitBlocked}
+      disabledReason={blockReason}
       submitLabel={worker ? t('workerDialog.save') : t('workerDialog.add')}
     >
       <ParamLockNotice usage={lock.usage} note={lock.locked ? t('wage.salaryOnly') : ''} />
@@ -549,14 +565,6 @@ export default function WorkerDialog({
               </Field>
             )}
             <TransportHistory worker={worker} rates={transportRates} onChanged={onSaved} />
-            {conflict && (
-              <p className="flex items-start gap-1.5 text-xs font-medium text-destructive sm:col-span-2">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                {conflict.team
-                  ? t('workerDialog.transporterTaken', { team: conflict.team, worker: conflict.workerName })
-                  : t('workerDialog.transporterTakenNoTeam', { worker: conflict.workerName })}
-              </p>
-            )}
           </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -5,6 +6,7 @@ import { useI18n } from '@/lib/I18nContext';
 
 export default function FormDialog({
   open, onOpenChange, title, description, onSubmit, submitLabel, saving, children, wide, submitDisabled,
+  disabledReason,
 }) {
   const { t } = useI18n();
 
@@ -17,7 +19,13 @@ export default function FormDialog({
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex flex-col">
           <div className="space-y-4 px-6 pb-5">{children}</div>
-          <DialogFooter className="sticky bottom-0 flex-row justify-end gap-2 rounded-b-lg border-t border-border bg-background px-6 py-4">
+          <DialogFooter className="sticky bottom-0 flex-row flex-wrap items-center justify-end gap-2 rounded-b-lg border-t border-border bg-background px-6 py-4">
+            {disabledReason && (
+              <p className="mr-auto flex w-full items-start gap-1.5 text-[11px] font-medium leading-snug text-clay sm:w-auto">
+                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+                {disabledReason}
+              </p>
+            )}
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>

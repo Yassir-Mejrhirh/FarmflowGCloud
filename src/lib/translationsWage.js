@@ -29,6 +29,8 @@ export const WAGE_TRANSLATIONS = {
     'workerDialog.transportEffective': 'Date d’effet du transport',
     'workerDialog.transportHint': 'Enregistré comme nouveau tarif de transport à partir de cette date ; les rapports déjà saisis gardent leur coût.',
     'workerDialog.transportHistory': 'Historique du transport',
+    'workerDialog.lockedNoChange':
+      'Fiche verrouillée car utilisée par des rapports : modifiez le salaire ou le transport pour enregistrer.',
     'workerDialog.transportHistoryEmpty': 'Aucun tarif de transport daté pour cet ouvrier.',
   },
   ar: {
@@ -59,6 +61,8 @@ export const WAGE_TRANSLATIONS = {
     'workerDialog.transportEffective': 'تاريخ سريان النقل',
     'workerDialog.transportHint': 'يُحفظ كتسعيرة نقل جديدة ابتداءً من هذا التاريخ، وتقارير محفوظة سابقًا تحتفظ بتكلفتها.',
     'workerDialog.transportHistory': 'سجل النقل',
+    'workerDialog.lockedNoChange':
+      'البطاقة مقفلة لأنها مستعملة في تقارير: عدّل الأجر أو النقل لكي يُحفظ.',
     'workerDialog.transportHistoryEmpty': 'لا تسعيرة نقل مؤرخة لهذا العامل.',
   },
 };
