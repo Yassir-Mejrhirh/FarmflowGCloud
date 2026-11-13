@@ -144,22 +144,25 @@ export default function LabourStatus() {
       const days = Number(line.days) || 0;
       if (!line.worker_id || days <= 0) return;
       const worker = workerMap.get(line.worker_id);
-      const current = rowsByWorker[line.worker_id] || { days: 0, cost: 0 };
+      const current = rowsByWorker[line.worker_id] || { days: 0, cost: 0, dates: new Set() };
+      current.dates.add(report.date);
       rowsByWorker[line.worker_id] = {
         days: current.days + days,
         cost: current.cost + days * labourRate(line, worker, rateIndex, report.date),
+        dates: current.dates,
       };
     });
   });
 
   const rows = Object.entries(rowsByWorker)
-    .map(([workerId, { days, cost }]) => {
+    .map(([workerId, { days, cost, dates }]) => {
       const worker = workerMap.get(workerId);
       return {
         id: workerId,
         name: worker?.name || t('workers.unknown'),
         job: worker?.worker_function || '',
         rate: days ? cost / days : 0,
+        pointed: dates.size,
         days,
         cost,
         transport: transport.byWorker.get(workerId) || 0,
@@ -192,7 +195,7 @@ export default function LabourStatus() {
 
   // Export of the whole period, not only the rows visible on screen.
   const exportBase = t('lab.title');
-  const exportColumns = [
+  const pdfColumns = [
     { key: 'name', label: t('common.worker'), width: 30 },
     { key: 'job', label: t('exp.function'), width: 22 },
     { key: 'days', label: t('lab.days'), digits: 1, align: 'end', width: 14 },
@@ -200,13 +203,21 @@ export default function LabourStatus() {
     { key: 'cost', label: t('lab.cost'), money: true, align: 'end', width: 18 },
     { key: 'transport', label: t('lab.transportCost'), money: true, align: 'end', width: 18 },
   ];
+  // The Excel export is the payroll table only: name, daily rate, pointed days, total days, amount.
+  const excelColumns = [
+    { key: 'name', label: t('lab.fullName'), width: 34 },
+    { key: 'rate', label: t('lab.salaryDay'), money: true, align: 'end', width: 18 },
+    { key: 'pointed', label: t('lab.pointedDays'), digits: 0, align: 'end', width: 16 },
+    { key: 'days', label: t('lab.totalDays'), digits: 1, align: 'end', width: 16 },
+    { key: 'cost', label: t('lab.totalPay'), money: true, align: 'end', width: 20 },
+  ];
   const exportSubtitle = [
     t('exp.period', { from: from || '—', to: to || '—' }),
     selectedFarms.length ? selectedFarms.join(', ') : t('lab.allFarms'),
   ].join(' · ');
-  const runExcel = () => exportExcel({ base: exportBase, columns: exportColumns, rows });
+  const runExcel = () => exportExcel({ base: exportBase, columns: excelColumns, rows });
   const runPdf = () =>
-    exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: exportColumns, rows });
+    exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: pdfColumns, rows });
 
   const dayGroups = useMemo(() => {
     const byDate = new Map();
