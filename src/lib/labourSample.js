@@ -3,6 +3,18 @@ import { periodDays } from '@/lib/labourGrid';
 // Preview range: the simulated reports cover 1–7 November 2026.
 export const SAMPLE_RANGE = { from: '2026-11-01', to: '2026-11-07' };
 
+// One worked example is always shown with fixed values, so the arithmetic on screen can be
+// checked at a glance: 4 days at 110 DH a day, 440 DH in total.
+const REFERENCE_DAYS = 4;
+const REFERENCE_RATE = 110;
+
+function findReferenceWorker(workers = []) {
+  const named = workers.find(
+    (worker) => /nezha/i.test(worker?.name || '') && /amine/i.test(worker?.name || ''),
+  );
+  return named || workers[0] || null;
+}
+
 // Fake daily reports built on the workers and blocks already in the app. Nothing is saved:
 // these objects only feed the labour status preview, and disappear when the preview is off.
 export function buildSampleReports({ workers = [], blocks = [], from = SAMPLE_RANGE.from, to = SAMPLE_RANGE.to } = {}) {
@@ -10,11 +22,14 @@ export function buildSampleReports({ workers = [], blocks = [], from = SAMPLE_RA
   const usableBlocks = (blocks || []).filter((block) => block?.id);
   if (!dates.length || !usableBlocks.length) return [];
 
+  // The reference worker only ever appears in the worked example below.
+  const reference = findReferenceWorker((workers || []).filter((worker) => worker?.id));
+
   const fixedByFarm = new Map();
   const teams = new Map();
   const loose = [];
   (workers || []).forEach((worker) => {
-    if (!worker?.id) return;
+    if (!worker?.id || worker.id === reference?.id) return;
     if (worker.farm) {
       const list = fixedByFarm.get(worker.farm) || [];
       list.push(worker);
@@ -74,6 +89,19 @@ export function buildSampleReports({ workers = [], blocks = [], from = SAMPLE_RA
       });
     }
   });
+
+  // The worked example: the reference worker on the first four days, one day each.
+  if (reference) {
+    dates.slice(0, REFERENCE_DAYS).forEach((date, index) => {
+      const block = usableBlocks[index % usableBlocks.length];
+      reports.push({
+        id: `sample-${++sequence}`,
+        date,
+        block_id: block.id,
+        labour: [{ worker_id: reference.id, days: 1, daily_rate: REFERENCE_RATE }],
+      });
+    });
+  }
 
   return reports;
 }
