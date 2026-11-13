@@ -29,7 +29,7 @@ export default function TaskLineCard({
   const { t } = useI18n();
   const {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
-    machineOptions, machineMap, pumpStations, otherInputOptions, items, itemMap, stockTotals, replaced, date,
+    machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, replaced, date,
   } = ctx;
 
   const task = tasks.find((row) => row.id === line.task_id);
@@ -188,7 +188,13 @@ export default function TaskLineCard({
                   lubricant_quantity: '',
                 })}
                 renderMeta={(row, patch) => (
-                  <FuelLine line={row} patch={patch} machine={machineMap[row.machine_id]} items={items} />
+                  <FuelLine
+                    line={row}
+                    patch={patch}
+                    machine={machineMap[row.machine_id]}
+                    items={availableInputs}
+                    allItems={items}
+                  />
                 )}
               />
               {machineryCount > 0 && (
@@ -200,7 +206,7 @@ export default function TaskLineCard({
           <OtherInputsPanel
             lines={line.inputs || []}
             onChange={(rows) => onChange({ inputs: rows })}
-            options={otherInputOptions}
+            availableItems={availableInputs}
             items={items}
             renderMeta={(row) => (
               <InputStockNote

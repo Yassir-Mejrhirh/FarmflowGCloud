@@ -1,16 +1,15 @@
 import { useMemo } from 'react';
 import { Droplets, Fuel } from 'lucide-react';
-import SelectField from '@/components/SelectField';
+import InputPicker from '@/components/stock/InputPicker';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/I18nContext';
-import { machineConsumables } from '@/lib/machineInputs';
+import { machineConsumableItems } from '@/lib/machineInputs';
 
 // Fuel and lubricant a machine drew from stock, entered on the machine's own line.
-// The choices follow the machine type: a tractor only gets gasoil, a pumping
-// station only butane, and both get lubricants.
-export default function FuelLine({ line, patch, machine, items }) {
+// Only what is still available in the chosen depot is offered, by category.
+export default function FuelLine({ line, patch, machine, items = [], allItems }) {
   const { t } = useI18n();
-  const consumables = useMemo(() => machineConsumables(machine, items), [machine, items]);
+  const consumables = useMemo(() => machineConsumableItems(machine, items), [machine, items]);
 
   if (!line.machine_id) return null;
 
@@ -19,10 +18,12 @@ export default function FuelLine({ line, patch, machine, items }) {
       <div className="flex items-center gap-1.5">
         <Fuel className="h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={1.8} />
         <div className="min-w-0 flex-1">
-          <SelectField
+          <InputPicker
             value={line.fuel_item_id || ''}
             onChange={(value) => patch({ fuel_item_id: value })}
-            options={consumables.fuel}
+            items={consumables.fuel}
+            allItems={allItems}
+            placeholder={t('report.pickFuel')}
             noneLabel={t('report.noFuelItem')}
           />
         </div>
@@ -38,10 +39,12 @@ export default function FuelLine({ line, patch, machine, items }) {
       <div className="flex items-center gap-1.5">
         <Droplets className="h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={1.8} />
         <div className="min-w-0 flex-1">
-          <SelectField
+          <InputPicker
             value={line.lubricant_item_id || ''}
             onChange={(value) => patch({ lubricant_item_id: value })}
-            options={consumables.lubricants}
+            items={consumables.lubricants}
+            allItems={allItems}
+            placeholder={t('report.pickLubricant')}
             noneLabel={t('report.noLubricantItem')}
           />
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import FormDialog from '@/components/FormDialog';
 import Field from '@/components/Field';
@@ -15,22 +15,34 @@ import { useI18n } from '@/lib/I18nContext';
 export const MAINTENANCE_KINDS = ['service', 'vidange', 'repair', 'inspection'];
 
 export default function MaintenanceLogDialog({
-  open, onOpenChange, log, machines, items = [], storages = [], unitCostFor, onHandFor, onSaved,
+  open, onOpenChange, log, machines, items = [], storages = [], storageOnHand = {}, unitCostFor, onSaved,
 }) {
   const { t } = useI18n();
   const [form, setForm] = useState({});
   const [parts, setParts] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // Fermes offering a depot, then the depots of the chosen farm only.
+  const farms = useMemo(
+    () => [...new Set(storages.map((storage) => storage.farm).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [storages],
+  );
+  const farmStorages = useMemo(
+    () => storages.filter((storage) => !form.farm || storage.farm === form.farm),
+    [storages, form.farm],
+  );
+
   useEffect(() => {
     if (!open) return;
     const machine = log ? machines.find((row) => row.id === log.machine_id) : null;
+    const storage = log ? storages.find((row) => row.id === log.storage_id) : null;
     setForm({
       machine_id: log?.machine_id || '',
       date: log?.date || todayISO(),
       kind: log?.kind || 'service',
       description: log?.description || '',
       cost: log?.cost ?? '',
+      farm: storage?.farm || '',
       storage_id: log?.storage_id || '',
       hours_reading: log?.hours_reading ?? machine?.hours ?? '',
     });
@@ -50,18 +62,25 @@ export default function MaintenanceLogDialog({
   );
   const totalCost = (Number(form.cost) || 0) + partsValue;
 
-  // Availability: current stock, plus what this operation had already withdrawn.
+  // Stock of the chosen depot only, plus what this operation had already withdrawn.
+  const storageTotals = storageOnHand[form.storage_id] || {};
   const availableFor = (itemId) =>
-    (onHandFor(itemId) || 0) +
+    (Number(storageTotals[itemId]?.quantity) || 0) +
     (log?.parts || [])
       .filter((line) => line.item_id === itemId)
       .reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+
+  const availableItems = useMemo(
+    () => items.filter((item) => (Number(storageTotals[item.id]?.quantity) || 0) > 0),
+    [items, storageTotals],
+  );
 
   const shortages = findShortages(aggregateQuantities(filledParts), availableFor);
 
   const submit = async (event) => {
     event.preventDefault();
     if (!form.machine_id || shortages.length) return;
+    if (filledParts.length > 0 && !form.storage_id) return;
     setSaving(true);
 
     const payload = {
@@ -105,7 +124,7 @@ export default function MaintenanceLogDialog({
       onSubmit={submit}
       saving={saving}
       submitLabel={t('maintDialog.save')}
-      submitDisabled={shortages.length > 0}
+      submitDisabled={shortages.length > 0 || (filledParts.length > 0 && !form.storage_id)}
       wide
     >
       <Field label={t('common.machine')}>
@@ -132,28 +151,45 @@ export default function MaintenanceLogDialog({
         </Field>
       </div>
 
-      <MaintenancePartsEditor
-        parts={parts}
-        onChange={setParts}
-        items={items}
-        unitCostFor={unitCostFor}
-        availableFor={availableFor}
-      />
-
-      <StockShortageAlert shortages={shortages} items={items} />
-
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t('maint.farm')}>
+          <SelectField
+            value={form.farm}
+            onChange={(value) => {
+              const scoped = storages.filter((storage) => storage.farm === value);
+              setForm((prev) => ({
+                ...prev,
+                farm: value,
+                storage_id: scoped.length === 1 ? scoped[0].id : '',
+              }));
+            }}
+            noneLabel={t('maint.noFarm')}
+            options={farms.map((farm) => ({ value: farm, label: farm }))}
+          />
+        </Field>
         <Field label={t('maint.storage')}>
           <SelectField
             value={form.storage_id}
             onChange={(value) => setForm({ ...form, storage_id: value })}
             noneLabel={t('maint.noStorage')}
-            options={storages.map((storage) => ({
-              value: storage.id,
-              label: storage.farm ? `${storage.name} · ${storage.farm}` : storage.name,
-            }))}
+            options={farmStorages.map((storage) => ({ value: storage.id, label: storage.name }))}
           />
         </Field>
+      </div>
+
+      <MaintenancePartsEditor
+        parts={parts}
+        onChange={setParts}
+        items={items}
+        availableItems={availableItems}
+        unitCostFor={unitCostFor}
+        availableFor={availableFor}
+        storageChosen={!!form.storage_id}
+      />
+
+      <StockShortageAlert shortages={shortages} items={items} />
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('maintDialog.hoursReading')}>
           <Input
             type="number"

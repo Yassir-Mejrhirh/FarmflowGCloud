@@ -7,7 +7,7 @@ import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import MaintenanceLogDialog from '@/components/machinery/MaintenanceLogDialog';
 import { fetchList, byId } from '@/lib/data';
-import { avgCostOf, buildCountTotals, buildInputTotals, buildOnHand, mergeTotals } from '@/lib/inventory';
+import { avgCostOf, buildCountTotals, buildInputTotals, buildStorageOnHand, mergeTotals } from '@/lib/inventory';
 import { logTotalCost, partsCostOf } from '@/lib/machineryCosts';
 import { clearMaintenanceMovements } from '@/lib/maintenanceStock';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
@@ -58,10 +58,12 @@ export default function MachineMaintenance() {
     () => mergeTotals(buildInputTotals(invoices), buildCountTotals(counts)),
     [invoices, counts],
   );
-  const onHand = useMemo(() => buildOnHand(invoices, movements, counts), [invoices, movements, counts]);
+  const storageOnHand = useMemo(
+    () => buildStorageOnHand(invoices, movements, counts),
+    [invoices, movements, counts],
+  );
 
   const unitCostFor = (itemId) => avgCostOf(purchases, itemId);
-  const onHandFor = (itemId) => onHand[itemId]?.quantity || 0;
 
   const totalCost = logs.reduce((sum, log) => sum + logTotalCost(log), 0);
 
@@ -202,7 +204,7 @@ export default function MachineMaintenance() {
         items={items}
         storages={storages}
         unitCostFor={unitCostFor}
-        onHandFor={onHandFor}
+        storageOnHand={storageOnHand}
         onSaved={load}
       />
     </div>

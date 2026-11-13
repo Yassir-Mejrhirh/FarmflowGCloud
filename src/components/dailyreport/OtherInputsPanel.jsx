@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, Boxes, ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import UsageEditor from '@/components/dailyreport/UsageEditor';
+import InputPicker from '@/components/stock/InputPicker';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
@@ -9,7 +10,7 @@ import { useI18n } from '@/lib/I18nContext';
 // Inputs that are not machine consumables live apart from the machinery lines,
 // in a panel that stays closed until it is needed. Fuel and lubricants belong to
 // the machine that burnt them: they are refused here and the reason is shown.
-export default function OtherInputsPanel({ lines, onChange, options, items = [], renderMeta }) {
+export default function OtherInputsPanel({ lines, onChange, availableItems = [], items = [], renderMeta }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [refused, setRefused] = useState(false);
@@ -53,13 +54,21 @@ export default function OtherInputsPanel({ lines, onChange, options, items = [],
           <UsageEditor
             lines={lines}
             onChange={onChange}
-            options={options}
             idKey="item_id"
             qtyKey="quantity"
             qtyLabel={t('report.qty')}
             addLabel={t('report.addInput')}
-            emptyLabel={t('report.noInput')}
+            emptyLabel={availableItems.length ? t('report.noInput') : t('stock.noPositive')}
             renderMeta={renderMeta}
+            renderPicker={(index, line, chose) => (
+              <InputPicker
+                value={line.item_id}
+                onChange={chose}
+                items={availableItems}
+                allItems={items}
+                placeholder={t('report.pickInput')}
+              />
+            )}
             onPick={(value) => {
               const allowed = !isMachineConsumableItem(itemMap[value]);
               setRefused(!allowed);

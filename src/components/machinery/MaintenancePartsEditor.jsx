@@ -1,5 +1,5 @@
 import { Plus, X } from 'lucide-react';
-import SelectField from '@/components/SelectField';
+import InputPicker from '@/components/stock/InputPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fmtMoney, fmtNum } from '@/lib/format';
@@ -7,13 +7,11 @@ import { useI18n } from '@/lib/I18nContext';
 
 export const emptyPart = () => ({ item_id: '', quantity: '', unit_price: '' });
 
-export default function MaintenancePartsEditor({ parts, onChange, items, unitCostFor, availableFor }) {
+// Seuls les articles encore en stock dans le dépôt choisi sont proposés, par catégorie.
+export default function MaintenancePartsEditor({
+  parts, onChange, items = [], availableItems = [], unitCostFor, availableFor, storageChosen = true,
+}) {
   const { t } = useI18n();
-
-  const itemOptions = items.map((item) => ({
-    value: item.id,
-    label: item.category ? `${item.name} · ${item.category}` : item.name,
-  }));
 
   const update = (index, patch) =>
     onChange(parts.map((line, i) => (i === index ? { ...line, ...patch } : line)));
@@ -43,7 +41,11 @@ export default function MaintenancePartsEditor({ parts, onChange, items, unitCos
         </Button>
       </div>
 
-      {parts.length === 0 ? (
+      {!storageChosen ? (
+        <p className="rounded-xl border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
+          {t('maint.pickStorageFirst')}
+        </p>
+      ) : parts.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
           {t('maint.partsEmpty')}
         </p>
@@ -54,13 +56,15 @@ export default function MaintenancePartsEditor({ parts, onChange, items, unitCos
           return (
             <div key={index} className="rounded-xl border border-border/60 p-2.5">
               <div className="flex items-center gap-1.5">
-                <SelectField
-                  value={line.item_id}
-                  onChange={(value) => update(index, { item_id: value, unit_price: unitCostFor(value) || '' })}
-                  options={itemOptions}
-                  placeholder={t('maint.pickPart')}
-                  className="h-9 flex-1"
-                />
+                <div className="min-w-0 flex-1">
+                  <InputPicker
+                    value={line.item_id}
+                    onChange={(value) => update(index, { item_id: value, unit_price: unitCostFor(value) || '' })}
+                    items={availableItems}
+                    allItems={items}
+                    placeholder={t('maint.pickPart')}
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="ghost"

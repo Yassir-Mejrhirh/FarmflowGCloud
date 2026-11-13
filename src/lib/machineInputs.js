@@ -26,24 +26,24 @@ const toOption = (item) => ({ value: item.id, label: `${item.name}${item.unit ? 
 // Consumables a machine may draw from stock: a tractor only gasoil, a pumping
 // station only butane. Lubricants are the only thing both are allowed besides.
 // Other machine types keep the whole list, as before.
-export function machineConsumables(machine, items = []) {
-  const lubricants = items.filter(isLubricantItem).sort(byName).map(toOption);
+export function machineConsumableItems(machine, items = []) {
+  const lubricants = items.filter(isLubricantItem).sort(byName);
 
   if (isPumpingMachine(machine)) {
-    const butane = items.filter((item) => isButaneItem(item) && !isFuelItem(item)).sort(byName).map(toOption);
-    return { fuel: butane, lubricants };
+    return { fuel: items.filter((item) => isButaneItem(item) && !isFuelItem(item)).sort(byName), lubricants };
   }
 
   if (normalize(machine?.type) === 'tractor') {
-    const gasoil = items
-      .filter((item) => isFuelItem(item) && !isButaneItem(item))
-      .sort(byName)
-      .map(toOption);
-    return { fuel: gasoil, lubricants };
+    return { fuel: items.filter((item) => isFuelItem(item) && !isButaneItem(item)).sort(byName), lubricants };
   }
 
   return {
-    fuel: [...items].sort((a, b) => Number(isFuelItem(b)) - Number(isFuelItem(a))).map(toOption),
-    lubricants: [...items].sort((a, b) => Number(isLubricantItem(b)) - Number(isLubricantItem(a))).map(toOption),
+    fuel: [...items].sort((a, b) => Number(isFuelItem(b)) - Number(isFuelItem(a))),
+    lubricants: [...items].sort((a, b) => Number(isLubricantItem(b)) - Number(isLubricantItem(a))),
   };
+}
+
+export function machineConsumables(machine, items = []) {
+  const { fuel, lubricants } = machineConsumableItems(machine, items);
+  return { fuel: fuel.map(toOption), lubricants: lubricants.map(toOption) };
 }

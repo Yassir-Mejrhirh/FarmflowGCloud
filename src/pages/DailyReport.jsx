@@ -12,6 +12,7 @@ import { fetchList, byId } from '@/lib/data';
 import { todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { buildOnHand } from '@/lib/inventory';
+import { positiveItems, stockInStorages } from '@/lib/inputAvailability';
 import { buildRateIndex } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
 import { buildEditDraft, entryReports } from '@/lib/reportDraft';
@@ -19,7 +20,6 @@ import { lineIssues, lineOutflow, newLine } from '@/lib/reportLines';
 import { commitLine } from '@/lib/reportCommit';
 import { applyReportHours, reportHoursByMachine } from '@/lib/machineCounter';
 import { findShortages } from '@/lib/stockGuard';
-import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { isPumpingMachine } from '@/lib/machineInputs';
 import { cn } from '@/lib/utils';
 
@@ -111,6 +111,12 @@ export default function DailyReport() {
   const stockTotals = useMemo(() => buildOnHand(invoices, movements, counts), [invoices, movements, counts]);
 
   const farmName = farms.find((farm) => farm.id === farmId)?.name || '';
+  // Intrants proposés : seulement ceux en stock dans les dépôts de la ferme choisie.
+  const availableInputs = useMemo(() => {
+    const farmStorages = farmName ? storages.filter((storage) => storage.farm === farmName) : [];
+    const scope = (farmStorages.length ? farmStorages : storages).map((storage) => storage.id);
+    return positiveItems(items, stockInStorages({ invoices, movements, counts }, scope));
+  }, [items, storages, farmName, invoices, movements, counts]);
   const visibleBlocks = useMemo(
     () => (farmName ? blocks.filter((block) => block.farm === farmName) : blocks),
     [blocks, farmName],
@@ -243,15 +249,6 @@ export default function DailyReport() {
     () => machines.map((machine) => ({ value: machine.id, label: machine.name })),
     [machines],
   );
-  // Fuel and lubricants are entered on the machine that consumed them: they are
-  // listed here only so the refusal can be explained, and are kept at the end.
-  const otherInputOptions = useMemo(
-    () => [...items]
-      .sort((a, b) => Number(isMachineConsumableItem(a)) - Number(isMachineConsumableItem(b)))
-      .map((item) => ({ value: item.id, label: `${item.name}${item.unit ? ` (${item.unit})` : ''}` })),
-    [items],
-  );
-
   // A report being modified replaces its own stock movements: those quantities come
   // back into the available stock before the new amounts are checked against it.
   const replacedMap = useMemo(() => {
@@ -268,7 +265,7 @@ export default function DailyReport() {
 
   const ctx = {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
-    machineOptions, machineMap, pumpStations, otherInputOptions, items, itemMap, stockTotals, date,
+    machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, date,
   };
 
   const addLine = () => {
