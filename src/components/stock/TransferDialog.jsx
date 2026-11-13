@@ -32,7 +32,9 @@ export default function TransferDialog({ open, onOpenChange, items = [], storage
   const item = items.find((row) => row.id === form.item_id);
   const unit = item?.unit || '';
   const quantity = Number(form.quantity) || 0;
-  const available = form.from_storage_id ? storageOnHand[form.from_storage_id]?.[form.item_id] || 0 : 0;
+  const available = form.from_storage_id
+    ? Number(storageOnHand[form.from_storage_id]?.[form.item_id]?.quantity) || 0
+    : 0;
 
   const close = (next) => {
     if (!next) {

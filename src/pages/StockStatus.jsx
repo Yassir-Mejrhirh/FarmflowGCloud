@@ -77,8 +77,8 @@ export default function StockStatus() {
         .filter((item) => !categoryFilter || (item.category || '').trim() === categoryFilter)
         .map((item) => {
           const quantity = storageFilter
-            ? storageOnHand[storageFilter]?.[item.id] || 0
-            : onHand[item.id]?.quantity || 0;
+            ? Number(storageOnHand[storageFilter]?.[item.id]?.quantity) || 0
+            : Number(onHand[item.id]?.quantity) || 0;
           const price = avgCostOf(purchases, item.id);
           const minimum = Number(item.min_stock) || 0;
           return {
