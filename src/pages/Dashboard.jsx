@@ -4,6 +4,7 @@ import { PackageSearch, ChevronRight } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import OverviewGroups from '@/components/dashboard/OverviewGroups';
+import DashboardControls from '@/components/dashboard/DashboardControls';
 import { fetchList } from '@/lib/data';
 import { buildOnHand } from '@/lib/inventory';
 import { fmtLongDate, fmtNum } from '@/lib/format';
@@ -36,7 +37,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-10">
-      <PageHeader eyebrow={dateLabel} />
+      <PageHeader eyebrow={dateLabel} action={<DashboardControls />} />
 
       <OverviewGroups />
 

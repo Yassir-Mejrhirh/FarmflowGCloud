@@ -2,9 +2,6 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Wallet, Gauge, Leaf, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
-import CompanySwitcher from '@/components/CompanySwitcher';
-import UserBadge from '@/components/UserBadge';
 
 // La barre ne reprend pas les raccourcis de la page d'accueil : ceux-ci restent
 // sur l'accueil, la barre ne garde que les destinations qui n'y sont pas.
@@ -106,14 +103,6 @@ export default function Sidebar({ onNavigate, collapsed = false, onToggle }) {
         ))}
       </nav>
 
-      {!collapsed && (
-        <div className="space-y-3 border-t border-border/70 px-5 py-4">
-          <CompanySwitcher className="w-full justify-between" />
-          <UserBadge className="w-full" />
-          <LanguageSwitcher />
-          <p className="text-[11px] leading-relaxed text-muted-foreground">{t('sidebar.footer')}</p>
-        </div>
-      )}
     </div>
   );
 }
