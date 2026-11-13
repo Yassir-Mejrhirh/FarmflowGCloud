@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Truck, Users } from 'lucide-react';
+import { CalendarDays, Truck, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
@@ -8,22 +8,22 @@ import Field from '@/components/Field';
 import FarmFilter from '@/components/labour/FarmFilter';
 import LabourDailyDetail from '@/components/labour/LabourDailyDetail';
 import TransportersList from '@/components/labour/TransportersList';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import SelectField from '@/components/SelectField';
 import { fetchList } from '@/lib/data';
-import { currentMonthKey, fmtMoney, fmtNum, todayISO } from '@/lib/format';
+import { fmtMoney, fmtNum, monthLabel } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
 import { buildTransportCosts } from '@/lib/transportRates';
 import ExportMenu from '@/components/ExportMenu';
 import { exportExcel, exportPdf } from '@/lib/reportExport';
 
-const monthStart = () => `${currentMonthKey()}-01`;
+// Months offered in the picker: the current one and the ones before it.
+const MONTH_OPTIONS_COUNT = 24;
 
 export default function LabourStatus() {
-  const { t } = useI18n();
-  const [from, setFrom] = useState(monthStart());
-  const [to, setTo] = useState(todayISO());
+  const { t, lang } = useI18n();
+  const [month, setMonth] = useState('');
+  const [half, setHalf] = useState('');
   const [blocks, setBlocks] = useState([]);
   const [farmNames, setFarmNames] = useState([]);
   const [selectedFarms, setSelectedFarms] = useState([]);
@@ -32,6 +32,33 @@ export default function LabourStatus() {
   const [transportRates, setTransportRates] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const monthOptions = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: MONTH_OPTIONS_COUNT }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      return { value: key, label: monthLabel(key) };
+    });
+  }, [lang]);
+
+  const halfOptions = [
+    { value: 'first', label: t('lab.halfFirst') },
+    { value: 'second', label: t('lab.halfSecond') },
+  ];
+
+  // A period exists only once both the month and the half are chosen: 1–15 or 16 to the end of the month.
+  const period = useMemo(() => {
+    if (!month || !half) return null;
+    const [year, monthNumber] = month.split('-').map(Number);
+    const lastDay = new Date(year, monthNumber, 0).getDate();
+    return half === 'first'
+      ? { from: `${month}-01`, to: `${month}-15` }
+      : { from: `${month}-16`, to: `${month}-${String(lastDay).padStart(2, '0')}` };
+  }, [month, half]);
+
+  const from = period?.from || '';
+  const to = period?.to || '';
 
   useEffect(() => {
     let active = true;
@@ -55,14 +82,17 @@ export default function LabourStatus() {
 
   useEffect(() => {
     let active = true;
+    // Before a period is chosen, nothing is loaded and nothing is shown.
+    if (!period) {
+      setReports([]);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
     const load = async () => {
       setLoading(true);
-      const query = {};
-      if (from || to) {
-        query.date = {};
-        if (from) query.date.$gte = from;
-        if (to) query.date.$lte = to;
-      }
+      const query = { date: { $gte: period.from, $lte: period.to } };
       const [workerRows, reportRows, rateRows, transportRows] = await Promise.all([
         fetchList(base44.entities.Worker, {}, { sort: 'name' }),
         fetchList(base44.entities.DailyReport, query),
@@ -80,7 +110,7 @@ export default function LabourStatus() {
     return () => {
       active = false;
     };
-  }, [from, to]);
+  }, [period]);
 
   const blockMap = useMemo(() => new Map(blocks.map((block) => [block.id, block])), [blocks]);
   const workerMap = useMemo(() => new Map(workers.map((worker) => [worker.id, worker])), [workers]);
@@ -202,35 +232,43 @@ export default function LabourStatus() {
         eyebrow={t('lab.eyebrow')}
         title={t('lab.title')}
         description={t('lab.description')}
-        action={<ExportMenu hasData={rows.length > 0} disabled={loading} onExcel={runExcel} onPdf={runPdf} />}
+        action={
+          <ExportMenu
+            hasData={rows.length > 0}
+            disabled={loading || !period}
+            onExcel={runExcel}
+            onPdf={runPdf}
+          />
+        }
       />
 
       <section className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label={t('lab.from')}>
-            <Input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+          <Field label={t('lab.month')}>
+            <SelectField value={month} onChange={setMonth} options={monthOptions} />
           </Field>
-          <Field label={t('lab.to')}>
-            <Input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+          <Field label={t('lab.half')}>
+            <SelectField value={half} onChange={setHalf} options={halfOptions} disabled={!month} />
           </Field>
           <Field label={t('lab.farms')}>
             <FarmFilter options={farmNames} selected={selectedFarms} onChange={setSelectedFarms} />
           </Field>
           <div className="flex items-end">
-            <Button
-              variant="outline"
-              className="w-full rounded-xl"
-              onClick={() => {
-                setFrom(monthStart());
-                setTo(todayISO());
-              }}
-            >
-              {t('lab.thisMonth')}
-            </Button>
+            <p className="w-full rounded-xl border border-dashed border-border/70 px-3 py-2 text-center text-xs tabular-nums text-muted-foreground">
+              {period ? `${from} → ${to}` : '—'}
+            </p>
           </div>
         </div>
       </section>
 
+      {!period ? (
+        <EmptyState
+          icon={CalendarDays}
+          title={t('lab.periodRequiredTitle')}
+          description={t('lab.periodRequiredDesc')}
+        />
+      ) : (
+        <>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label={t('lab.workers')} value={rows.length} tone="moss" />
         <StatCard label={t('lab.days')} value={fmtNum(totalDays, 1)} tone="sand" />
@@ -275,6 +313,8 @@ export default function LabourStatus() {
       <TransportersList rows={transport.transporters} total={totalTransport} loading={loading} />
 
       <LabourDailyDetail groups={dayGroups} loading={loading} />
+        </>
+      )}
     </div>
   );
 }
