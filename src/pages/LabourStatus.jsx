@@ -8,6 +8,7 @@ import Field from '@/components/Field';
 import FarmFilter from '@/components/labour/FarmFilter';
 import LabourDailyDetail from '@/components/labour/LabourDailyDetail';
 import TransportersList from '@/components/labour/TransportersList';
+import LabourGrid from '@/components/labour/LabourGrid';
 import MonthCalendar from '@/components/labour/MonthCalendar';
 import DayField from '@/components/labour/DayField';
 import Segmented from '@/components/Segmented';
@@ -17,6 +18,7 @@ import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
 import { buildTransportCosts } from '@/lib/transportRates';
+import { buildLabourGroups, periodDays } from '@/lib/labourGrid';
 import ExportMenu from '@/components/ExportMenu';
 import { exportExcel, exportPdf } from '@/lib/reportExport';
 
@@ -158,6 +160,25 @@ export default function LabourStatus() {
     })
     .sort((a, b) => b.days - a.days);
 
+  // One column per day of the period, and one group per farm and per team.
+  const days = useMemo(() => periodDays(from, to), [from, to]);
+  const groups = useMemo(
+    () =>
+      buildLabourGroups({
+        reports: filteredReports,
+        workers,
+        rateIndex,
+        transport,
+        options: {
+          teamLabel: (name) => t('lab.teamLabel', { name }),
+          noTeamLabel: t('lab.noTeamLabel'),
+          transportLabel: t('lab.transportLabel'),
+          unknownLabel: t('workers.unknown'),
+        },
+      }),
+    [filteredReports, workers, rateIndex, transport, t],
+  );
+
   const totalDays = rows.reduce((sum, row) => sum + row.days, 0);
   const totalCost = rows.reduce((sum, row) => sum + row.cost, 0);
   const totalTransport = transport.total;
@@ -298,39 +319,7 @@ export default function LabourStatus() {
         <StatCard icon={Truck} label={t('lab.transportCost')} value={fmtMoney(totalTransport)} tone="sand" />
       </section>
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-      ) : rows.length === 0 ? (
-        <EmptyState icon={Users} title={t('lab.emptyTitle')} description={t('lab.emptyDesc')} />
-      ) : (
-        <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
-          <li className="hidden bg-secondary/40 px-4 py-2.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground sm:flex sm:gap-3">
-            <span className="flex-1">{t('common.worker')}</span>
-            <span className="w-20 text-end">{t('lab.days')}</span>
-            <span className="w-28 text-end">{t('lab.rate')}</span>
-            <span className="w-32 text-end">{t('lab.cost')}</span>
-            <span className="w-24 text-end">{t('lab.transport')}</span>
-          </li>
-          {rows.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-center gap-3 px-4 py-3.5">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{row.name}</p>
-                {row.job && <p className="mt-0.5 truncate text-xs text-muted-foreground">{row.job}</p>}
-              </div>
-              <span className="w-20 text-end text-sm tabular-nums">
-                {fmtNum(row.days, 1)} <span className="text-xs text-muted-foreground">{t('lab.daysShort')}</span>
-              </span>
-              <span className="hidden w-28 text-end text-xs tabular-nums text-muted-foreground sm:block">
-                {row.rate ? fmtMoney(row.rate) : t('workers.noRate')}
-              </span>
-              <span className="w-32 text-end text-sm tabular-nums">{fmtMoney(row.cost)}</span>
-              <span className="w-24 text-end text-sm tabular-nums text-muted-foreground">
-                {row.transport ? fmtMoney(row.transport) : '—'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <LabourGrid groups={groups} days={days} loading={loading} />
 
       <TransportersList rows={transport.transporters} total={totalTransport} loading={loading} />
 
