@@ -38,6 +38,9 @@ export const WORKER_IMPORT_TRANSLATIONS = {
     'wimport.addTransporter': 'Nouveau transporteur',
     'wimport.addSave': 'Créer la valeur',
     'wimport.addCancel': 'Annuler',
+    'wimport.fillGrip': 'Glisser pour recopier',
+    'wimport.fillHint':
+      'Pour recopier une valeur : maintenez le petit carré au coin d’une cellule et glissez vers les autres lignes de la même colonne.',
     'wimport.field.name': 'Nom',
     'wimport.field.definition': 'Définition',
     'wimport.field.priority': 'Priorité',
@@ -94,6 +97,8 @@ export const WORKER_IMPORT_TRANSLATIONS = {
     'wimport.addTransporter': 'ناقل جديد',
     'wimport.addSave': 'إنشاء القيمة',
     'wimport.addCancel': 'إلغاء',
+    'wimport.fillGrip': 'اسحب لنسخ القيمة',
+    'wimport.fillHint': 'لنسخ قيمة: أمسك المربع الصغير في زاوية الخلية واسحبه نحو أسطر العمود نفسه.',
     'wimport.field.name': 'الاسم',
     'wimport.field.definition': 'التعريف',
     'wimport.field.priority': 'الأولوية',

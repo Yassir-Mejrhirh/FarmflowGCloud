@@ -1,23 +1,23 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useCallback } from 'react';
+import { MoveVertical } from 'lucide-react';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import ImportPicker from '@/components/workers/import/ImportPicker';
+import PreviewRow from '@/components/workers/import/PreviewRow';
+import useDragFill from '@/hooks/useDragFill';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
-const CELL =
-  'h-7 w-full rounded-md border border-border/70 bg-background px-1.5 text-xs outline-none focus:border-primary/50';
-
 const COLUMNS = [
-  'wimport.field.name',
-  'wimport.field.definition',
-  'wimport.field.priority',
-  'wimport.field.function',
-  'wimport.field.team',
-  'wimport.field.farm',
-  'wimport.field.rate',
-  'wimport.field.transporter',
-  'wimport.field.mode',
-  'wimport.field.transportAmount',
+  { label: 'wimport.field.name', field: 'name' },
+  { label: 'wimport.field.definition', field: 'definition' },
+  { label: 'wimport.field.priority', field: 'priority' },
+  { label: 'wimport.field.function', field: 'worker_function' },
+  { label: 'wimport.field.team', field: 'team' },
+  { label: 'wimport.field.farm', field: 'farm' },
+  { label: 'wimport.field.rate', field: 'daily_rate' },
+  { label: 'wimport.field.transporter', field: 'transporter_name' },
+  { label: 'wimport.field.mode', field: 'transport_rate_type' },
+  { label: 'wimport.field.transportAmount', field: 'transport_rate' },
 ];
 
 export default function ImportPreviewTable({
@@ -26,134 +26,54 @@ export default function ImportPreviewTable({
 }) {
   const { t } = useI18n();
   const allChecked = drafts.length > 0 && drafts.every((draft) => draft.include);
-  const value = (draft, key) => draft.values[key] ?? '';
-  const update = (draft, key) => (event) => onChange(draft.id, key, event.target.value);
-
-  const choice = (draft, key, options) => {
-    const current = value(draft, key);
-    const known = options.some((option) => option.value === current);
-    return (
-      <select className={CELL} value={current} onChange={update(draft, key)}>
-        <option value="">{t('wimport.none')}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-        {current && !known && <option value={current}>{current}</option>}
-      </select>
-    );
-  };
+  const applyFill = useCallback((draftId, key, value) => onChange(draftId, key, value), [onChange]);
+  const { filling, startFill } = useDragFill(applyFill);
+  const options = { farms, teams, transporters, onCreateTeam, onCreateTransporter };
 
   return (
     <>
-      <div className="overflow-x-auto rounded-2xl border border-border/70">
+      <p className="flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground">
+        <MoveVertical className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+        {t('wimport.fillHint')}
+      </p>
+
+      <div
+        className={cn(
+          'overflow-x-auto rounded-2xl border',
+          filling ? 'border-primary/50' : 'border-border/70',
+        )}
+      >
         <Table className="min-w-[1120px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-9 py-2">
                 <Checkbox checked={allChecked} onCheckedChange={(checked) => onToggleAll(Boolean(checked))} />
               </TableHead>
-              {COLUMNS.map((key) => (
+              {COLUMNS.map((column) => (
                 <TableHead
-                  key={key}
-                  className="whitespace-nowrap py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
+                  key={column.field}
+                  className={cn(
+                    'whitespace-nowrap py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground',
+                    filling?.key === column.field && 'text-primary',
+                  )}
                 >
-                  {t(key)}
+                  {t(column.label)}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {drafts.map((draft) => {
-              const found = problems.get(draft.id) || [];
-              return (
-                <TableRow key={draft.id} className={cn('hover:bg-transparent', !draft.include && 'opacity-40')}>
-                  <TableCell className="py-1.5 align-top">
-                    <Checkbox
-                      checked={draft.include}
-                      onCheckedChange={(checked) => onToggle(draft.id, Boolean(checked))}
-                    />
-                  </TableCell>
-                  <TableCell className="min-w-[160px] py-1.5 align-top">
-                    <input
-                      className={cn(CELL, found.length > 0 && 'border-destructive/60')}
-                      value={value(draft, 'name')}
-                      onChange={update(draft, 'name')}
-                    />
-                    {found.length > 0 && draft.include && (
-                      <p className="mt-1 text-[10px] leading-snug text-destructive">
-                        {found.map((key) => t(key)).join(' ')}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell className="py-1.5 align-top">
-                    {choice(draft, 'definition', [
-                      { value: 'nominative', label: t('wr.def_nominative') },
-                      { value: 'salary_band', label: t('wr.def_salary_band') },
-                    ])}
-                  </TableCell>
-                  <TableCell className="w-[104px] py-1.5 align-top">
-                    {choice(draft, 'priority', ['1', '2', '3'].map((item) => ({ value: item, label: item })))}
-                  </TableCell>
-                  <TableCell className="py-1.5 align-top">
-                    <input
-                      className={CELL}
-                      list="wimport-functions"
-                      value={value(draft, 'worker_function')}
-                      onChange={update(draft, 'worker_function')}
-                    />
-                  </TableCell>
-                  <TableCell className="min-w-[132px] py-1.5 align-top">
-                    <ImportPicker
-                      compact
-                      value={value(draft, 'team')}
-                      options={teams}
-                      onChange={(next) => onChange(draft.id, 'team', next)}
-                      onCreate={onCreateTeam}
-                      noneLabel={t('wimport.none')}
-                      placeholder={t('wimport.addTeam')}
-                    />
-                  </TableCell>
-                  <TableCell className="py-1.5 align-top">
-                    {choice(draft, 'farm', farms.map((farm) => ({ value: farm.name, label: farm.name })))}
-                  </TableCell>
-                  <TableCell className="w-[104px] py-1.5 align-top">
-                    <input
-                      className={cn(CELL, 'tabular-nums')}
-                      inputMode="decimal"
-                      value={value(draft, 'daily_rate')}
-                      onChange={update(draft, 'daily_rate')}
-                    />
-                  </TableCell>
-                  <TableCell className="min-w-[144px] py-1.5 align-top">
-                    <ImportPicker
-                      compact
-                      value={value(draft, 'transporter_name')}
-                      options={transporters}
-                      onChange={(next) => onChange(draft.id, 'transporter_name', next)}
-                      onCreate={onCreateTransporter}
-                      noneLabel={t('wimport.none')}
-                      placeholder={t('wimport.addTransporter')}
-                    />
-                  </TableCell>
-                  <TableCell className="py-1.5 align-top">
-                    {choice(draft, 'transport_rate_type', [
-                      { value: 'fixed', label: t('workerDialog.transportFixed') },
-                      { value: 'per_person', label: t('workerDialog.transportPerPerson') },
-                    ])}
-                  </TableCell>
-                  <TableCell className="w-[104px] py-1.5 align-top">
-                    <input
-                      className={cn(CELL, 'tabular-nums')}
-                      inputMode="decimal"
-                      value={value(draft, 'transport_rate')}
-                      onChange={update(draft, 'transport_rate')}
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {drafts.map((draft) => (
+              <PreviewRow
+                key={draft.id}
+                draft={draft}
+                found={problems.get(draft.id) || []}
+                onChange={onChange}
+                onToggle={onToggle}
+                onStartFill={startFill}
+                options={options}
+              />
+            ))}
           </TableBody>
         </Table>
       </div>
