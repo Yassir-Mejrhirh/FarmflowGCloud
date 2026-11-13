@@ -8,22 +8,25 @@ import Field from '@/components/Field';
 import FarmFilter from '@/components/labour/FarmFilter';
 import LabourDailyDetail from '@/components/labour/LabourDailyDetail';
 import TransportersList from '@/components/labour/TransportersList';
+import MonthCalendar from '@/components/labour/MonthCalendar';
+import DayField from '@/components/labour/DayField';
+import Segmented from '@/components/Segmented';
 import SelectField from '@/components/SelectField';
 import { fetchList } from '@/lib/data';
-import { fmtMoney, fmtNum, monthLabel } from '@/lib/format';
+import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
 import { buildTransportCosts } from '@/lib/transportRates';
 import ExportMenu from '@/components/ExportMenu';
 import { exportExcel, exportPdf } from '@/lib/reportExport';
 
-// Months offered in the picker: the current one and the ones before it.
-const MONTH_OPTIONS_COUNT = 24;
-
 export default function LabourStatus() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
+  const [mode, setMode] = useState('month');
   const [month, setMonth] = useState('');
   const [half, setHalf] = useState('');
+  const [freeFrom, setFreeFrom] = useState('');
+  const [freeTo, setFreeTo] = useState('');
   const [blocks, setBlocks] = useState([]);
   const [farmNames, setFarmNames] = useState([]);
   const [selectedFarms, setSelectedFarms] = useState([]);
@@ -33,29 +36,24 @@ export default function LabourStatus() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const monthOptions = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: MONTH_OPTIONS_COUNT }, (_, index) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      return { value: key, label: monthLabel(key) };
-    });
-  }, [lang]);
-
   const halfOptions = [
     { value: 'first', label: t('lab.halfFirst') },
     { value: 'second', label: t('lab.halfSecond') },
   ];
 
-  // A period exists only once both the month and the half are chosen: 1–15 or 16 to the end of the month.
+  // Month mode: 1–15 or 16 to the end of the month. Free mode: the two chosen days, in order.
   const period = useMemo(() => {
+    if (mode === 'free') {
+      if (!freeFrom || !freeTo) return null;
+      return freeFrom <= freeTo ? { from: freeFrom, to: freeTo } : { from: freeTo, to: freeFrom };
+    }
     if (!month || !half) return null;
     const [year, monthNumber] = month.split('-').map(Number);
     const lastDay = new Date(year, monthNumber, 0).getDate();
     return half === 'first'
       ? { from: `${month}-01`, to: `${month}-15` }
       : { from: `${month}-16`, to: `${month}-${String(lastDay).padStart(2, '0')}` };
-  }, [month, half]);
+  }, [mode, month, half, freeFrom, freeTo]);
 
   const from = period?.from || '';
   const to = period?.to || '';
@@ -243,13 +241,37 @@ export default function LabourStatus() {
       />
 
       <section className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{t('lab.mode')}</span>
+          <Segmented
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'month', label: t('lab.modeMonth') },
+              { value: 'free', label: t('lab.modeFree') },
+            ]}
+          />
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label={t('lab.month')}>
-            <SelectField value={month} onChange={setMonth} options={monthOptions} />
-          </Field>
-          <Field label={t('lab.half')}>
-            <SelectField value={half} onChange={setHalf} options={halfOptions} disabled={!month} />
-          </Field>
+          {mode === 'month' ? (
+            <>
+              <Field label={t('lab.month')}>
+                <MonthCalendar value={month} onChange={setMonth} />
+              </Field>
+              <Field label={t('lab.half')}>
+                <SelectField value={half} onChange={setHalf} options={halfOptions} disabled={!month} />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label={t('lab.from')}>
+                <DayField value={freeFrom} onChange={setFreeFrom} />
+              </Field>
+              <Field label={t('lab.to')}>
+                <DayField value={freeTo} onChange={setFreeTo} />
+              </Field>
+            </>
+          )}
           <Field label={t('lab.farms')}>
             <FarmFilter options={farmNames} selected={selectedFarms} onChange={setSelectedFarms} />
           </Field>
