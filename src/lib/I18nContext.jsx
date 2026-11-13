@@ -5,6 +5,7 @@ import { TRACKING_TRANSLATIONS } from '@/lib/translationsTracking';
 import { EXPORT_TRANSLATIONS } from '@/lib/translationsExport';
 import { TRANSPORT_TRANSLATIONS } from '@/lib/translationsTransport';
 import { WORKER_FILTER_TRANSLATIONS } from '@/lib/translationsWorkerFilters';
+import { WORKER_IMPORT_TRANSLATIONS } from '@/lib/translationsWorkerImport';
 import { setLocale } from '@/lib/format';
 
 const DICTIONARIES = {
@@ -15,6 +16,7 @@ const DICTIONARIES = {
     ...EXPORT_TRANSLATIONS.fr,
     ...TRANSPORT_TRANSLATIONS.fr,
     ...WORKER_FILTER_TRANSLATIONS.fr,
+    ...WORKER_IMPORT_TRANSLATIONS.fr,
   },
   ar: {
     ...TRANSLATIONS.ar,
@@ -23,6 +25,7 @@ const DICTIONARIES = {
     ...EXPORT_TRANSLATIONS.ar,
     ...TRANSPORT_TRANSLATIONS.ar,
     ...WORKER_FILTER_TRANSLATIONS.ar,
+    ...WORKER_IMPORT_TRANSLATIONS.ar,
   },
 };
 

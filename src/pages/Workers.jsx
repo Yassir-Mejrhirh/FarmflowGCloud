@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Users, Wallet } from 'lucide-react';
+import { FileSpreadsheet, Plus, Users, Wallet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import WorkerDialog from '@/components/workers/WorkerDialog';
 import WorkerTable from '@/components/workers/WorkerTable';
 import WageHistoryDialog from '@/components/workers/WageHistoryDialog';
 import TeamRateDialog from '@/components/workers/TeamRateDialog';
+import WorkerImportDialog from '@/components/workers/import/WorkerImportDialog';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ export default function Workers() {
   const [editingWorker, setEditingWorker] = useState(null);
   const [rateWorker, setRateWorker] = useState(null);
   const [teamRateOpen, setTeamRateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [wageRates, setWageRates] = useState([]);
   const [transportRates, setTransportRates] = useState([]);
 
@@ -65,6 +67,9 @@ export default function Workers() {
         description={t('workers.description')}
         action={
           <>
+            <Button variant="outline" className="rounded-xl" onClick={() => setImportOpen(true)}>
+              <FileSpreadsheet className="mr-1.5 h-4 w-4" /> {t('wimport.open')}
+            </Button>
             <Button variant="outline" className="rounded-xl" onClick={() => setTeamRateOpen(true)}>
               <Wallet className="mr-1.5 h-4 w-4" /> {t('wage.newRateBtn')}
             </Button>
@@ -123,6 +128,15 @@ export default function Workers() {
         workers={workers}
         rates={wageRates}
         onSaved={reloadRates}
+      />
+
+      <WorkerImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        farms={farms}
+        functions={functions}
+        workers={workers}
+        onImported={load}
       />
 
       <WorkerDialog
