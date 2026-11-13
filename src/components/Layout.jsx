@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Menu, Leaf, ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import Sidebar from '@/components/Sidebar';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import CompanySwitcher from '@/components/CompanySwitcher';
@@ -14,17 +15,29 @@ import UndoBar from '@/components/undo/UndoBar';
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem('farmflow-sidebar-collapsed') === '1',
+  );
   const { pathname } = useLocation();
   const { t } = useI18n();
+
+  useEffect(() => {
+    localStorage.setItem('farmflow-sidebar-collapsed', collapsed ? '1' : '0');
+  }, [collapsed]);
 
   return (
     <CompanyProvider>
     <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 start-0 z-40 hidden w-64 border-e border-border/70 bg-sidebar lg:block">
-        <Sidebar />
+      <aside
+        className={cn(
+          'fixed inset-y-0 start-0 z-40 hidden border-e border-border/70 bg-sidebar transition-[width] duration-300 lg:block',
+          collapsed ? 'w-[76px]' : 'w-64',
+        )}
+      >
+        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
       </aside>
 
-      <div className="lg:ps-64">
+      <div className={cn('transition-[padding] duration-300', collapsed ? 'lg:ps-[76px]' : 'lg:ps-64')}>
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/70 bg-background/80 px-4 backdrop-blur-md lg:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
