@@ -5,6 +5,8 @@ export const STORAGE_TRANSLATIONS = {
     'storageDialog.farmNone': 'Toutes les fermes',
     'storageDialog.farmsHint': 'Ce magasin et ses intrants seront proposés pour ces fermes.',
     'storageDialog.noFarmsYet': 'Aucune ferme enregistrée pour le moment.',
+    'storageDialog.farmsEditable':
+      'Seules les fermes associées restent modifiables : elles ne changent aucune donnée déjà enregistrée.',
     'storages.description': 'Créez vos entrepôts, rattachez-les à une ou plusieurs fermes et situez-les sur la carte.',
   },
   ar: {
@@ -12,6 +14,7 @@ export const STORAGE_TRANSLATIONS = {
     'storageDialog.farmNone': 'كل الضياع',
     'storageDialog.farmsHint': 'يُقترح هذا المخزن ومستلزماته لهذه الضياع.',
     'storageDialog.noFarmsYet': 'لا توجد ضيعة مسجلة بعد.',
+    'storageDialog.farmsEditable': 'تبقى الضياع المرتبطة فقط قابلة للتعديل: فهي لا تغيّر أي بيانات مسجلة.',
     'storages.description': 'أنشئ مستودعاتك واربطها بضيعة أو أكثر وحدّد موقعها على الخريطة.',
   },
 };

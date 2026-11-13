@@ -59,8 +59,19 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name?.trim() || lock.locked) return;
+    if (!form.name?.trim()) return;
     setSaving(true);
+    // A storage already in use keeps its data: only the farms it supplies can change.
+    if (storage?.id && lock.locked) {
+      await base44.entities.Storage.update(storage.id, {
+        farms: form.farms || [],
+        farm: (form.farms || [])[0] || '',
+      });
+      setSaving(false);
+      onOpenChange(false);
+      onSaved();
+      return;
+    }
     const payload = {
       name: form.name.trim(),
       kind: form.kind,
@@ -99,10 +110,9 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
       onSubmit={submit}
       saving={saving}
       wide
-      submitDisabled={lock.locked}
       submitLabel={storage ? t('storageDialog.save') : t('storageDialog.add')}
     >
-      <ParamLockNotice usage={lock.usage} />
+      <ParamLockNotice usage={lock.usage} note={lock.locked ? t('storageDialog.farmsEditable') : ''} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('common.name')}>
@@ -110,6 +120,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
             value={form.name || ''}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder={t('storageDialog.namePlaceholder')}
+            disabled={lock.locked}
             required
           />
         </Field>
@@ -117,6 +128,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
           <SelectField
             value={form.kind}
             onChange={(value) => setForm({ ...form, kind: value })}
+            disabled={lock.locked}
             options={KINDS.map((value) => ({ value, label: t(`sk.${value}`) }))}
           />
         </Field>
@@ -153,11 +165,12 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
             value={form.location || ''}
             onChange={(e) => setForm({ ...form, location: e.target.value })}
             placeholder={t('storageDialog.locationPlaceholder')}
+            disabled={lock.locked}
           />
         </Field>
       </div>
       <Field label={t('storageDialog.geolocation')}>
-        <div className="space-y-2">
+        <div className={cn('space-y-2', lock.locked && 'pointer-events-none opacity-60')}>
           <LocationPicker
             value={form.latitude != null ? { lat: form.latitude, lng: form.longitude } : null}
             onChange={setPoint}
@@ -170,10 +183,16 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
           value={form.capacity_note || ''}
           onChange={(e) => setForm({ ...form, capacity_note: e.target.value })}
           placeholder={t('storageDialog.capacityPlaceholder')}
+          disabled={lock.locked}
         />
       </Field>
       <Field label={t('common.notes')}>
-        <Textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+        <Textarea
+          value={form.notes || ''}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          rows={2}
+          disabled={lock.locked}
+        />
       </Field>
       {storage?.id && !lock.locked && (
         <button type="button" onClick={remove} className="text-xs font-medium text-destructive hover:underline">
