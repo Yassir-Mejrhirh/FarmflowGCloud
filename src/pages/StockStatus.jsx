@@ -94,7 +94,15 @@ export default function StockStatus() {
             minimum,
           };
         })
-        .filter((row) => !storageFilter || row.quantity !== 0),
+        .filter((row) => !storageFilter || row.quantity !== 0)
+        // Les intrants épuisés passent en fin de liste : ceux qui restent en stock se
+        // repèrent d'abord, chaque groupe gardant l'ordre alphabétique.
+        .sort((a, b) => {
+          const aEmpty = a.quantity <= 0.0001;
+          const bEmpty = b.quantity <= 0.0001;
+          if (aEmpty !== bEmpty) return aEmpty ? 1 : -1;
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        }),
     [items, onHand, storageOnHand, purchases, storageFilter, categoryFilter],
   );
 
