@@ -25,6 +25,7 @@ export default function LabourGrid({ groups, days, loading }) {
                 {dayNumber(date)}
               </th>
             ))}
+            <th className="whitespace-nowrap px-2 py-2 text-end font-medium">{t('lab.totalDays')}</th>
             <th className="whitespace-nowrap px-3 py-2 text-end font-medium">{t('lab.totalPay')}</th>
           </tr>
         </thead>
@@ -45,7 +46,7 @@ function GroupRows({ group, days }) {
     <>
       <tr>
         <td
-          colSpan={days.length + 3}
+          colSpan={days.length + 4}
           className="border-y border-border/60 bg-muted/50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
         >
           {group.label}
@@ -79,6 +80,9 @@ function GroupRows({ group, days }) {
               </td>
             );
           })}
+          <td className="whitespace-nowrap px-2 py-1.5 text-end text-xs tabular-nums text-muted-foreground">
+            {row.transporter ? '—' : fmtNum(row.days, 1)}
+          </td>
           <td className="whitespace-nowrap px-3 py-1.5 text-end text-sm font-medium tabular-nums">
             {fmtMoney(row.total)}
           </td>
@@ -86,7 +90,7 @@ function GroupRows({ group, days }) {
       ))}
       {group.rows.length > 0 && (
         <tr>
-          <td colSpan={days.length + 2} className="px-3 py-1 text-end text-[11px] text-muted-foreground">
+          <td colSpan={days.length + 3} className="px-3 py-1 text-end text-[11px] text-muted-foreground">
             {t('lab.groupDays', { days: fmtNum(group.rows.reduce((sum, row) => sum + row.days, 0), 1) })}
           </td>
           <td className="px-3 py-1 text-end text-[11px] tabular-nums text-muted-foreground">
