@@ -1,5 +1,4 @@
-import { buildReportOutflow } from '@/lib/reportStock';
-import { aggregateQuantities, findShortages } from '@/lib/stockGuard';
+import { buildReportOutflow, demandByStorage } from '@/lib/reportStock';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { requiresPumpStation } from '@/lib/irrigation';
 import { fmtDate } from '@/lib/format';
@@ -26,13 +25,36 @@ export function lineOutflow(line) {
   return buildReportOutflow(line?.inputs || [], line?.machinery || []);
 }
 
-// Inputs requested by one line that exceed the stock available. A report being
-// edited hands back its own quantities, which come back into the stock first.
-export function lineShortages(line, stockTotals = {}, replaced = null) {
-  return findShortages(
-    aggregateQuantities(lineOutflow(line)),
-    (itemId) => (stockTotals[itemId]?.quantity || 0) + (replaced?.get?.(itemId) || 0),
-  );
+// Inputs requested by one line that exceed the stock of the depots they leave. The stock
+// of one depot never covers another one: a report being edited hands back its own
+// quantities first, keyed by depot and input.
+export function shortagesOf(demand, { onHand = {}, stockTotals = {}, replaced = null } = {}) {
+  const shortages = [];
+  demand.forEach((items, storageId) => {
+    items.forEach((requested, itemId) => {
+      // Without any depot serving the farm, the overall stock stays the reference.
+      const base = storageId
+        ? Number(onHand[storageId]?.[itemId]?.quantity) || 0
+        : Number(stockTotals[itemId]?.quantity) || 0;
+      const available = base + (replaced?.get?.(`${storageId}|${itemId}`) || 0);
+      if (requested > available + 0.000001) {
+        shortages.push({ item_id: itemId, storage_id: storageId, requested, available });
+      }
+    });
+  });
+  return shortages;
+}
+
+export function lineShortages({ line, blockMap = {}, storages = [], invoices = [], onHand = {}, stockTotals = {}, replaced = null }) {
+  const demand = demandByStorage({
+    outflow: lineOutflow(line),
+    blockIds: line?.block_ids || [],
+    blockMap,
+    storages,
+    invoices,
+    onHand,
+  });
+  return shortagesOf(demand, { onHand, stockTotals, replaced });
 }
 
 export function pumpLineReady(line) {
@@ -46,7 +68,7 @@ export function machineryLineReady(line, task) {
 
 // Everything that keeps a line from being pre-validated, in the order the user
 // reads it.
-export function lineIssues({ line, date, task, blockMap = {}, stockTotals = {}, replaced = null, itemMap = {}, t }) {
+export function lineIssues({ line, date, task, blockMap = {}, stockTotals = {}, storages = [], invoices = [], onHand = {}, replaced = null, itemMap = {}, t }) {
   const issues = [];
   if (!line?.block_ids?.length) issues.push(t('report.needBlockLine'));
   if (!line?.task_id) issues.push(t('report.needTaskLine'));
@@ -70,6 +92,8 @@ export function lineIssues({ line, date, task, blockMap = {}, stockTotals = {}, 
   );
   if (consumable) issues.push(t('report.machineOnlyFuel'));
 
-  if (lineShortages(line, stockTotals, replaced).length) issues.push(t('report.stockBlocked'));
+  if (lineShortages({ line, blockMap, storages, invoices, onHand, stockTotals, replaced }).length) {
+    issues.push(t('report.stockBlocked'));
+  }
   return issues;
 }

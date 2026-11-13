@@ -11,16 +11,16 @@ import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
 import { todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
-import { buildOnHand } from '@/lib/inventory';
+import { buildOnHand, buildStorageOnHand } from '@/lib/inventory';
 import { positiveItems, stockInStorages } from '@/lib/inputAvailability';
 import { storagesForFarm } from '@/lib/storageScope';
 import { buildRateIndex } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
 import { buildEditDraft, entryReports } from '@/lib/reportDraft';
-import { lineIssues, lineOutflow, newLine } from '@/lib/reportLines';
+import { lineIssues, lineOutflow, newLine, shortagesOf } from '@/lib/reportLines';
 import { commitLine } from '@/lib/reportCommit';
 import { applyReportHours, reportHoursByMachine } from '@/lib/machineCounter';
-import { findShortages } from '@/lib/stockGuard';
+import { demandByStorage, mergeDemand } from '@/lib/reportStock';
 import { isPumpingMachine } from '@/lib/machineInputs';
 import { cn } from '@/lib/utils';
 
@@ -110,6 +110,11 @@ export default function DailyReport() {
   const rateIndex = useMemo(() => buildRateIndex(wageRates), [wageRates]);
   const transportIndex = useMemo(() => buildTransportIndex(transportRates), [transportRates]);
   const stockTotals = useMemo(() => buildOnHand(invoices, movements, counts), [invoices, movements, counts]);
+  // Stock of each storage on its own: a depot never draws on another one's stock.
+  const storageOnHand = useMemo(
+    () => buildStorageOnHand(invoices, movements, counts),
+    [invoices, movements, counts],
+  );
 
   const farmName = farms.find((farm) => farm.id === farmId)?.name || '';
   // Intrants proposés : seulement ceux en stock dans les dépôts associés à la ferme choisie.
@@ -250,7 +255,7 @@ export default function DailyReport() {
     [machines],
   );
   // A report being modified replaces its own stock movements: those quantities come
-  // back into the available stock before the new amounts are checked against it.
+  // back into the stock of their own depot before the new amounts are checked.
   const replacedMap = useMemo(() => {
     const totals = new Map();
     if (!editing) return totals;
@@ -258,7 +263,8 @@ export default function DailyReport() {
     movements
       .filter((movement) => ids.has(movement.report_id) && movement.kind !== 'in')
       .forEach((movement) => {
-        totals.set(movement.item_id, (totals.get(movement.item_id) || 0) + (Number(movement.quantity) || 0));
+        const key = `${movement.storage_id || ''}|${movement.item_id}`;
+        totals.set(key, (totals.get(key) || 0) + (Number(movement.quantity) || 0));
       });
     return totals;
   }, [editing, movements]);
@@ -266,6 +272,7 @@ export default function DailyReport() {
   const ctx = {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, date,
+    storages, invoices, onHand: storageOnHand, farmName,
   };
 
   const addLine = () => {
@@ -303,6 +310,7 @@ export default function DailyReport() {
         transportIndex,
         storages,
         invoices,
+        onHand: storageOnHand,
         rows: editing.rows,
       });
       await applyReportHours({
@@ -325,7 +333,10 @@ export default function DailyReport() {
     const lineDate = isEditingLine ? editing.rows[0]?.date || date : date;
     const task = taskMap[line.task_id];
     const replaced = isEditingLine ? replacedMap : null;
-    const issues = lineIssues({ line, date: lineDate, task, blockMap, stockTotals, replaced, itemMap, t });
+    const issues = lineIssues({
+      line, date: lineDate, task, blockMap, stockTotals, replaced, itemMap, t,
+      storages, invoices, onHand: storageOnHand,
+    });
     setIssuesByLine((prev) => ({ ...prev, [line.key]: issues }));
     if (issues.length) {
       setOpenKey(line.key);
@@ -367,13 +378,25 @@ export default function DailyReport() {
       return;
     }
 
-    const totals = new Map();
+    // Each depot answers only for its own stock: the demands of all lines are gathered
+    // per depot before anything is written.
+    const demand = new Map();
     active.forEach((line) =>
-      lineOutflow(line).forEach((row) => totals.set(row.item_id, (totals.get(row.item_id) || 0) + row.quantity)),
+      mergeDemand(
+        demand,
+        demandByStorage({
+          outflow: lineOutflow(line),
+          blockIds: line.block_ids,
+          blockMap,
+          storages,
+          invoices,
+          onHand: storageOnHand,
+        }),
+      ),
     );
-    const shortages = findShortages(totals, (itemId) => stockTotals[itemId]?.quantity || 0);
+    const shortages = shortagesOf(demand, { onHand: storageOnHand, stockTotals });
     if (shortages.length) {
-      setMessage({ tone: 'error', key: 'report.stockBlocked' });
+      setMessage({ tone: 'error', key: 'report.stockBlockedStorage' });
       return;
     }
 
@@ -391,6 +414,7 @@ export default function DailyReport() {
           transportIndex,
           storages,
           invoices,
+          onHand: storageOnHand,
         });
         written.push(...rows);
       }

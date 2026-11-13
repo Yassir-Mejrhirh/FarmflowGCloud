@@ -1,5 +1,5 @@
 import { base44 } from '@/api/base44Client';
-import { buildReportMovements, buildReportOutflow } from '@/lib/reportStock';
+import { areaShares, buildReportMovements, buildReportOutflow } from '@/lib/reportStock';
 import { labourRate } from '@/lib/wageRates';
 import { transportFor } from '@/lib/transportRates';
 import { requiresPumpStation } from '@/lib/irrigation';
@@ -8,13 +8,7 @@ const share = (value, weight) => Math.round((Number(value) || 0) * weight * 1000
 
 // The parcels of one line share its resources in proportion to their area.
 export function lineShares(blockIds = [], blockMap = {}) {
-  const selected = blockIds.map((id) => blockMap[id]).filter(Boolean);
-  const areas = selected.map((block) => Number(block.area_ha) || 0);
-  const total = areas.reduce((sum, area) => sum + area, 0);
-  return selected.map((block, index) => ({
-    block,
-    weight: total > 0 ? areas[index] / total : 1 / (selected.length || 1),
-  }));
+  return areaShares(blockIds.map((id) => blockMap[id]).filter(Boolean));
 }
 
 // Values written on every parcel of the line, scaled by the parcel's weight.
@@ -59,7 +53,7 @@ export function linePayload({ line, date, task, weight, workerMap, rateIndex, tr
 // The hour counters are refreshed once for the whole report by the caller, so
 // several lines never overwrite each other's counter.
 export async function commitLine({
-  line, date, blockMap, task, workerMap, rateIndex, transportIndex, storages, invoices, rows,
+  line, date, blockMap, task, workerMap, rateIndex, transportIndex, storages, invoices, onHand, rows,
 }) {
   const shares = lineShares(line.block_ids, blockMap);
   const weights = new Map(shares.map((row) => [row.block.id, row.weight]));
@@ -99,6 +93,7 @@ export async function commitLine({
         farmOf: (blockId) => blockMap[blockId]?.farm,
         storages,
         invoices,
+        onHand,
         date,
         notes: (line.description || '').trim(),
       }),

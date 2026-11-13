@@ -2,7 +2,7 @@ import { AlertTriangle } from 'lucide-react';
 import { fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
-export default function StockShortageAlert({ shortages = [], items = [] }) {
+export default function StockShortageAlert({ shortages = [], items = [], storages = [] }) {
   const { t } = useI18n();
   if (!shortages.length) return null;
 
@@ -14,14 +14,18 @@ export default function StockShortageAlert({ shortages = [], items = [] }) {
       <ul className="mt-1.5 space-y-1">
         {shortages.map((row) => {
           const item = items.find((entry) => entry.id === row.item_id);
+          const storage = storages.find((entry) => entry.id === row.storage_id);
           const unit = item?.unit ? ` ${item.unit}` : '';
           return (
-            <li key={row.item_id} className="text-xs leading-relaxed text-destructive">
-              {item?.name || t('stock.unknownItem')} ·{' '}
+            <li key={`${row.storage_id || ''}|${row.item_id}`} className="text-xs leading-relaxed text-destructive">
+              {item?.name || t('stock.unknownItem')}
+              {storage ? ` · ${storage.name}` : ''} ·{' '}
               {t('stock.shortageLine', {
                 requested: `${fmtNum(row.requested, 1)}${unit}`,
                 available: `${fmtNum(row.available, 1)}${unit}`,
               })}
+              {' · '}
+              {t('stock.shortageMissing', { missing: `${fmtNum(row.requested - row.available, 1)}${unit}` })}
             </li>
           );
         })}

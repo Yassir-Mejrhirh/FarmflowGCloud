@@ -36,6 +36,10 @@ export const REPORT_LINES_TRANSLATIONS = {
     'report.historyLoading': 'Chargement de l’historique…',
     'report.historyCount': '{n} rapport(s)',
     'report.historyReset': 'Réinitialiser',
+    'stock.shortageMissing': 'manque {missing}',
+    'report.stockOnHand': 'Stock du magasin : {value}',
+    'report.stockBlockedStorage':
+      'Enregistrement impossible : le magasin affecté ne détient pas la quantité demandée. Le stock d’un autre magasin ne peut pas le couvrir.',
   },
   ar: {
     'report.draftLoading': 'جارٍ تحميل المسودة…',
@@ -72,5 +76,9 @@ export const REPORT_LINES_TRANSLATIONS = {
     'report.historyLoading': 'جارٍ تحميل السجل…',
     'report.historyCount': '{n} تقرير',
     'report.historyReset': 'إعادة تعيين',
+    'stock.shortageMissing': 'النقص {missing}',
+    'report.stockOnHand': 'مخزون المخزن: {value}',
+    'report.stockBlockedStorage':
+      'تعذّر الحفظ: المخزن المعني لا يتوفر على الكمية المطلوبة، ولا يمكن تعويضها بمخزون مخزن آخر.',
   },
 };

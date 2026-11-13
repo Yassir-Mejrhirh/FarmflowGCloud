@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { natureLabel } from '@/lib/taskNature';
 import { requiresPumpStation } from '@/lib/irrigation';
 import { lineShortages, pumpLineReady } from '@/lib/reportLines';
+import { stockForFarm } from '@/lib/reportStock';
 import { fmtDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ export default function TaskLineCard({
   const {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, replaced, date,
+    storages, invoices, onHand, farmName,
   } = ctx;
 
   const task = tasks.find((row) => row.id === line.task_id);
@@ -38,7 +40,7 @@ export default function TaskLineCard({
   const labourCount = (line.labour || []).length;
   const machineryCount = (line.machinery || []).length;
   const inputCount = (line.inputs || []).length;
-  const shortages = lineShortages(line, stockTotals, replaced);
+  const shortages = lineShortages({ line, blockMap, storages, invoices, onHand, stockTotals, replaced });
   const irrigation = requiresPumpStation(task);
   const isEditing = line.key.startsWith('edit-');
 
@@ -211,7 +213,7 @@ export default function TaskLineCard({
             renderMeta={(row) => (
               <InputStockNote
                 item={itemMap[row.item_id]}
-                stock={stockTotals[row.item_id]?.quantity || 0}
+                stock={stockForFarm(storages, invoices, onHand, farmName, row.item_id)}
                 used={Number(row.quantity) || 0}
               />
             )}
@@ -226,7 +228,7 @@ export default function TaskLineCard({
             />
           </Field>
 
-          <StockShortageAlert shortages={shortages} items={items} />
+          <StockShortageAlert shortages={shortages} items={items} storages={storages} />
 
           {issues.length > 0 && (
             <ul className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] font-medium text-destructive">

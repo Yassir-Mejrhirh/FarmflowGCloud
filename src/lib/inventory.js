@@ -122,8 +122,17 @@ export function buildStorageOnHand(invoices = [], movements = [], counts = []) {
 }
 
 // Storage of a farm that holds the most of this input, so stock-outs leave the right depot.
-export function pickStorageFor(storages = [], invoices = [], itemId) {
+// With the stock of each depot, the one actually holding the input is preferred: a
+// withdrawal never pushes a depot below zero while the stock sleeps in another one.
+export function pickStorageFor(storages = [], invoices = [], itemId, onHand = null) {
   if (!storages.length || !itemId) return '';
+  if (onHand) {
+    const holding = storages
+      .map((storage) => ({ id: storage.id, quantity: Number(onHand[storage.id]?.[itemId]?.quantity) || 0 }))
+      .filter((row) => row.quantity > 0)
+      .sort((a, b) => b.quantity - a.quantity);
+    if (holding.length) return holding[0].id;
+  }
   const purchased = {};
   invoices.forEach((invoice) => {
     if (!invoice.storage_id || !storages.some((storage) => storage.id === invoice.storage_id)) return;
