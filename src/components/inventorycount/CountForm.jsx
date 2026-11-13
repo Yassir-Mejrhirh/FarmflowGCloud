@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { todayISO, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { findStockUsages } from '@/lib/stockUsage';
+import { storageFarms } from '@/lib/storageScope';
 import { priceToPrimary, toPrimary, unitOptionsFor } from '@/lib/units';
 import { cn } from '@/lib/utils';
 import StockUsageBlockedDialog from '@/components/inventorycount/StockUsageBlockedDialog';
@@ -186,7 +187,7 @@ export default function CountForm({
             noneLabel={t('stockCount.noStorage')}
             options={storages.map((storage) => ({
               value: storage.id,
-              label: storage.farm ? `${storage.name} · ${storage.farm}` : storage.name,
+              label: storageFarms(storage).length ? `${storage.name} · ${storageFarms(storage).join(' · ')}` : storage.name,
             }))}
           />
         </Field>

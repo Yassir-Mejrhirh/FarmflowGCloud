@@ -19,9 +19,16 @@
       ],
       "default": "warehouse"
     },
+    "farms": {
+      "type": "array",
+      "description": "Names of the farms the storage supplies; empty means it serves every farm",
+      "items": {
+        "type": "string"
+      }
+    },
     "farm": {
       "type": "string",
-      "description": "Name of the farm the storage belongs to"
+      "description": "First associated farm, kept for older records and quick display"
     },
     "location": {
       "type": "string"

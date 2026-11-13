@@ -9,6 +9,8 @@ import LocationPicker from '@/components/geo/LocationPicker';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchList } from '@/lib/data';
+import { storageFarms } from '@/lib/storageScope';
+import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
 import { useParamLock } from '@/lib/paramUsage';
 import { useUndo } from '@/lib/undoContext';
@@ -28,7 +30,7 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
     setForm({
       name: storage?.name || '',
       kind: storage?.kind || 'warehouse',
-      farm: storage?.farm || '',
+      farms: storageFarms(storage),
       location: storage?.location || '',
       latitude: storage?.latitude ?? null,
       longitude: storage?.longitude ?? null,
@@ -37,6 +39,15 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
     });
     fetchList(base44.entities.Farm, {}, { sort: 'name' }).then(setFarms);
   }, [open, storage]);
+
+  const toggleFarm = (name) =>
+    setForm((prev) => {
+      const current = prev.farms || [];
+      return {
+        ...prev,
+        farms: current.includes(name) ? current.filter((value) => value !== name) : [...current, name],
+      };
+    });
 
   const setPoint = (point) => {
     setForm((prev) => ({
@@ -53,7 +64,8 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
     const payload = {
       name: form.name.trim(),
       kind: form.kind,
-      farm: form.farm || '',
+      farms: form.farms || [],
+      farm: (form.farms || [])[0] || '',
       location: form.location || '',
       capacity_note: form.capacity_note || '',
       notes: form.notes || '',
@@ -110,14 +122,31 @@ export default function StorageDialog({ open, onOpenChange, storage, onSaved }) 
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('storageDialog.farm')}>
-          <SelectField
-            value={form.farm}
-            onChange={(value) => setForm({ ...form, farm: value })}
-            options={farms.map((farm) => ({ value: farm.name, label: farm.name }))}
-            noneLabel={t('storageDialog.farmNone')}
-            placeholder={t('storageDialog.farmNone')}
-          />
+        <Field label={t('storageDialog.farm')} hint={t('storageDialog.farmsHint')}>
+          {farms.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{t('storageDialog.noFarmsYet')}</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {farms.map((farm) => {
+                const active = (form.farms || []).includes(farm.name);
+                return (
+                  <button
+                    key={farm.id}
+                    type="button"
+                    onClick={() => toggleFarm(farm.name)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs transition-colors',
+                      active
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                    )}
+                  >
+                    {farm.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </Field>
         <Field label={t('storageDialog.location')}>
           <Input

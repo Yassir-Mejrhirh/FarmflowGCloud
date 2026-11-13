@@ -7,6 +7,7 @@ import EmptyState from '@/components/EmptyState';
 import StorageDialog from '@/components/storages/StorageDialog';
 import { Button } from '@/components/ui/button';
 import { fetchList } from '@/lib/data';
+import { storageFarms } from '@/lib/storageScope';
 import { useI18n } from '@/lib/I18nContext';
 
 const coords = (record) =>
@@ -75,7 +76,7 @@ export default function Storages() {
                 <StatusPill tone="sand">{t(`sk.${storage.kind}`)}</StatusPill>
               </div>
               <div className="mt-4 space-y-1 text-xs text-muted-foreground">
-                <p className="truncate">{storage.farm || t('storages.noFarm')}</p>
+                <p className="truncate">{storageFarms(storage).join(' · ') || t('storages.noFarm')}</p>
                 {storage.location && <p className="truncate">{storage.location}</p>}
                 <p className="flex items-center gap-1.5 truncate tabular-nums" dir="ltr">
                   <MapPin className="h-3 w-3 shrink-0" /> {coords(storage) || t('storages.noGeo')}

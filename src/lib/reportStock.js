@@ -1,4 +1,5 @@
 import { pickStorageFor } from '@/lib/inventory';
+import { storagesForFarm } from '@/lib/storageScope';
 
 // Stock leaving the store for one report: consumed inputs plus the fuel and
 // lubricant drawn for each machine. Quantities of the same input are merged, so a
@@ -36,7 +37,7 @@ export function buildReportMovements({ rows, outflow, weights, farmOf, storages,
   const round = (value) => Math.round(value * 1000) / 1000;
   const storagesOf = (blockId) => {
     const farm = farmOf(blockId);
-    return farm ? storages.filter((storage) => storage.farm === farm) : [];
+    return farm ? storagesForFarm(storages, farm) : [];
   };
 
   const inputRows = rows.flatMap((report) => {

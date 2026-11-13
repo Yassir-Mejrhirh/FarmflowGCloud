@@ -8,6 +8,7 @@ import { WORKER_FILTER_TRANSLATIONS } from '@/lib/translationsWorkerFilters';
 import { WORKER_IMPORT_TRANSLATIONS } from '@/lib/translationsWorkerImport';
 import { REPORT_LINES_TRANSLATIONS } from '@/lib/translationsReportLines';
 import { INPUT_PICKER_TRANSLATIONS } from '@/lib/translationsInputPicker';
+import { STORAGE_TRANSLATIONS } from '@/lib/translationsStorage';
 import { setLocale } from '@/lib/format';
 
 const DICTIONARIES = {
@@ -21,6 +22,7 @@ const DICTIONARIES = {
     ...WORKER_IMPORT_TRANSLATIONS.fr,
     ...REPORT_LINES_TRANSLATIONS.fr,
     ...INPUT_PICKER_TRANSLATIONS.fr,
+    ...STORAGE_TRANSLATIONS.fr,
   },
   ar: {
     ...TRANSLATIONS.ar,
@@ -32,6 +34,7 @@ const DICTIONARIES = {
     ...WORKER_IMPORT_TRANSLATIONS.ar,
     ...REPORT_LINES_TRANSLATIONS.ar,
     ...INPUT_PICKER_TRANSLATIONS.ar,
+    ...STORAGE_TRANSLATIONS.ar,
   },
 };
 

@@ -9,6 +9,7 @@ import { aggregateQuantities, findShortages } from '@/lib/stockGuard';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { syncMaintenanceMovements } from '@/lib/maintenanceStock';
+import { storageFarms, storagesForFarm } from '@/lib/storageScope';
 import { fmtMoney, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -22,15 +23,12 @@ export default function MaintenanceLogDialog({
   const [parts, setParts] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  // Fermes offering a depot, then the depots of the chosen farm only.
+  // Farms served by a depot, then the depots associated with the chosen farm only.
   const farms = useMemo(
-    () => [...new Set(storages.map((storage) => storage.farm).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    () => [...new Set(storages.flatMap((storage) => storageFarms(storage)))].sort((a, b) => a.localeCompare(b)),
     [storages],
   );
-  const farmStorages = useMemo(
-    () => storages.filter((storage) => !form.farm || storage.farm === form.farm),
-    [storages, form.farm],
-  );
+  const farmStorages = useMemo(() => storagesForFarm(storages, form.farm), [storages, form.farm]);
 
   useEffect(() => {
     if (!open) return;
@@ -156,7 +154,7 @@ export default function MaintenanceLogDialog({
           <SelectField
             value={form.farm}
             onChange={(value) => {
-              const scoped = storages.filter((storage) => storage.farm === value);
+              const scoped = storagesForFarm(storages, value);
               setForm((prev) => ({
                 ...prev,
                 farm: value,

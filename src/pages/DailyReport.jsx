@@ -13,6 +13,7 @@ import { todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { buildOnHand } from '@/lib/inventory';
 import { positiveItems, stockInStorages } from '@/lib/inputAvailability';
+import { storagesForFarm } from '@/lib/storageScope';
 import { buildRateIndex } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
 import { buildEditDraft, entryReports } from '@/lib/reportDraft';
@@ -111,10 +112,9 @@ export default function DailyReport() {
   const stockTotals = useMemo(() => buildOnHand(invoices, movements, counts), [invoices, movements, counts]);
 
   const farmName = farms.find((farm) => farm.id === farmId)?.name || '';
-  // Intrants proposés : seulement ceux en stock dans les dépôts de la ferme choisie.
+  // Intrants proposés : seulement ceux en stock dans les dépôts associés à la ferme choisie.
   const availableInputs = useMemo(() => {
-    const farmStorages = farmName ? storages.filter((storage) => storage.farm === farmName) : [];
-    const scope = (farmStorages.length ? farmStorages : storages).map((storage) => storage.id);
+    const scope = storagesForFarm(storages, farmName).map((storage) => storage.id);
     return positiveItems(items, stockInStorages({ invoices, movements, counts }, scope));
   }, [items, storages, farmName, invoices, movements, counts]);
   const visibleBlocks = useMemo(
