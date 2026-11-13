@@ -14,7 +14,7 @@ import {
   guessMapping,
   validateDrafts,
 } from '@/lib/workerImport';
-import { fetchGlobalOptions, mergeOptions, rememberGlobalOptions } from '@/lib/globalOptions';
+import { fetchGlobalOptions, mergeOptions, rememberGlobalOption, rememberGlobalOptions } from '@/lib/globalOptions';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
@@ -65,6 +65,22 @@ export default function WorkerImportDialog({
     () => mergeOptions(globalTransporters, workers.map((worker) => worker.transporter_name)).map((option) => option.value),
     [globalTransporters, workers],
   );
+
+  // Une équipe ou un transporteur saisi via « Ajouter » est mémorisé globalement :
+  // il est proposé dans cet import et dans les suivants.
+  const addOption = (kind, setter) => async (name) => {
+    const clean = (name || '').trim();
+    if (!clean) return;
+    await rememberGlobalOption(kind, clean);
+    setter((current) =>
+      current.some((value) => value.toLowerCase() === clean.toLowerCase())
+        ? current
+        : [...current, clean].sort((a, b) => a.localeCompare(b)),
+    );
+  };
+
+  const addTeam = useMemo(() => addOption('team', setGlobalTeams), []);
+  const addTransporter = useMemo(() => addOption('transporter', setGlobalTransporters), []);
 
   const problems = useMemo(() => validateDrafts(drafts, common), [drafts, common]);
   const included = drafts.filter((draft) => draft.include);
@@ -138,7 +154,7 @@ export default function WorkerImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden p-0 sm:max-w-5xl">
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] gap-0 overflow-hidden p-0 sm:max-w-[1400px]">
         <DialogHeader className="px-6 pb-3 pt-6">
           <DialogTitle className="font-display text-xl font-normal tracking-tight">{t('wimport.title')}</DialogTitle>
           <DialogDescription className="text-sm">
@@ -193,6 +209,8 @@ export default function WorkerImportDialog({
                 functions={functions}
                 teams={teams}
                 transporters={transporters}
+                onCreateTeam={addTeam}
+                onCreateTransporter={addTransporter}
               />
 
               <ImportBulkPanel
@@ -202,6 +220,8 @@ export default function WorkerImportDialog({
                 functions={functions}
                 teams={teams}
                 transporters={transporters}
+                onCreateTeam={addTeam}
+                onCreateTransporter={addTransporter}
               />
             </div>
           )}

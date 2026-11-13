@@ -1,5 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import ImportPicker from '@/components/workers/import/ImportPicker';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +22,7 @@ const COLUMNS = [
 
 export default function ImportPreviewTable({
   drafts, problems, onChange, onToggle, onToggleAll, farms, functions, teams, transporters,
+  onCreateTeam, onCreateTransporter,
 }) {
   const { t } = useI18n();
   const allChecked = drafts.length > 0 && drafts.every((draft) => draft.include);
@@ -102,12 +104,15 @@ export default function ImportPreviewTable({
                       onChange={update(draft, 'worker_function')}
                     />
                   </TableCell>
-                  <TableCell className="py-1.5 align-top">
-                    <input
-                      className={CELL}
-                      list="wimport-teams"
+                  <TableCell className="min-w-[132px] py-1.5 align-top">
+                    <ImportPicker
+                      compact
                       value={value(draft, 'team')}
-                      onChange={update(draft, 'team')}
+                      options={teams}
+                      onChange={(next) => onChange(draft.id, 'team', next)}
+                      onCreate={onCreateTeam}
+                      noneLabel={t('wimport.none')}
+                      placeholder={t('wimport.addTeam')}
                     />
                   </TableCell>
                   <TableCell className="py-1.5 align-top">
@@ -121,12 +126,15 @@ export default function ImportPreviewTable({
                       onChange={update(draft, 'daily_rate')}
                     />
                   </TableCell>
-                  <TableCell className="py-1.5 align-top">
-                    <input
-                      className={CELL}
-                      list="wimport-transporters"
+                  <TableCell className="min-w-[144px] py-1.5 align-top">
+                    <ImportPicker
+                      compact
                       value={value(draft, 'transporter_name')}
-                      onChange={update(draft, 'transporter_name')}
+                      options={transporters}
+                      onChange={(next) => onChange(draft.id, 'transporter_name', next)}
+                      onCreate={onCreateTransporter}
+                      noneLabel={t('wimport.none')}
+                      placeholder={t('wimport.addTransporter')}
                     />
                   </TableCell>
                   <TableCell className="py-1.5 align-top">
@@ -153,16 +161,6 @@ export default function ImportPreviewTable({
       <datalist id="wimport-functions">
         {functions.map((item) => (
           <option key={item.id || item.name} value={item.name} />
-        ))}
-      </datalist>
-      <datalist id="wimport-teams">
-        {teams.map((name) => (
-          <option key={name} value={name} />
-        ))}
-      </datalist>
-      <datalist id="wimport-transporters">
-        {transporters.map((name) => (
-          <option key={name} value={name} />
         ))}
       </datalist>
     </>

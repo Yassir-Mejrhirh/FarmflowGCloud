@@ -1,9 +1,12 @@
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
+import ImportPicker from '@/components/workers/import/ImportPicker';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/I18nContext';
 
-export default function ImportBulkPanel({ values, onChange, farms, functions, teams, transporters }) {
+export default function ImportBulkPanel({
+  values, onChange, farms, functions, teams, transporters, onCreateTeam, onCreateTransporter,
+}) {
   const { t } = useI18n();
   const set = (key) => (value) => onChange({ ...values, [key]: value });
 
@@ -44,11 +47,13 @@ export default function ImportBulkPanel({ values, onChange, farms, functions, te
           />
         </Field>
         <Field label={t('wimport.field.team')}>
-          <SelectField
+          <ImportPicker
             value={values.team}
             onChange={set('team')}
+            onCreate={onCreateTeam}
+            options={teams}
             noneLabel={t('wimport.none')}
-            options={teams.map((name) => ({ value: name, label: name }))}
+            placeholder={t('wimport.addTeam')}
           />
         </Field>
         <Field label={t('wimport.field.farm')}>
@@ -60,11 +65,13 @@ export default function ImportBulkPanel({ values, onChange, farms, functions, te
           />
         </Field>
         <Field label={t('wimport.field.transporter')}>
-          <SelectField
+          <ImportPicker
             value={values.transporter_name}
             onChange={set('transporter_name')}
+            onCreate={onCreateTransporter}
+            options={transporters}
             noneLabel={t('wimport.none')}
-            options={transporters.map((name) => ({ value: name, label: name }))}
+            placeholder={t('wimport.addTransporter')}
           />
         </Field>
         <Field label={t('wimport.field.mode')}>
