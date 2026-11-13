@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { natureLabel } from '@/lib/taskNature';
 import { requiresPumpStation } from '@/lib/irrigation';
 import { lineShortages, pumpLineReady } from '@/lib/reportLines';
-import { fmtDate } from '@/lib/format';
+import { fmtDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +34,7 @@ export default function TaskLineCard({
 
   const task = tasks.find((row) => row.id === line.task_id);
   const blockNames = line.block_ids.map((id) => blockMap[id]?.name).filter(Boolean);
+  const blockArea = line.block_ids.reduce((sum, id) => sum + (Number(blockMap[id]?.area_ha) || 0), 0);
   const labourCount = (line.labour || []).length;
   const machineryCount = (line.machinery || []).length;
   const inputCount = (line.inputs || []).length;
@@ -66,7 +67,16 @@ export default function TaskLineCard({
             )}
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            <span className="truncate">{blockNames.length ? blockNames.join(' · ') : t('report.chooseBlocks')}</span>
+            {line.validated && blockNames.length ? (
+              <>
+                <span>{t('report.blockCount', { n: blockNames.length })}</span>
+                <span>{t('report.blockArea', { area: fmtNum(blockArea) })}</span>
+              </>
+            ) : (
+              <span className="truncate">
+                {blockNames.length ? blockNames.join(' · ') : t('report.chooseBlocks')}
+              </span>
+            )}
             <span>{t('report.labourCount', { n: labourCount })}</span>
             <span>{t('report.machineCount', { n: machineryCount })}</span>
             <span>{t('report.inputCount', { n: inputCount })}</span>
