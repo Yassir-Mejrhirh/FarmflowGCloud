@@ -144,25 +144,25 @@ export default function LabourStatus() {
       const days = Number(line.days) || 0;
       if (!line.worker_id || days <= 0) return;
       const worker = workerMap.get(line.worker_id);
-      const current = rowsByWorker[line.worker_id] || { days: 0, cost: 0, dates: new Set() };
-      current.dates.add(report.date);
+      const current = rowsByWorker[line.worker_id] || { days: 0, cost: 0, byDate: new Map() };
+      current.byDate.set(report.date, (current.byDate.get(report.date) || 0) + days);
       rowsByWorker[line.worker_id] = {
         days: current.days + days,
         cost: current.cost + days * labourRate(line, worker, rateIndex, report.date),
-        dates: current.dates,
+        byDate: current.byDate,
       };
     });
   });
 
   const rows = Object.entries(rowsByWorker)
-    .map(([workerId, { days, cost, dates }]) => {
+    .map(([workerId, { days, cost, byDate }]) => {
       const worker = workerMap.get(workerId);
       return {
         id: workerId,
         name: worker?.name || t('workers.unknown'),
         job: worker?.worker_function || '',
         rate: days ? cost / days : 0,
-        pointed: dates.size,
+        byDate,
         days,
         cost,
         transport: transport.byWorker.get(workerId) || 0,
@@ -203,19 +203,32 @@ export default function LabourStatus() {
     { key: 'cost', label: t('lab.cost'), money: true, align: 'end', width: 18 },
     { key: 'transport', label: t('lab.transportCost'), money: true, align: 'end', width: 18 },
   ];
-  // The Excel export is the payroll table only: name, daily rate, pointed days, total days, amount.
+  // The Excel export is the payroll table only: name, daily rate, one 1/0 column per day, total days, amount.
   const excelColumns = [
     { key: 'name', label: t('lab.fullName'), width: 34 },
     { key: 'rate', label: t('lab.salaryDay'), money: true, align: 'end', width: 18 },
-    { key: 'pointed', label: t('lab.pointedDays'), digits: 0, align: 'end', width: 16 },
+    ...days.map((day, index) => ({
+      key: `d${index}`,
+      label: `${day.slice(8)}/${day.slice(5, 7)}`,
+      digits: 0,
+      align: 'end',
+      width: 6,
+    })),
     { key: 'days', label: t('lab.totalDays'), digits: 1, align: 'end', width: 16 },
     { key: 'cost', label: t('lab.totalPay'), money: true, align: 'end', width: 20 },
   ];
+  const excelRows = rows.map((row) => ({
+    name: row.name,
+    rate: row.rate,
+    days: row.days,
+    cost: row.cost,
+    ...Object.fromEntries(days.map((day, index) => [`d${index}`, (row.byDate.get(day) || 0) > 0 ? 1 : 0])),
+  }));
   const exportSubtitle = [
     t('exp.period', { from: from || '—', to: to || '—' }),
     selectedFarms.length ? selectedFarms.join(', ') : t('lab.allFarms'),
   ].join(' · ');
-  const runExcel = () => exportExcel({ base: exportBase, columns: excelColumns, rows });
+  const runExcel = () => exportExcel({ base: exportBase, columns: excelColumns, rows: excelRows });
   const runPdf = () =>
     exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: pdfColumns, rows });
 
