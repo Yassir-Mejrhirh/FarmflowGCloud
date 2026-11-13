@@ -1,0 +1,139 @@
+{
+  "name": "ReportDraft",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Day the report is written for"
+    },
+    "farm_id": {
+      "type": "string",
+      "description": "Farm the report is written for"
+    },
+    "farm_name": {
+      "type": "string",
+      "description": "Name of the farm, kept to find the draft back"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "validated"
+      ],
+      "enumColors": [
+        "gray",
+        "green"
+      ],
+      "default": "draft"
+    },
+    "lines": {
+      "type": "array",
+      "description": "One line per task of the day: parcels, labour, machinery, inputs and the pre-validation state",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "block_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "pump_station_id": {
+            "type": "string"
+          },
+          "pump_hours": {
+            "type": "number"
+          },
+          "water_m3": {
+            "type": "number"
+          },
+          "validated": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the line was pre-validated and can be reduced"
+          },
+          "labour": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "worker_id": {
+                  "type": "string"
+                },
+                "days": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "machinery": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "machine_id": {
+                  "type": "string"
+                },
+                "hours": {
+                  "type": "number"
+                },
+                "fuel_item_id": {
+                  "type": "string"
+                },
+                "fuel_quantity": {
+                  "type": "number"
+                },
+                "lubricant_item_id": {
+                  "type": "string"
+                },
+                "lubricant_quantity": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "date"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}
