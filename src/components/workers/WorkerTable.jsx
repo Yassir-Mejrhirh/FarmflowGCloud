@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import { History } from 'lucide-react';
+import { Fragment, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import WorkerFilters from '@/components/workers/WorkerFilters';
+import WorkerRow from '@/components/workers/WorkerRow';
+import WorkerFarmHeader from '@/components/workers/WorkerFarmHeader';
+import WorkerTeamHeader from '@/components/workers/WorkerTeamHeader';
+import { buildWorkerSections } from '@/lib/workerSections';
 import { workerFarmNames } from '@/lib/workerFarms';
-import { fmtMoney, todayISO } from '@/lib/format';
+import { todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
 import {
@@ -13,13 +16,9 @@ import {
   workerMatchesFilters,
 } from '@/lib/workerFilters';
 import { useI18n } from '@/lib/I18nContext';
-import { cn } from '@/lib/utils';
 
 const definitionRank = (worker) =>
   worker.definition === 'nominative' ? 0 : worker.definition === 'salary_band' ? 2 : 1;
-
-const hasTransport = (worker) =>
-  Boolean(worker.transport_enabled || worker.transporter_name || worker.transport_rate);
 
 const priorityOf = (worker) => String(worker.priority || '1');
 const hasTeam = (worker) => Boolean(String(worker.team || '').trim());
@@ -46,24 +45,11 @@ const sortWorkers = (a, b) => {
   );
 };
 
-const DOTS = {
-  green: 'bg-emerald-500',
-  red: 'bg-rose-500',
-  orange: 'bg-amber-500',
-};
-
-function Dot({ tone, label }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className={cn('h-2.5 w-2.5 rounded-full', DOTS[tone])} />
-      <span className="text-xs text-muted-foreground">{label}</span>
-    </span>
-  );
-}
-
 export default function WorkerTable({ workers, rates = [], transportRates = [], onEdit, onRates }) {
   const { t } = useI18n();
   const [filters, setFilters] = useState(EMPTY_WORKER_FILTERS);
+  // Teams start collapsed; each header opens or closes its own section.
+  const [openTeams, setOpenTeams] = useState({});
 
   // The rate shown is the one in force today, taken from the dated history.
   const rateIndex = buildRateIndex(rates);
@@ -86,6 +72,15 @@ export default function WorkerTable({ workers, rates = [], transportRates = [], 
 
   const visible = rows.filter((worker) =>
     workerMatchesFilters(worker, filters, transportIndex, today),
+  );
+
+  const filtersActive = hasActiveFilters(filters);
+  // Without filters the list is read by farm and by team, teams folded away.
+  const sections = buildWorkerSections(visible);
+  const toggleTeam = (key) => setOpenTeams((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const renderRow = (worker) => (
+    <WorkerRow key={worker.id} worker={worker} t={t} onEdit={onEdit} onRates={onRates} />
   );
 
   return (
@@ -114,62 +109,38 @@ export default function WorkerTable({ workers, rates = [], transportRates = [], 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visible.length === 0 && hasActiveFilters(filters) && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
-                  {t('wfilters.none')}
-                </TableCell>
-              </TableRow>
+            {filtersActive ? (
+              <>
+                {visible.length === 0 && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
+                      {t('wfilters.none')}
+                    </TableCell>
+                  </TableRow>
+                )}
+                {visible.map(renderRow)}
+              </>
+            ) : (
+              <>
+                {sections.farmBlocks.map((block) => (
+                  <Fragment key={`farm-${block.farm || 'none'}`}>
+                    <WorkerFarmHeader farm={block.farm} count={block.rows.length} />
+                    {block.rows.map(renderRow)}
+                  </Fragment>
+                ))}
+                {sections.teams.map((team) => (
+                  <Fragment key={`team-${team.key}`}>
+                    <WorkerTeamHeader
+                      team={team}
+                      open={Boolean(openTeams[team.key])}
+                      onToggle={() => toggleTeam(team.key)}
+                    />
+                    {Boolean(openTeams[team.key]) && team.rows.map(renderRow)}
+                  </Fragment>
+                ))}
+                {sections.rest.map(renderRow)}
+              </>
             )}
-            {visible.map((worker) => {
-              const declared = Boolean(worker.declared);
-              const transport = hasTransport(worker);
-              return (
-                <TableRow key={worker.id} onClick={() => onEdit(worker)} className="cursor-pointer">
-                  <TableCell className="whitespace-nowrap">
-                    <span className="font-medium">{worker.name}</span>
-                    {worker.worker_function && (
-                      <span className="ml-2 text-xs text-muted-foreground">{worker.worker_function}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {worker.farm ||
-                      (workerFarmNames(worker).length
-                        ? `${t('workers.mobile')} · ${workerFarmNames(worker).join(', ')}`
-                        : t('workers.mobile'))}
-                  </TableCell>
-                  <TableCell className="tabular-nums">{worker.priority || '1'}</TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {worker.team || t('workers.notApplicable')}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums">
-                    <span className="inline-flex items-center gap-1.5">
-                      {worker.applied_rate ? fmtMoney(worker.applied_rate) : '—'}
-                      {onRates && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onRates(worker);
-                          }}
-                          aria-label={t('wage.history')}
-                          title={t('wage.history')}
-                          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
-                        >
-                          <History className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Dot tone={declared ? 'green' : 'red'} label={declared ? t('workers.declared') : t('workers.undeclared')} />
-                  </TableCell>
-                  <TableCell>
-                    <Dot tone={transport ? 'green' : 'orange'} label={transport ? t('workers.transportOn') : t('workers.transportOff')} />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
           </TableBody>
         </Table>
       </div>
