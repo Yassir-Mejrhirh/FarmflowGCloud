@@ -3,6 +3,7 @@
 import { transportFor } from '@/lib/transportRates';
 
 export const EMPTY_WORKER_FILTERS = {
+  q: '',
   team: '',
   transporter: '',
   mobility: '',
@@ -25,6 +26,8 @@ const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').
 
 export function workerMatchesFilters(worker, filters, index, today) {
   if (!worker) return false;
+  const query = String(filters.q || '').trim().toLowerCase();
+  if (query && !String(worker.name || '').toLowerCase().includes(query)) return false;
   if (filters.team && !same(worker.team, filters.team)) return false;
   if (filters.transporter && !same(workerTransporter(worker, index, today), filters.transporter)) return false;
   if (filters.mobility === 'mobile' && worker.farm) return false;

@@ -1,5 +1,6 @@
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import FilterSelect from '@/components/workers/FilterSelect';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -26,6 +27,26 @@ export default function WorkerFilters({ filters, onChange, onReset, options, sho
         <p className="text-xs tabular-nums text-muted-foreground">
           {t('wfilters.count', { shown, total })}
         </p>
+      </div>
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={filters.q}
+          onChange={(event) => set('q')(event.target.value)}
+          placeholder={t('wfilters.search')}
+          className="h-9 rounded-xl pl-9 pr-9"
+        />
+        {filters.q && (
+          <button
+            type="button"
+            onClick={() => set('q')('')}
+            aria-label={t('wfilters.reset')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">

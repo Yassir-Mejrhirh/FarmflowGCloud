@@ -2,6 +2,7 @@
 export const WORKER_FILTER_TRANSLATIONS = {
   fr: {
     'wfilters.title': 'Filtrer la liste',
+    'wfilters.search': 'Rechercher un ouvrier par nom',
     'wfilters.team': 'Équipe',
     'wfilters.transporter': 'Transporteur',
     'wfilters.all': 'Tous',
@@ -28,6 +29,7 @@ export const WORKER_FILTER_TRANSLATIONS = {
   },
   ar: {
     'wfilters.title': 'تصفية القائمة',
+    'wfilters.search': 'البحث عن عامل بالاسم',
     'wfilters.team': 'الفريق',
     'wfilters.transporter': 'الناقل',
     'wfilters.all': 'الكل',
