@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Farm name"
     },
+    "color": {
+      "type": "string",
+      "description": "Hexadecimal colour that identifies this farm in imported attendance sheets, e.g. #FFC000"
+    },
     "latitude": {
       "type": "number"
     },

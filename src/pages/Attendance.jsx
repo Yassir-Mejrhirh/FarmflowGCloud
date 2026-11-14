@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { CheckCircle2, ClipboardList } from 'lucide-react';
+import { CheckCircle2, ClipboardList, FileSpreadsheet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import DayField from '@/components/labour/DayField';
 import PointageWorkerList from '@/components/attendance/PointageWorkerList';
+import AttendanceImportDialog from '@/components/attendance/AttendanceImportDialog';
 import { Button } from '@/components/ui/button';
 import { fetchList } from '@/lib/data';
 import { fmtNum, todayISO } from '@/lib/format';
@@ -26,17 +27,20 @@ export default function Attendance() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const loadLists = async () => {
+    const [farmRows, workerRows] = await Promise.all([
+      fetchList(base44.entities.Farm, {}, { sort: 'name' }),
+      fetchList(base44.entities.Worker, {}, { sort: 'name' }),
+    ]);
+    setFarms(farmRows);
+    setWorkers(workerRows.filter((worker) => worker.active !== false));
+  };
 
   useEffect(() => {
-    const load = async () => {
-      const [farmRows, workerRows] = await Promise.all([
-        fetchList(base44.entities.Farm, {}, { sort: 'name' }),
-        fetchList(base44.entities.Worker, {}, { sort: 'name' }),
-      ]);
-      setFarms(farmRows);
-      setWorkers(workerRows.filter((worker) => worker.active !== false));
-    };
-    load();
+    loadLists();
   }, []);
 
   useEffect(() => {
@@ -72,7 +76,7 @@ export default function Attendance() {
     return () => {
       active = false;
     };
-  }, [date, farmId]);
+  }, [date, farmId, refreshToken]);
 
   const groups = useMemo(() => attendanceGroups(workers, farmName, t), [workers, farmName, t]);
 
@@ -138,6 +142,12 @@ export default function Attendance() {
         eyebrow={t('att.eyebrow')}
         title={t('att.title')}
         description={t('att.description')}
+        action={
+          <Button type="button" variant="outline" className="rounded-xl" onClick={() => setImportOpen(true)}>
+            <FileSpreadsheet className="h-4 w-4" />
+            {t('aimport.button')}
+          </Button>
+        }
       />
 
       <section className="rounded-2xl border border-border/70 bg-card p-4">
@@ -205,6 +215,17 @@ export default function Attendance() {
           />
         </>
       )}
+
+      <AttendanceImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        farms={farms}
+        workers={workers}
+        onImported={() => {
+          loadLists();
+          setRefreshToken((token) => token + 1);
+        }}
+      />
     </div>
   );
 }

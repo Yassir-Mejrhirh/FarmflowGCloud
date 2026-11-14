@@ -12,6 +12,7 @@ import { STORAGE_TRANSLATIONS } from '@/lib/translationsStorage';
 import { LABOUR_PERIOD_TRANSLATIONS } from '@/lib/translationsLabourPeriod';
 import { ATTENDANCE_TRANSLATIONS } from '@/lib/translationsAttendance';
 import { WORKER_FARMS_TRANSLATIONS } from '@/lib/translationsWorkerFarms';
+import { ATTENDANCE_IMPORT_TRANSLATIONS } from '@/lib/translationsAttendanceImport';
 import { setLocale } from '@/lib/format';
 
 const DICTIONARIES = {
@@ -29,6 +30,7 @@ const DICTIONARIES = {
     ...LABOUR_PERIOD_TRANSLATIONS.fr,
     ...ATTENDANCE_TRANSLATIONS.fr,
     ...WORKER_FARMS_TRANSLATIONS.fr,
+    ...ATTENDANCE_IMPORT_TRANSLATIONS.fr,
   },
   ar: {
     ...TRANSLATIONS.ar,
@@ -44,6 +46,7 @@ const DICTIONARIES = {
     ...LABOUR_PERIOD_TRANSLATIONS.ar,
     ...ATTENDANCE_TRANSLATIONS.ar,
     ...WORKER_FARMS_TRANSLATIONS.ar,
+    ...ATTENDANCE_IMPORT_TRANSLATIONS.ar,
   },
 };
 
