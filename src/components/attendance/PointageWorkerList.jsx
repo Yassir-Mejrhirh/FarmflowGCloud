@@ -2,7 +2,7 @@ import PointageGroup from '@/components/attendance/PointageGroup';
 import { useI18n } from '@/lib/I18nContext';
 
 // The workers of the pointage, the farm's own first, then one section per team.
-export default function PointageWorkerList({ groups, days, onChange, onFillGroup }) {
+export default function PointageWorkerList({ groups, days, onChange, onFillGroup, onClearGroup }) {
   const { t } = useI18n();
 
   if (!groups.length) {
@@ -22,6 +22,7 @@ export default function PointageWorkerList({ groups, days, onChange, onFillGroup
           days={days}
           onChange={onChange}
           onFillGroup={onFillGroup}
+          onClearGroup={onClearGroup}
         />
       ))}
     </div>

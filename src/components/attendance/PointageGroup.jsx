@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 // One group of workers, folded or unfolded by its header; the days already
 // written stay untouched while the group is closed.
-export default function PointageGroup({ group, days, onChange, onFillGroup }) {
+export default function PointageGroup({ group, days, onChange, onFillGroup, onClearGroup }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(true);
   const pointed = group.workers.filter((worker) => (Number(days[worker.id]) || 0) > 0).length;
@@ -37,6 +37,14 @@ export default function PointageGroup({ group, days, onChange, onFillGroup }) {
           className="shrink-0 rounded-lg border border-border/70 px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           {t('att.allInGroup')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onClearGroup(group.workers)}
+          disabled={!pointed}
+          className="shrink-0 rounded-lg border border-border/70 px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+        >
+          {t('att.clearGroup')}
         </button>
       </div>
       {open && (

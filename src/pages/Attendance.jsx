@@ -92,6 +92,17 @@ export default function Attendance() {
     setMessage(null);
   };
 
+  const clearGroup = (list) => {
+    setDays((prev) => {
+      const next = { ...prev };
+      list.forEach((worker) => {
+        next[worker.id] = '';
+      });
+      return next;
+    });
+    setMessage(null);
+  };
+
   const lines = Object.entries(days)
     .map(([worker_id, value]) => ({ worker_id, days: Number(value) || 0 }))
     .filter((line) => line.days > 0);
@@ -185,7 +196,13 @@ export default function Attendance() {
       ) : (
         <>
           <p className="text-[11px] text-muted-foreground">{t('att.mobileHint')}</p>
-          <PointageWorkerList groups={groups} days={days} onChange={setWorkerDays} onFillGroup={fillGroup} />
+          <PointageWorkerList
+            groups={groups}
+            days={days}
+            onChange={setWorkerDays}
+            onFillGroup={fillGroup}
+            onClearGroup={clearGroup}
+          />
         </>
       )}
     </div>
