@@ -21,6 +21,31 @@ const definitionRank = (worker) =>
 const hasTransport = (worker) =>
   Boolean(worker.transport_enabled || worker.transporter_name || worker.transport_rate);
 
+const priorityOf = (worker) => String(worker.priority || '1');
+const hasTeam = (worker) => Boolean(String(worker.team || '').trim());
+
+// Farm used to group a worker: its own farm, otherwise the first of its mobile farms.
+const farmLabel = (worker) => worker.farm || workerFarmNames(worker)[0] || '';
+
+// Default order: no team and priority 1 by farm, then teams by farm,
+// and finally the no team workers of priority 2 and 3.
+const rowRank = (worker) => (hasTeam(worker) ? 1 : priorityOf(worker) === '1' ? 0 : 2);
+
+const sortWorkers = (a, b) => {
+  const rank = rowRank(a) - rowRank(b);
+  if (rank) return rank;
+  if (rowRank(a) !== 2) {
+    const farm = farmLabel(a).localeCompare(farmLabel(b));
+    if (farm) return farm;
+  } else {
+    const priority = priorityOf(a).localeCompare(priorityOf(b));
+    if (priority) return priority;
+  }
+  return (
+    definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || '')
+  );
+};
+
 const DOTS = {
   green: 'bg-emerald-500',
   red: 'bg-rose-500',
@@ -55,13 +80,9 @@ export default function WorkerTable({ workers, rates = [], transportRates = [], 
     t('workers.colTransport'),
   ];
 
-  // Default order: nominatives first, then by name.
   const rows = workers
     .map((worker) => ({ ...worker, applied_rate: rateFor(worker, rateIndex, today) }))
-    .sort(
-      (a, b) =>
-        definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || ''),
-    );
+    .sort(sortWorkers);
 
   const visible = rows.filter((worker) =>
     workerMatchesFilters(worker, filters, transportIndex, today),
