@@ -6,12 +6,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import ImportSourceStep from '@/components/workers/import/ImportSourceStep';
 import ImportPreviewTable from '@/components/workers/import/ImportPreviewTable';
 import ImportBulkPanel from '@/components/workers/import/ImportBulkPanel';
+import DuplicateReview from '@/components/workers/import/DuplicateReview';
 import { readXlsxRows } from '@/lib/xlsxReader';
 import {
   EMPTY_COMMON,
   IMPORT_FIELDS,
   buildPayload,
+  findDuplicates,
   guessMapping,
+  normalizeWorkerName,
   validateDrafts,
 } from '@/lib/workerImport';
 import { fetchGlobalOptions, mergeOptions, rememberGlobalOption, rememberGlobalOptions } from '@/lib/globalOptions';
@@ -82,7 +85,16 @@ export default function WorkerImportDialog({
   const addTeam = useMemo(() => addOption('team', setGlobalTeams), []);
   const addTransporter = useMemo(() => addOption('transporter', setGlobalTransporters), []);
 
+  const existingNames = useMemo(
+    () => new Set(workers.map((worker) => normalizeWorkerName(worker.name)).filter(Boolean)),
+    [workers],
+  );
+
   const problems = useMemo(() => validateDrafts(drafts, common), [drafts, common]);
+  const duplicates = useMemo(() => findDuplicates(drafts, workers), [drafts, workers]);
+  const duplicateRows = drafts
+    .filter((draft) => duplicates.has(draft.id))
+    .map((draft) => ({ draft, existing: duplicates.get(draft.id) }));
   const included = drafts.filter((draft) => draft.include);
   const blocked = included.some((draft) => problems.has(draft.id));
 
@@ -121,7 +133,9 @@ export default function WorkerImportDialog({
           const column = mapping[field.key];
           values[field.key] = column === undefined ? '' : String(row[column] ?? '').trim();
         });
-        return { id: `row-${index}`, include: true, values };
+        // Un nom déjà présent dans la liste n'est pas retenu par défaut.
+        const duplicate = existingNames.has(normalizeWorkerName(values.name));
+        return { id: `row-${index}`, include: !duplicate, values };
       }),
     );
     setStep(2);
@@ -188,6 +202,8 @@ export default function WorkerImportDialog({
 
           {step === 2 && (
             <div className="space-y-4">
+              <DuplicateReview rows={duplicateRows} onDecide={toggle} />
+
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span>{t('wimport.included', { count: included.length })}</span>
                 <button

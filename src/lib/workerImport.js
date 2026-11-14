@@ -170,6 +170,25 @@ export function validateDrafts(drafts = [], common = {}) {
   return problems;
 }
 
+// Repérage des doublons : un nom déjà présent dans la liste des ouvriers, sans tenir
+// compte des majuscules ni des espaces en trop.
+export const normalizeWorkerName = (value) =>
+  String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+
+export function findDuplicates(drafts = [], workers = []) {
+  const byName = new Map();
+  workers.forEach((worker) => {
+    const key = normalizeWorkerName(worker?.name);
+    if (key && !byName.has(key)) byName.set(key, worker);
+  });
+  const duplicates = new Map();
+  drafts.forEach((draft) => {
+    const key = normalizeWorkerName(draft?.values?.name);
+    if (key && byName.has(key)) duplicates.set(draft.id, byName.get(key));
+  });
+  return duplicates;
+}
+
 // Fiche ouvrier envoyée à la création, dans la forme utilisée par la fiche manuelle.
 export function buildPayload(values, common) {
   const merged = mergeValues(values, common);
