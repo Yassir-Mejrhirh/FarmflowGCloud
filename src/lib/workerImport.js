@@ -2,20 +2,20 @@
 // des valeurs et fusion avec les valeurs communes choisies sur l'écran d'import.
 
 export const IMPORT_FIELDS = [
-  { key: 'name', labelKey: 'wimport.field.name', required: true, aliases: ['nom', 'nom complet', 'nom et prenom', 'name', 'الاسم'] },
-  { key: 'definition', labelKey: 'wimport.field.definition', aliases: ['definition', 'type', 'التعريف'] },
-  { key: 'priority', labelKey: 'wimport.field.priority', aliases: ['priorite', 'priority', 'الأولوية'] },
-  { key: 'worker_function', labelKey: 'wimport.field.function', aliases: ['fonction', 'metier', 'poste', 'function', 'الوظيفة'] },
-  { key: 'team', labelKey: 'wimport.field.team', aliases: ['equipe', 'team', 'groupe', 'الفريق'] },
-  { key: 'farm', labelKey: 'wimport.field.farm', aliases: ['ferme', 'affectation', 'exploitation', 'farm', 'الضحية'] },
-  { key: 'daily_rate', labelKey: 'wimport.field.rate', aliases: ['salaire', 'salaire journalier', 'tarif', 'wage', 'rate', 'الأجر'] },
-  { key: 'transporter_name', labelKey: 'wimport.field.transporter', aliases: ['transport', 'transporteur', 'chauffeur', 'transporter', 'الناقل'] },
-  { key: 'transport_rate_type', labelKey: 'wimport.field.mode', aliases: ['type de tarif', 'type tarif', 'mode transport', 'mode', 'نوع التسعيرة'] },
-  { key: 'transport_rate', labelKey: 'wimport.field.transportAmount', aliases: ['montant transport', 'tarif transport', 'prix transport', 'montant', 'ثمن النقل'] },
-  { key: 'phone', labelKey: 'wimport.field.phone', aliases: ['telephone', 'tel', 'phone', 'الهاتف'] },
-  { key: 'registration_number', labelKey: 'wimport.field.registration', aliases: ['immatriculation', 'matricule', 'cnss', 'registration', 'رقم التسجيل'] },
-  { key: 'start_date', labelKey: 'wimport.field.startDate', aliases: ['date embauche', 'date debut', 'embauche', 'تاريخ التوظيف'] },
-  { key: 'declared', labelKey: 'wimport.field.declared', aliases: ['declare', 'declaration', 'declared', 'التصريح'] },
+  { key: 'name', labelKey: 'wimport.field.name', required: true, tabKeys: ['workerDialog.fullName'], aliases: ['nom', 'nom prenom', 'nom et prenom', 'nom et prenom complet', 'name', 'الاسم'] },
+  { key: 'definition', labelKey: 'wimport.field.definition', tabKeys: ['workerDialog.definition', 'workerDialog.definitionHint'], aliases: ['definition', 'type', 'التعريف'] },
+  { key: 'priority', labelKey: 'wimport.field.priority', tabKeys: ['workerDialog.priority', 'workerDialog.priorityHint'], aliases: ['priorite', 'priority', 'الأولوية'] },
+  { key: 'worker_function', labelKey: 'wimport.field.function', tabKeys: ['workerDialog.function'], aliases: ['fonction', 'metier', 'poste', 'function', 'الوظيفة'] },
+  { key: 'team', labelKey: 'wimport.field.team', tabKeys: ['workerDialog.team', 'workerDialog.teamHint'], aliases: ['equipe', 'team', 'groupe', 'الفريق'] },
+  { key: 'farm', labelKey: 'wimport.field.farm', tabKeys: ['workerDialog.assignment', 'workerDialog.mobile'], aliases: ['ferme', 'affectation', 'exploitation', 'farm', 'الضحية'] },
+  { key: 'daily_rate', labelKey: 'wimport.field.rate', tabKeys: ['workerDialog.dailyRate'], aliases: ['salaire', 'salaire journalier', 'tarif', 'wage', 'rate', 'الأجر'] },
+  { key: 'transporter_name', labelKey: 'wimport.field.transporter', tabKeys: ['workerDialog.transporterName'], aliases: ['transport', 'transporteur', 'chauffeur', 'transporter', 'الناقل'] },
+  { key: 'transport_rate_type', labelKey: 'wimport.field.mode', tabKeys: ['workerDialog.transportRateType'], aliases: ['type de tarif', 'type tarif', 'mode transport', 'mode', 'نوع التسعيرة'] },
+  { key: 'transport_rate', labelKey: 'wimport.field.transportAmount', tabKeys: ['workerDialog.transportAmount'], aliases: ['montant transport', 'tarif transport', 'prix transport', 'montant', 'ثمن النقل'] },
+  { key: 'phone', labelKey: 'wimport.field.phone', tabKeys: ['workerDialog.phone'], aliases: ['telephone', 'tel', 'phone', 'الهاتف'] },
+  { key: 'registration_number', labelKey: 'wimport.field.registration', tabKeys: ['workerDialog.registration'], aliases: ['immatriculation', 'matricule', 'cnss', 'registration', 'رقم التسجيل'] },
+  { key: 'start_date', labelKey: 'wimport.field.startDate', tabKeys: ['workerDialog.hireDate', 'workerDialog.hireDateHint'], aliases: ['date embauche', 'date debut', 'embauche', 'تاريخ التوظيف'] },
+  { key: 'declared', labelKey: 'wimport.field.declared', tabKeys: ['workerDialog.declared'], aliases: ['declare', 'declaration', 'declared', 'التصريح'] },
 ];
 
 const norm = (value) =>
@@ -25,21 +25,35 @@ const norm = (value) =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\u0600-\u06ff]+/g, '');
 
+// Termes de comparaison de chaque champ : ses appellations d'import, plus le libellé
+// et la description du champ tels qu'ils apparaissent dans l'onglet des ouvriers.
+export function mappingTerms(t) {
+  const terms = {};
+  IMPORT_FIELDS.forEach((field) => {
+    const labels = (field.tabKeys || [])
+      .map((key) => t(key))
+      .filter((label) => label && label !== undefined);
+    terms[field.key] = [...field.aliases, ...labels].map(norm).filter(Boolean);
+  });
+  return terms;
+}
+
 // Les titres du fichier retrouvent leur champ par leur nom, d'abord à l'identique,
 // puis par ressemblance.
-export function guessMapping(headers = []) {
+export function guessMapping(headers = [], terms = {}) {
   const mapping = {};
+  const termsOf = (field) => (terms[field.key]?.length ? terms[field.key] : field.aliases.map(norm));
   headers.forEach((header, index) => {
     const text = norm(header);
     if (!text) return;
-    const exact = IMPORT_FIELDS.find((field) => field.aliases.some((alias) => norm(alias) === text));
+    const exact = IMPORT_FIELDS.find((field) => termsOf(field).includes(text));
     if (exact) {
       if (mapping[exact.key] === undefined) mapping[exact.key] = index;
       return;
     }
     const loose = IMPORT_FIELDS.find(
       (field) => mapping[field.key] === undefined
-        && field.aliases.some((alias) => norm(alias).length > 3 && text.includes(norm(alias))),
+        && termsOf(field).some((term) => term.length > 3 && text.includes(term)),
     );
     if (loose) mapping[loose.key] = index;
   });

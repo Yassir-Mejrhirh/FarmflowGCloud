@@ -14,6 +14,7 @@ import {
   buildPayload,
   findDuplicates,
   guessMapping,
+  mappingTerms,
   normalizeWorkerName,
   validateDrafts,
 } from '@/lib/workerImport';
@@ -85,6 +86,9 @@ export default function WorkerImportDialog({
   const addTeam = useMemo(() => addOption('team', setGlobalTeams), []);
   const addTransporter = useMemo(() => addOption('transporter', setGlobalTransporters), []);
 
+  // Les colonnes du fichier sont comparées aux libellés et descriptions de l'onglet Ouvriers.
+  const terms = useMemo(() => mappingTerms(t), [t]);
+
   const existingNames = useMemo(
     () => new Set(workers.map((worker) => normalizeWorkerName(worker.name)).filter(Boolean)),
     [workers],
@@ -113,7 +117,7 @@ export default function WorkerImportDialog({
       setFileName(file.name);
       setHeaders(cleanHeaders);
       setRows(dataRows);
-      setMapping(guessMapping(cleanHeaders));
+      setMapping(guessMapping(cleanHeaders, terms));
       if (!dataRows.length) setError(t('wimport.noRows'));
     } catch (caught) {
       setFileName(file.name);
