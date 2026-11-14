@@ -1,6 +1,7 @@
 // Filters of the labour list (fiche MO): each criterion is combined with the others,
 // an empty value meaning "no restriction on this criterion".
 import { transportFor } from '@/lib/transportRates';
+import { availableFarmNames, isFixedWorker, worksOnFarm } from '@/lib/workerFarms';
 
 export const EMPTY_WORKER_FILTERS = {
   q: '',
@@ -30,9 +31,10 @@ export function workerMatchesFilters(worker, filters, index, today) {
   if (query && !String(worker.name || '').toLowerCase().includes(query)) return false;
   if (filters.team && !same(worker.team, filters.team)) return false;
   if (filters.transporter && !same(workerTransporter(worker, index, today), filters.transporter)) return false;
-  if (filters.mobility === 'mobile' && worker.farm) return false;
-  if (filters.mobility === 'fixed' && !worker.farm) return false;
-  if (filters.farm && !same(worker.farm, filters.farm)) return false;
+  if (filters.mobility === 'mobile' && isFixedWorker(worker)) return false;
+  if (filters.mobility === 'fixed' && !isFixedWorker(worker)) return false;
+  // Une ferme retient ses ouvriers fixes et les mobiles qui la desservent.
+  if (filters.farm && !worksOnFarm(worker, filters.farm)) return false;
   if (filters.fn && !same(worker.worker_function, filters.fn)) return false;
   if (filters.priority && String(worker.priority || '1') !== String(filters.priority)) return false;
   if (filters.declared === 'declared' && !worker.declared) return false;
@@ -50,7 +52,7 @@ export function filterOptions(workers = [], index, today) {
   return {
     teams: unique(workers.map((worker) => worker.team)),
     transporters: unique(workers.map((worker) => workerTransporter(worker, index, today))),
-    farms: unique(workers.map((worker) => worker.farm)),
+    farms: unique(workers.flatMap(availableFarmNames)),
     functions: unique(workers.map((worker) => worker.worker_function)),
   };
 }

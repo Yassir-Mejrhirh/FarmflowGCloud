@@ -16,6 +16,7 @@ import { positiveItems, stockInStorages } from '@/lib/inputAvailability';
 import { storagesForFarm } from '@/lib/storageScope';
 import { buildRateIndex } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
+import { assignedToFarm } from '@/lib/workerFarms';
 import { buildEditDraft, entryReports } from '@/lib/reportDraft';
 import { lineIssues, lineOutflow, newLine, shortagesOf } from '@/lib/reportLines';
 import { commitLine } from '@/lib/reportCommit';
@@ -259,7 +260,7 @@ export default function DailyReport() {
     if (pointed.length) {
       groups.push({ key: 'pointage', label: t('report.labourPointage'), workers: pointed });
     }
-    const fixed = farmName ? others.filter((worker) => worker.farm === farmName) : [];
+    const fixed = farmName ? others.filter((worker) => assignedToFarm(worker, farmName)) : [];
     const rest = others.filter((worker) => !fixed.includes(worker));
     if (fixed.length) {
       groups.push({ key: 'farm', label: t('report.labourFarmFixed', { farm: farmName }), workers: fixed });

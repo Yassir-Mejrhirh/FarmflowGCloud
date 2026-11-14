@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { History } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import WorkerFilters from '@/components/workers/WorkerFilters';
+import { workerFarmNames } from '@/lib/workerFarms';
 import { fmtMoney, todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
@@ -111,7 +112,10 @@ export default function WorkerTable({ workers, rates = [], transportRates = [], 
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {worker.farm || t('workers.mobile')}
+                    {worker.farm ||
+                      (workerFarmNames(worker).length
+                        ? `${t('workers.mobile')} · ${workerFarmNames(worker).join(', ')}`
+                        : t('workers.mobile'))}
                   </TableCell>
                   <TableCell className="tabular-nums">{worker.priority || '1'}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">

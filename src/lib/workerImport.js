@@ -134,6 +134,7 @@ export const EMPTY_COMMON = {
   transporter_name: '',
   transport_rate_type: '',
   transport_rate: '',
+  farms: [],
 };
 
 const isFilled = (value) => value !== undefined && value !== null && String(value).trim() !== '';
@@ -209,13 +210,16 @@ export function buildPayload(values, common) {
   const transportRate = parseNumber(merged.transport_rate);
   const transporter = String(merged.transporter_name || '').trim();
   const startDate = parseDate(merged.start_date);
+  const fixedFarm = String(merged.farm || '').trim();
   const payload = {
     name: String(merged.name || '').trim(),
     priority: parsePriority(merged.priority) || '1',
     definition: parseDefinition(merged.definition),
     worker_function: String(merged.worker_function || '').trim(),
     team: String(merged.team || '').trim(),
-    farm: String(merged.farm || '').trim(),
+    farm: fixedFarm,
+    // Les fermes cochées ne concernent que les ouvriers mobiles.
+    farms: fixedFarm ? [] : (Array.isArray(common.farms) ? common.farms.filter(Boolean) : []),
     registration_number: String(merged.registration_number || '').trim(),
     phone: String(merged.phone || '').trim(),
     declared: parseDeclared(merged.declared),

@@ -1,6 +1,7 @@
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import ImportPicker from '@/components/workers/import/ImportPicker';
+import MobileFarmsField from '@/components/workers/MobileFarmsField';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -64,6 +65,13 @@ export default function ImportBulkPanel({
             options={farms.map((farm) => ({ value: farm.name, label: farm.name }))}
           />
         </Field>
+        {!values.farm && (
+          <MobileFarmsField
+            farms={farms}
+            value={values.farms || []}
+            onChange={set('farms')}
+          />
+        )}
         <Field label={t('wimport.field.transporter')}>
           <ImportPicker
             value={values.transporter_name}

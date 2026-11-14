@@ -17,6 +17,8 @@ import { buildRateIndex, rateFor } from '@/lib/wageRates';
 import { buildTransportIndex, transportFor, transporterTeamConflicts } from '@/lib/transportRates';
 import { fetchGlobalOptions, mergeOptions, rememberGlobalOption, rememberGlobalOptions } from '@/lib/globalOptions';
 import TransportHistory from '@/components/workers/TransportHistory';
+import MobileFarmsField from '@/components/workers/MobileFarmsField';
+import { workerFarmNames } from '@/lib/workerFarms';
 
 const PRIORITIES = ['1', '2', '3'];
 const DEFINITIONS = ['nominative', 'salary_band'];
@@ -31,6 +33,7 @@ const emptyForm = {
   definition: '',
   worker_function: '',
   farm: '',
+  farms: [],
   team: '',
   registration_number: '',
   declared: false,
@@ -135,6 +138,7 @@ export default function WorkerDialog({
             definition: worker.definition || '',
             worker_function: worker.worker_function || '',
             farm: worker.farm || '',
+            farms: workerFarmNames(worker),
             team: worker.team || '',
             registration_number: worker.registration_number || '',
             declared: Boolean(worker.declared),
@@ -259,6 +263,7 @@ export default function WorkerDialog({
       definition: form.definition || '',
       worker_function: form.worker_function || '',
       farm: form.farm || '',
+      farms: (form.farms || []).filter(Boolean),
       team: form.team.trim(),
       registration_number: form.registration_number || '',
       declared: Boolean(form.declared),
@@ -386,7 +391,7 @@ export default function WorkerDialog({
             options={PRIORITIES.map((value) => ({ value, label: t(`wr.priority_${value}`) }))}
           />
         </Field>
-        <Field label={t('workerDialog.assignment')}>
+        <Field label={t('workerDialog.assignment')} hint={t('workerDialog.assignmentHint')}>
           <SelectField
             value={form.farm}
             onChange={(value) => setForm({ ...form, farm: value })}
@@ -394,6 +399,13 @@ export default function WorkerDialog({
             options={farms.map((farm) => ({ value: farm.name, label: farm.name }))}
           />
         </Field>
+        {!form.farm && (
+          <MobileFarmsField
+            farms={farms}
+            value={form.farms}
+            onChange={(value) => setForm({ ...form, farms: value })}
+          />
+        )}
         <Field label={t('workerDialog.team')} hint={t('workerDialog.teamHint')}>
           <SelectField
             value={form.team}

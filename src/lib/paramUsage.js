@@ -40,7 +40,11 @@ const CHECKS = {
   Farm: [
     { entity: 'FarmBlock', key: 'usage.blocks', match: (row, record) => row.farm === record.name },
     { entity: 'Storage', key: 'usage.storages', match: (row, record) => row.farm === record.name },
-    { entity: 'Worker', key: 'usage.workers', match: (row, record) => row.farm === record.name },
+    {
+      entity: 'Worker',
+      key: 'usage.workers',
+      match: (row, record) => row.farm === record.name || (row.farms || []).includes(record.name),
+    },
   ],
   FarmBlock: [
     { entity: 'DailyReport', key: 'usage.reports', match: (row, record) => row.block_id === record.id },

@@ -12,8 +12,6 @@ export default function WorkerFilters({ filters, onChange, onReset, options, sho
     onChange({
       ...filters,
       [key]: value,
-      // The farm only refines the fixed workers, so it drops when fixed is left.
-      ...(key === 'mobility' && value !== 'fixed' ? { farm: '' } : {}),
     });
 
   const toOptions = (values) => values.map((value) => ({ value, label: value }));
@@ -74,15 +72,13 @@ export default function WorkerFilters({ filters, onChange, onReset, options, sho
             { value: 'fixed', label: t('wfilters.fixed') },
           ]}
         />
-        {filters.mobility === 'fixed' && (
-          <FilterSelect
-            label={t('wfilters.farm')}
-            value={filters.farm}
-            onChange={set('farm')}
-            noneLabel={all}
-            options={toOptions(options.farms)}
-          />
-        )}
+        <FilterSelect
+          label={t('wfilters.farm')}
+          value={filters.farm}
+          onChange={set('farm')}
+          noneLabel={all}
+          options={toOptions(options.farms)}
+        />
         <FilterSelect
           label={t('wfilters.fn')}
           value={filters.fn}

@@ -44,6 +44,13 @@
       "type": "string",
       "description": "Farm the worker is permanently assigned to; empty means the worker is mobile"
     },
+    "farms": {
+      "type": "array",
+      "description": "Farms a mobile worker can work on; only used when the worker has no fixed farm, and an empty list means every farm",
+      "items": {
+        "type": "string"
+      }
+    },
     "team": {
       "type": "string",
       "description": "Team the worker belongs to, when applicable"

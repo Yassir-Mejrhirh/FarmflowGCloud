@@ -1,3 +1,5 @@
+import { assignedToFarm } from '@/lib/workerFarms';
+
 // Workers pointed on a day, as a map worker id → days worked.
 export function sheetDays(sheet) {
   const map = new Map();
@@ -11,7 +13,7 @@ export function sheetDays(sheet) {
 // The pointed workers come first in the pointage screen: the farm's own workers,
 // then the mobile ones grouped by team.
 export function attendanceGroups(workers = [], farmName = '', t) {
-  const fixed = farmName ? workers.filter((worker) => worker.farm === farmName) : [];
+  const fixed = farmName ? workers.filter((worker) => assignedToFarm(worker, farmName)) : [];
   const rest = workers.filter((worker) => !fixed.includes(worker));
   const groups = [];
   if (fixed.length) {
