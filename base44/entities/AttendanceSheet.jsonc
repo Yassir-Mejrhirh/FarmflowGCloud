@@ -1,0 +1,56 @@
+{
+  "name": "AttendanceSheet",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Day the workers were pointed for"
+    },
+    "farm_id": {
+      "type": "string",
+      "description": "Farm the pointage was written for"
+    },
+    "farm_name": {
+      "type": "string",
+      "description": "Name of the farm, kept to find the pointage back"
+    },
+    "lines": {
+      "type": "array",
+      "description": "One line per worker pointed on that day, with the days worked",
+      "items": {
+        "type": "object",
+        "properties": {
+          "worker_id": {
+            "type": "string"
+          },
+          "days": {
+            "type": "number",
+            "description": "Days worked by the worker on that day, e.g. 1 or 0.5"
+          }
+        }
+      }
+    },
+    "total_days": {
+      "type": "number",
+      "description": "Sum of the days worked on the pointage, kept for the lists"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "date",
+    "farm_id"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}

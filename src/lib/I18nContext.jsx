@@ -10,6 +10,7 @@ import { REPORT_LINES_TRANSLATIONS } from '@/lib/translationsReportLines';
 import { INPUT_PICKER_TRANSLATIONS } from '@/lib/translationsInputPicker';
 import { STORAGE_TRANSLATIONS } from '@/lib/translationsStorage';
 import { LABOUR_PERIOD_TRANSLATIONS } from '@/lib/translationsLabourPeriod';
+import { ATTENDANCE_TRANSLATIONS } from '@/lib/translationsAttendance';
 import { setLocale } from '@/lib/format';
 
 const DICTIONARIES = {
@@ -25,6 +26,7 @@ const DICTIONARIES = {
     ...INPUT_PICKER_TRANSLATIONS.fr,
     ...STORAGE_TRANSLATIONS.fr,
     ...LABOUR_PERIOD_TRANSLATIONS.fr,
+    ...ATTENDANCE_TRANSLATIONS.fr,
   },
   ar: {
     ...TRANSLATIONS.ar,
@@ -38,6 +40,7 @@ const DICTIONARIES = {
     ...INPUT_PICKER_TRANSLATIONS.ar,
     ...STORAGE_TRANSLATIONS.ar,
     ...LABOUR_PERIOD_TRANSLATIONS.ar,
+    ...ATTENDANCE_TRANSLATIONS.ar,
   },
 };
 

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   BarChart3, Boxes, CalendarRange, ChevronRight, ClipboardList, Layers, ListChecks, MapPin,
   Settings2, Sprout, Tractor, Truck, Users, Leaf, ClipboardCheck, Receipt, House, Warehouse, Upload, Wrench, Map, Gauge,
+  UserCheck,
 } from 'lucide-react';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -31,6 +32,7 @@ export default function OverviewGroups() {
       icon: ClipboardCheck,
       items: [
         { to: '/planting', label: t('ov.entryCrops'), icon: Layers },
+        { to: '/attendance', label: t('ov.entryAttendance'), icon: UserCheck },
         { to: '/daily-report', label: t('ov.entryReport'), icon: ClipboardList },
         { to: '/input-invoices', label: t('ov.entryInvoices'), icon: Receipt },
         { to: '/machine-maintenance', label: t('ov.entryMaintenance'), icon: Wrench },

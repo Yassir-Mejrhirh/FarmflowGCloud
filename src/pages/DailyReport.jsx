@@ -41,6 +41,7 @@ export default function DailyReport() {
   const [reports, setReports] = useState([]);
   const [wageRates, setWageRates] = useState([]);
   const [transportRates, setTransportRates] = useState([]);
+  const [pointageLines, setPointageLines] = useState([]);
   const [version, setVersion] = useState(0);
 
   // The report being written: one draft per day and per farm.
@@ -174,6 +175,32 @@ export default function DailyReport() {
     };
   }, [date, farmId]);
 
+  // Pointage written for the same day and farm: its workers are proposed in every line.
+  useEffect(() => {
+    let active = true;
+    if (!date || !farmId) {
+      setPointageLines([]);
+      return () => {
+        active = false;
+      };
+    }
+    fetchList(base44.entities.AttendanceSheet, { date, farm_id: farmId }, { limit: 1 }).then((rows) => {
+      if (active) setPointageLines(rows[0]?.lines || []);
+    });
+    return () => {
+      active = false;
+    };
+  }, [date, farmId]);
+
+  const pointageDays = useMemo(() => {
+    const map = new Map();
+    pointageLines.forEach((line) => {
+      const days = Number(line.days) || 0;
+      if (line.worker_id && days > 0) map.set(line.worker_id, days);
+    });
+    return map;
+  }, [pointageLines]);
+
   // Every change is kept in the draft: nothing is lost when the page is left.
   useEffect(() => {
     if (!date || !farmId) return undefined;
@@ -225,9 +252,15 @@ export default function DailyReport() {
     });
 
     const available = workers.filter((worker) => own.has(worker.id) || !taken.has(worker.id));
-    const fixed = farmName ? available.filter((worker) => worker.farm === farmName) : [];
-    const rest = available.filter((worker) => !fixed.includes(worker));
+    // The workers pointed on that day and farm come first, with the days of the pointage.
+    const pointed = available.filter((worker) => pointageDays.has(worker.id));
+    const others = available.filter((worker) => !pointed.includes(worker));
     const groups = [];
+    if (pointed.length) {
+      groups.push({ key: 'pointage', label: t('report.labourPointage'), workers: pointed });
+    }
+    const fixed = farmName ? others.filter((worker) => worker.farm === farmName) : [];
+    const rest = others.filter((worker) => !fixed.includes(worker));
     if (fixed.length) {
       groups.push({ key: 'farm', label: t('report.labourFarmFixed', { farm: farmName }), workers: fixed });
     }
@@ -272,7 +305,7 @@ export default function DailyReport() {
   const ctx = {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, date,
-    storages, invoices, onHand: storageOnHand, farmName,
+    storages, invoices, onHand: storageOnHand, farmName, pointageDays,
   };
 
   const addLine = () => {

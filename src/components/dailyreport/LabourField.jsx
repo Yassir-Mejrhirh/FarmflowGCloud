@@ -9,7 +9,7 @@ import { useI18n } from '@/lib/I18nContext';
 // Labour is picked from collapsible team sections: the workers fixed to the chosen
 // farm come first, then the rest grouped by team.
 export default function LabourField({
-  title, placeholder, lines, onChange, groups, workerMap, qtyLabel, emptyLabel, renderMeta,
+  title, placeholder, lines, onChange, groups, workerMap, qtyLabel, emptyLabel, renderMeta, suggested,
 }) {
   const { t } = useI18n();
   // A section opens on demand; the first one (the farm's own workers) opens by default.
@@ -18,7 +18,9 @@ export default function LabourField({
   const picked = (workerId) => lines.some((line) => line.worker_id === workerId);
   const addWorker = (workerId) => {
     if (picked(workerId)) return;
-    onChange([...lines, { worker_id: workerId, days: '1' }]);
+    // A worker pointed that day arrives with the days already written on the pointage.
+    const pointed = suggested instanceof Map ? Number(suggested.get(workerId)) || 0 : 0;
+    onChange([...lines, { worker_id: workerId, days: pointed > 0 ? String(pointed) : '1' }]);
   };
   const update = (index, patch) => onChange(lines.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   const remove = (index) => onChange(lines.filter((_, i) => i !== index));

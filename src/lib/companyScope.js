@@ -28,6 +28,7 @@ const SCOPED_ENTITIES = [
   'Harvest',
   'StockMovement',
   'Attendance',
+  'AttendanceSheet',
   'DailyReport',
   'ReportDraft',
 ];
