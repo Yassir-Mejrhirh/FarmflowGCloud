@@ -1,0 +1,80 @@
+{
+  "name": "AttendanceImport",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
+    "imported_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Day the pointage spreadsheet was imported"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Name of the spreadsheet that was imported"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "First day of the imported pointage"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Last day of the imported pointage"
+    },
+    "farm_names": {
+      "type": "array",
+      "description": "Farms the imported pointage belongs to",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sheets": {
+      "type": "array",
+      "description": "Pointage sheets written by the import, one per day and per farm, kept to reopen them",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "farm_id": {
+            "type": "string"
+          },
+          "farm_name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "workers_count": {
+      "type": "number",
+      "description": "Workers pointed by the import"
+    },
+    "created_count": {
+      "type": "number",
+      "description": "Pointage sheets created by the import"
+    },
+    "updated_count": {
+      "type": "number",
+      "description": "Existing pointage sheets completed by the import"
+    },
+    "total_days": {
+      "type": "number",
+      "description": "Days worked recorded by the import"
+    }
+  },
+  "required": [
+    "imported_at"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}

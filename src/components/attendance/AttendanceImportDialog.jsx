@@ -137,6 +137,24 @@ export default function AttendanceImportDialog({ open, onOpenChange, farms = [],
       if (creations.length) await base44.entities.AttendanceSheet.bulkCreate(creations);
       if (updates.length) await base44.entities.AttendanceSheet.bulkUpdate(updates);
 
+      // L'historique garde la trace de l'import pour retrouver ses feuilles.
+      await base44.entities.AttendanceImport.create({
+        imported_at: todayISO(),
+        file_name: fileName,
+        period_start: dates[0],
+        period_end: dates[dates.length - 1],
+        farm_names: [...new Set(groups.map((group) => group.farm_name))],
+        sheets: groups.map((group) => ({
+          date: group.date,
+          farm_id: group.farm_id,
+          farm_name: group.farm_name,
+        })),
+        workers_count: new Set(analysis.entries.map((entry) => entry.worker_id)).size,
+        created_count: creations.length,
+        updated_count: updates.length,
+        total_days: round(analysis.entries.reduce((sum, entry) => sum + entry.days, 0)),
+      }).catch(() => null);
+
       setResult({
         created: creations.length,
         updated: updates.length,

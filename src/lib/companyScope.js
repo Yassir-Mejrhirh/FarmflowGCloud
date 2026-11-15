@@ -29,6 +29,7 @@ const SCOPED_ENTITIES = [
   'StockMovement',
   'Attendance',
   'AttendanceSheet',
+  'AttendanceImport',
   'DailyReport',
   'ReportDraft',
 ];

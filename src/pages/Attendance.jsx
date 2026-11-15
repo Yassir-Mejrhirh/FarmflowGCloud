@@ -7,6 +7,7 @@ import SelectField from '@/components/SelectField';
 import DayField from '@/components/labour/DayField';
 import PointageWorkerList from '@/components/attendance/PointageWorkerList';
 import AttendanceImportDialog from '@/components/attendance/AttendanceImportDialog';
+import ImportHistory from '@/components/attendance/ImportHistory';
 import { Button } from '@/components/ui/button';
 import { fetchList } from '@/lib/data';
 import { fmtNum, todayISO } from '@/lib/format';
@@ -28,6 +29,8 @@ export default function Attendance() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [imports, setImports] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const loadLists = async () => {
@@ -39,9 +42,28 @@ export default function Attendance() {
     setWorkers(workerRows.filter((worker) => worker.active !== false));
   };
 
+  const loadImports = async () => {
+    setHistoryLoading(true);
+    try {
+      const rows = await fetchList(base44.entities.AttendanceImport, {}, { sort: '-created_date', limit: 30 });
+      setImports(rows);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadLists();
+    loadImports();
   }, []);
+
+  // Rouvre un import : sa première feuille donne la date et la ferme à afficher.
+  const openImport = (entry) => {
+    const first = (entry.sheets || [])[0];
+    if (!first) return;
+    setDate(first.date);
+    setFarmId(first.farm_id);
+  };
 
   useEffect(() => {
     if (!farmId && farms.length) setFarmId(farms[0].id);
@@ -199,6 +221,8 @@ export default function Attendance() {
         )}
       </section>
 
+      <ImportHistory imports={imports} loading={historyLoading} onOpen={openImport} />
+
       {loading ? (
         <p className="rounded-2xl border border-border/70 bg-card p-5 text-sm text-muted-foreground">
           {t('att.loading')}
@@ -223,6 +247,7 @@ export default function Attendance() {
         workers={workers}
         onImported={() => {
           loadLists();
+          loadImports();
           setRefreshToken((token) => token + 1);
         }}
       />
