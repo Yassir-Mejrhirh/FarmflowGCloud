@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, History, Trash2 } from 'lucide-react';
+import { ChevronDown, FileX2, History, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -19,12 +19,14 @@ const VISIBLE = 4;
 
 // Imports already saved, most recent first: each entry reopens the pointage
 // sheets it wrote for its first day and farm.
-export default function ImportHistory({ imports = [], loading = false, onOpen, onDelete }) {
+export default function ImportHistory({ imports = [], loading = false, onOpen, onDelete, onDeleteSheets }) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [all, setAll] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+  const [toWipe, setToWipe] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
   const rows = all ? imports : imports.slice(0, VISIBLE);
 
   const confirmDelete = async () => {
@@ -35,6 +37,21 @@ export default function ImportHistory({ imports = [], loading = false, onOpen, o
     } finally {
       setDeleting(false);
       setToDelete(null);
+    }
+  };
+
+  // Suppression des pointages écrits par l'import, puis de l'import lui-même.
+  const confirmWipe = async () => {
+    if (!toWipe) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await onDeleteSheets?.(toWipe);
+      setToWipe(null);
+    } catch {
+      setError(t('ahist.deleteSheetsError'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -95,9 +112,24 @@ export default function ImportHistory({ imports = [], loading = false, onOpen, o
                         variant="ghost"
                         className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
                         aria-label={t('ahist.delete')}
+                        title={t('ahist.delete')}
                         onClick={() => setToDelete(item)}
                       >
                         <Trash2 className="h-4 w-4" strokeWidth={1.8} />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
+                        aria-label={t('ahist.deleteSheets')}
+                        title={t('ahist.deleteSheets')}
+                        onClick={() => {
+                          setError('');
+                          setToWipe(item);
+                        }}
+                      >
+                        <FileX2 className="h-4 w-4" strokeWidth={1.8} />
                       </Button>
                     </div>
                   </div>
@@ -143,6 +175,36 @@ export default function ImportHistory({ imports = [], loading = false, onOpen, o
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? t('ahist.deleting') : t('ahist.deleteConfirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(toWipe)}
+        onOpenChange={(open) => {
+          if (!open && !deleting) {
+            setToWipe(null);
+            setError('');
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('ahist.deleteSheetsTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('ahist.deleteSheetsDesc', { n: (toWipe?.sheets || []).length })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {error && <p className="text-[12px] font-medium text-destructive">{error}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={confirmWipe}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? t('ahist.deleting') : t('ahist.deleteSheetsConfirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

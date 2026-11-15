@@ -66,6 +66,13 @@ export const ATTENDANCE_IMPORT_TRANSLATIONS = {
       'L’import est retiré de l’historique. Les feuilles de pointage qu’il a créées restent enregistrées et peuvent être consultées et modifiées dans le pointage.',
     'ahist.deleteConfirm': 'Supprimer',
     'ahist.deleting': 'Suppression…',
+    'ahist.deleteSheets': 'Supprimer les pointages de cet import',
+    'ahist.deleteSheetsTitle': 'Supprimer les pointages de cet import ?',
+    'ahist.deleteSheetsDesc':
+      'Les {n} feuilles de pointage écrites par cet import seront supprimées, y compris celles qui existaient déjà et que l’import a complétées. L’import sera retiré de l’historique. Cette action est définitive.',
+    'ahist.deleteSheetsConfirm': 'Supprimer les pointages',
+    'ahist.deleteSheetsError':
+      'Toutes les feuilles n’ont pas pu être supprimées. Les pointages déjà effacés ont été rechargés : réessayez pour les autres.',
   },
   ar: {
     'aimport.button': 'استيراد Excel',
@@ -132,5 +139,12 @@ export const ATTENDANCE_IMPORT_TRANSLATIONS = {
       'يُحذف الاستيراد من السجل. أما أوراق الحضور التي أنشأها فتبقى محفوظة ويمكن مراجعتها وتعديلها في كشف الحضور.',
     'ahist.deleteConfirm': 'حذف',
     'ahist.deleting': 'جارٍ الحذف…',
+    'ahist.deleteSheets': 'حذف نقط حضور هذا الاستيراد',
+    'ahist.deleteSheetsTitle': 'حذف نقط حضور هذا الاستيراد؟',
+    'ahist.deleteSheetsDesc':
+      'ستُحذف {n} ورقة حضور أنشأها هذا الاستيراد، بما فيها الأوراق التي كانت موجودة قبل الاستيراد وأكملها. وسيُحذف الاستيراد من السجل. لا يمكن التراجع عن هذا الإجراء.',
+    'ahist.deleteSheetsConfirm': 'حذف النقط',
+    'ahist.deleteSheetsError':
+      'لم يتم حذف جميع الأوراق. تم تحديث النقط المحذوفة، أعد المحاولة للبقية.',
   },
 };

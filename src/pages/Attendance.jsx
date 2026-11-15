@@ -63,6 +63,21 @@ export default function Attendance() {
     await loadImports();
   };
 
+  // Supprime les pointages écrits par un import, puis l'import lui-même.
+  const deleteImportSheets = async (entry) => {
+    const results = await Promise.allSettled(
+      (entry.sheets || []).map((sheet) =>
+        base44.entities.AttendanceSheet.deleteMany({ date: sheet.date, farm_id: sheet.farm_id }),
+      ),
+    );
+    const failed = results.some((result) => result.status === 'rejected');
+    if (!failed) await base44.entities.AttendanceImport.delete(entry.id);
+    await loadImports();
+    // La feuille affichée est rechargée : elle reflète les pointages réellement supprimés.
+    setRefreshToken((token) => token + 1);
+    if (failed) throw new Error('sheets');
+  };
+
   // Rouvre un import : sa première feuille donne la date et la ferme à afficher.
   const openImport = (entry) => {
     const first = (entry.sheets || [])[0];
@@ -232,6 +247,7 @@ export default function Attendance() {
         loading={historyLoading}
         onOpen={openImport}
         onDelete={deleteImport}
+        onDeleteSheets={deleteImportSheets}
       />
 
       {loading ? (
