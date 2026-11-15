@@ -1,6 +1,16 @@
 import { useState } from 'react';
-import { ChevronDown, History } from 'lucide-react';
+import { ChevronDown, History, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { fmtDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -9,11 +19,24 @@ const VISIBLE = 4;
 
 // Imports already saved, most recent first: each entry reopens the pointage
 // sheets it wrote for its first day and farm.
-export default function ImportHistory({ imports = [], loading = false, onOpen }) {
+export default function ImportHistory({ imports = [], loading = false, onOpen, onDelete }) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [all, setAll] = useState(false);
+  const [toDelete, setToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const rows = all ? imports : imports.slice(0, VISIBLE);
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete?.(toDelete.id);
+    } finally {
+      setDeleting(false);
+      setToDelete(null);
+    }
+  };
 
   return (
     <section className="rounded-2xl border border-border/70 bg-card">
@@ -56,15 +79,27 @@ export default function ImportHistory({ imports = [], loading = false, onOpen })
                         {t('ahist.importedOn', { date: fmtDate(item.imported_at || item.created_date) })}
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 rounded-lg"
-                      onClick={() => onOpen?.(item)}
-                    >
-                      {t('ahist.open')}
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="rounded-lg"
+                        onClick={() => onOpen?.(item)}
+                      >
+                        {t('ahist.open')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
+                        aria-label={t('ahist.delete')}
+                        onClick={() => setToDelete(item)}
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={1.8} />
+                      </Button>
+                    </div>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10.5px] text-muted-foreground">
                     {(item.farm_names || []).map((name) => (
@@ -93,6 +128,25 @@ export default function ImportHistory({ imports = [], loading = false, onOpen })
           )}
         </div>
       )}
+
+      <AlertDialog open={Boolean(toDelete)} onOpenChange={(open) => !open && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('ahist.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('ahist.deleteDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? t('ahist.deleting') : t('ahist.deleteConfirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

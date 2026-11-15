@@ -60,6 +60,12 @@ export const ATTENDANCE_IMPORT_TRANSLATIONS = {
     'ahist.days': '{days} jours',
     'ahist.showAll': 'Voir les {n} autres imports',
     'ahist.showLess': 'Réduire la liste',
+    'ahist.delete': 'Supprimer cet import',
+    'ahist.deleteTitle': 'Supprimer cet import de l’historique ?',
+    'ahist.deleteDesc':
+      'L’import est retiré de l’historique. Les feuilles de pointage qu’il a créées restent enregistrées et peuvent être consultées et modifiées dans le pointage.',
+    'ahist.deleteConfirm': 'Supprimer',
+    'ahist.deleting': 'Suppression…',
   },
   ar: {
     'aimport.button': 'استيراد Excel',
@@ -120,5 +126,11 @@ export const ATTENDANCE_IMPORT_TRANSLATIONS = {
     'ahist.days': '{days} يوم',
     'ahist.showAll': 'عرض {n} استيرادات أخرى',
     'ahist.showLess': 'تقليص القائمة',
+    'ahist.delete': 'حذف هذا الاستيراد',
+    'ahist.deleteTitle': 'حذف هذا الاستيراد من السجل؟',
+    'ahist.deleteDesc':
+      'يُحذف الاستيراد من السجل. أما أوراق الحضور التي أنشأها فتبقى محفوظة ويمكن مراجعتها وتعديلها في كشف الحضور.',
+    'ahist.deleteConfirm': 'حذف',
+    'ahist.deleting': 'جارٍ الحذف…',
   },
 };

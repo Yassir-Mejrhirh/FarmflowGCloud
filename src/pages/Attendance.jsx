@@ -57,6 +57,12 @@ export default function Attendance() {
     loadImports();
   }, []);
 
+  // Retire l'import de l'historique ; les feuilles de pointage qu'il a écrites restent.
+  const deleteImport = async (id) => {
+    await base44.entities.AttendanceImport.delete(id);
+    await loadImports();
+  };
+
   // Rouvre un import : sa première feuille donne la date et la ferme à afficher.
   const openImport = (entry) => {
     const first = (entry.sheets || [])[0];
@@ -221,7 +227,12 @@ export default function Attendance() {
         )}
       </section>
 
-      <ImportHistory imports={imports} loading={historyLoading} onOpen={openImport} />
+      <ImportHistory
+        imports={imports}
+        loading={historyLoading}
+        onOpen={openImport}
+        onDelete={deleteImport}
+      />
 
       {loading ? (
         <p className="rounded-2xl border border-border/70 bg-card p-5 text-sm text-muted-foreground">
