@@ -171,15 +171,15 @@ export default function AttendanceImportDialog({ open, onOpenChange, farms = [],
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogHeader className="px-6 pb-3 pt-6">
+      <DialogContent className="flex max-h-[92dvh] w-[calc(100vw-1.5rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+        <DialogHeader className="shrink-0 px-6 pb-3 pt-6">
           <DialogTitle className="font-display text-xl font-normal tracking-tight">
             {step === 3 ? t('aimport.resultTitle') : t('aimport.title')}
           </DialogTitle>
           <DialogDescription className="text-sm">{t('aimport.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-6 pb-4 text-[11px] uppercase tracking-[0.12em]">
+        <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-6 pb-4 text-[11px] uppercase tracking-[0.12em]">
           {[t('aimport.step1'), t('aimport.step2')].map((label, index) => (
             <span key={label} className="flex items-center gap-2">
               {index > 0 && <span className="h-px w-4 bg-border" />}
@@ -190,7 +190,7 @@ export default function AttendanceImportDialog({ open, onOpenChange, farms = [],
           ))}
         </div>
 
-        <div className="max-h-[62vh] overflow-y-auto px-6 pb-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6">
           {step === 1 && (
             <>
               <AttendanceFileStep
@@ -228,15 +228,20 @@ export default function AttendanceImportDialog({ open, onOpenChange, farms = [],
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-background px-6 py-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border bg-background px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
           {step === 1 && (
             <>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                className="flex-1 sm:flex-none"
+                onClick={() => onOpenChange(false)}
+              >
                 {t('common.cancel')}
               </Button>
               <Button
                 type="button"
-                className="rounded-xl"
+                className="flex-1 rounded-xl sm:flex-none"
                 disabled={!analysis?.entries.length}
                 onClick={() => setStep(2)}
               >
@@ -250,12 +255,18 @@ export default function AttendanceImportDialog({ open, onOpenChange, farms = [],
               {error && (
                 <p className="me-auto text-[11px] font-medium text-destructive">{error}</p>
               )}
-              <Button type="button" variant="ghost" onClick={() => setStep(1)} disabled={saving}>
+              <Button
+                type="button"
+                variant="ghost"
+                className="flex-1 sm:flex-none"
+                onClick={() => setStep(1)}
+                disabled={saving}
+              >
                 <ArrowLeft className="me-1.5 h-4 w-4" /> {t('aimport.back')}
               </Button>
               <Button
                 type="button"
-                className="rounded-xl"
+                className="flex-1 rounded-xl sm:flex-none"
                 onClick={save}
                 disabled={saving || !analysis?.entries.length}
               >
@@ -266,7 +277,11 @@ export default function AttendanceImportDialog({ open, onOpenChange, farms = [],
           )}
 
           {step === 3 && (
-            <Button type="button" className="rounded-xl" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              className="flex-1 rounded-xl sm:flex-none"
+              onClick={() => onOpenChange(false)}
+            >
               {t('aimport.close')}
             </Button>
           )}
