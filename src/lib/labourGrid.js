@@ -40,13 +40,16 @@ function groupOf(worker, options) {
   return { key: 'loose', rank: 2, order: '', label: options.noTeamLabel, kind: 'loose' };
 }
 
-// Row order inside a group: the transporter pays first, then the caporal, then the fixed
-// workers, then the mobile workers, and the mobile workers without a team last.
+// Presence priority: 1 all year, 2 depending on the season, 3 rarely present.
+function priorityOf(worker) {
+  const value = Number(worker?.priority);
+  return value === 2 || value === 3 ? value : 1;
+}
+
+// Row order inside a group: the transporter pays first, then the workers by presence
+// priority (1, then 2, then 3), the caporal ahead of his own group at the same priority.
 function rowRank(worker) {
-  if (isCaporal(worker)) return 0;
-  if (worker?.farm) return 1;
-  if (worker?.team) return 2;
-  return 3;
+  return priorityOf(worker);
 }
 
 export function buildLabourGroups({ reports = [], workers = [], rateIndex, transport, options = {} }) {
@@ -81,6 +84,7 @@ export function buildLabourGroups({ reports = [], workers = [], rateIndex, trans
     group.rows.push({
       key: workerId,
       rank: rowRank(worker),
+      caporal: isCaporal(worker),
       name: worker?.name || options.unknownLabel || '',
       job: worker?.worker_function || '',
       salary: entry.days ? entry.cost / entry.days : 0,
@@ -124,7 +128,10 @@ export function buildLabourGroups({ reports = [], workers = [], rateIndex, trans
     .map((group) => ({
       ...group,
       rows: [...group.rows].sort(
-        (a, b) => a.rank - b.rank || String(a.name).localeCompare(String(b.name)),
+        (a, b) =>
+          a.rank - b.rank
+          || (b.caporal ? 1 : 0) - (a.caporal ? 1 : 0)
+          || String(a.name).localeCompare(String(b.name)),
       ),
       total: group.wages + group.transport,
     }))
