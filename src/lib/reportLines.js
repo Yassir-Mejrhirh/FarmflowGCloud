@@ -21,6 +21,27 @@ export function newLine() {
   };
 }
 
+// The draft keeps numbers: the pump fields and the quantities are typed as text.
+export function draftLine(line) {
+  const num = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  return {
+    ...line,
+    pump_hours: num(line.pump_hours),
+    water_m3: num(line.water_m3),
+    labour: (line.labour || []).map((row) => ({ ...row, days: num(row.days) })),
+    machinery: (line.machinery || []).map((row) => ({
+      ...row,
+      hours: num(row.hours),
+      fuel_quantity: num(row.fuel_quantity),
+      lubricant_quantity: num(row.lubricant_quantity),
+    })),
+    inputs: (line.inputs || []).map((row) => ({ ...row, quantity: num(row.quantity) })),
+  };
+}
+
 export function lineOutflow(line) {
   return buildReportOutflow(line?.inputs || [], line?.machinery || []);
 }

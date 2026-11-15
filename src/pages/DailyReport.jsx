@@ -18,7 +18,7 @@ import { buildRateIndex } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
 import { assignedToFarm } from '@/lib/workerFarms';
 import { buildEditDraft, entryReports } from '@/lib/reportDraft';
-import { lineIssues, lineOutflow, newLine, shortagesOf } from '@/lib/reportLines';
+import { draftLine, lineIssues, lineOutflow, newLine, shortagesOf } from '@/lib/reportLines';
 import { commitLine } from '@/lib/reportCommit';
 import { applyReportHours, reportHoursByMachine } from '@/lib/machineCounter';
 import { demandByStorage, mergeDemand } from '@/lib/reportStock';
@@ -207,15 +207,17 @@ export default function DailyReport() {
     if (!date || !farmId) return undefined;
     if (loadedKeyRef.current !== draftKey) return undefined;
     // An untouched empty line is not worth keeping in the draft.
-    const kept = lines.filter(
-      (line) =>
-        line.task_id ||
-        line.block_ids.length ||
-        line.description ||
-        (line.labour || []).length ||
-        (line.machinery || []).length ||
-        (line.inputs || []).length,
-    );
+    const kept = lines
+      .filter(
+        (line) =>
+          line.task_id ||
+          line.block_ids.length ||
+          line.description ||
+          (line.labour || []).length ||
+          (line.machinery || []).length ||
+          (line.inputs || []).length,
+      )
+      .map(draftLine);
     const payload = JSON.stringify(kept);
     if (payload === savedRef.current) return undefined;
     if (!kept.length && !draftId) return undefined;
