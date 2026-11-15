@@ -42,6 +42,8 @@ export default function LabourStatus() {
   const [pointages, setPointages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [simulated, setSimulated] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const halfOptions = [
     { value: 'first', label: t('lab.halfFirst') },
@@ -71,16 +73,21 @@ export default function LabourStatus() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const [blockRows, farmRows] = await Promise.all([
-        fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
-        fetchList(base44.entities.Farm, {}, { sort: 'name' }),
-      ]);
-      if (!active) return;
-      setBlocks(blockRows);
-      const names = new Set();
-      farmRows.forEach((farm) => farm.name && names.add(farm.name));
-      blockRows.forEach((block) => block.farm && names.add(block.farm));
-      setFarmNames([...names].sort((a, b) => a.localeCompare(b)));
+      // Parcels and farms only feed the farm filter: a failure here must not break the screen.
+      try {
+        const [blockRows, farmRows] = await Promise.all([
+          fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
+          fetchList(base44.entities.Farm, {}, { sort: 'name' }),
+        ]);
+        if (!active) return;
+        setBlocks(blockRows);
+        const names = new Set();
+        farmRows.forEach((farm) => farm.name && names.add(farm.name));
+        blockRows.forEach((block) => block.farm && names.add(block.farm));
+        setFarmNames([...names].sort((a, b) => a.localeCompare(b)));
+      } catch {
+        if (active) setFarmNames([]);
+      }
     };
     load();
     return () => {
@@ -101,27 +108,40 @@ export default function LabourStatus() {
     }
     const load = async () => {
       setLoading(true);
+      setLoadError(false);
       const query = { date: { $gte: range.from, $lte: range.to } };
-      const [workerRows, reportRows, sheetRows, rateRows, transportRows] = await Promise.all([
-        fetchList(base44.entities.Worker, {}, { sort: 'name' }),
-        fetchList(base44.entities.DailyReport, query),
-        fetchList(base44.entities.AttendanceSheet, query),
-        fetchList(base44.entities.WageRate, {}),
-        fetchList(base44.entities.TransportRate, {}),
-      ]);
-      if (!active) return;
-      setWorkers(workerRows);
-      setReports(reportRows);
-      setPointages(sheetRows);
-      setWageRates(rateRows);
-      setTransportRates(transportRows);
-      setLoading(false);
+      // A phone connection can drop during this burst of requests: one fresh attempt is made.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const [workerRows, reportRows, sheetRows, rateRows, transportRows] = await Promise.all([
+            fetchList(base44.entities.Worker, {}, { sort: 'name' }),
+            fetchList(base44.entities.DailyReport, query),
+            fetchList(base44.entities.AttendanceSheet, query),
+            fetchList(base44.entities.WageRate, {}),
+            fetchList(base44.entities.TransportRate, {}),
+          ]);
+          if (!active) return;
+          setWorkers(workerRows);
+          setReports(reportRows);
+          setPointages(sheetRows);
+          setWageRates(rateRows);
+          setTransportRates(transportRows);
+          setLoading(false);
+          return;
+        } catch {
+          if (!active) return;
+          if (attempt === 1) {
+            setLoadError(true);
+            setLoading(false);
+          }
+        }
+      }
     };
     load();
     return () => {
       active = false;
     };
-  }, [range]);
+  }, [range, retryKey]);
 
   const blockMap = useMemo(() => new Map(blocks.map((block) => [block.id, block])), [blocks]);
   const workerMap = useMemo(() => new Map(workers.map((worker) => [worker.id, worker])), [workers]);
@@ -355,6 +375,21 @@ export default function LabourStatus() {
           </div>
         </div>
       </section>
+
+      {loadError && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span className="font-medium">{t('lab.loadFailed')}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="ms-auto rounded-full"
+            onClick={() => setRetryKey((value) => value + 1)}
+          >
+            {t('lab.retry')}
+          </Button>
+        </div>
+      )}
 
       {!range ? (
         <EmptyState
