@@ -10,6 +10,7 @@ import FarmFilter from '@/components/labour/FarmFilter';
 import LabourDailyDetail from '@/components/labour/LabourDailyDetail';
 import TransportersList from '@/components/labour/TransportersList';
 import LabourGrid from '@/components/labour/LabourGrid';
+import PointageStatus from '@/components/labour/PointageStatus';
 import MonthCalendar from '@/components/labour/MonthCalendar';
 import DayField from '@/components/labour/DayField';
 import Segmented from '@/components/Segmented';
@@ -38,6 +39,7 @@ export default function LabourStatus() {
   const [wageRates, setWageRates] = useState([]);
   const [transportRates, setTransportRates] = useState([]);
   const [reports, setReports] = useState([]);
+  const [pointages, setPointages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [simulated, setSimulated] = useState(false);
 
@@ -91,6 +93,7 @@ export default function LabourStatus() {
     // Before a period is chosen, nothing is loaded and nothing is shown.
     if (!range) {
       setReports([]);
+      setPointages([]);
       setLoading(false);
       return () => {
         active = false;
@@ -99,15 +102,17 @@ export default function LabourStatus() {
     const load = async () => {
       setLoading(true);
       const query = { date: { $gte: range.from, $lte: range.to } };
-      const [workerRows, reportRows, rateRows, transportRows] = await Promise.all([
+      const [workerRows, reportRows, sheetRows, rateRows, transportRows] = await Promise.all([
         fetchList(base44.entities.Worker, {}, { sort: 'name' }),
         fetchList(base44.entities.DailyReport, query),
+        fetchList(base44.entities.AttendanceSheet, query),
         fetchList(base44.entities.WageRate, {}),
         fetchList(base44.entities.TransportRate, {}),
       ]);
       if (!active) return;
       setWorkers(workerRows);
       setReports(reportRows);
+      setPointages(sheetRows);
       setWageRates(rateRows);
       setTransportRates(transportRows);
       setLoading(false);
@@ -130,6 +135,12 @@ export default function LabourStatus() {
       return farm ? selectedFarms.includes(farm) : false;
     });
   }, [simulated, reports, workers, blocks, selectedFarms, blockMap]);
+
+  // Pointages of the period, narrowed to the farms chosen.
+  const filteredPointages = useMemo(() => {
+    if (!selectedFarms.length) return pointages;
+    return pointages.filter((sheet) => sheet.farm_name && selectedFarms.includes(sheet.farm_name));
+  }, [pointages, selectedFarms]);
 
   // Transport is valued apart from the wage: a per-person amount for each day worked,
   // or a fixed amount counted once for the transporter and the team of the day.
@@ -368,6 +379,10 @@ export default function LabourStatus() {
       </section>
 
       <LabourGrid groups={groups} days={days} loading={loading} />
+
+      {!simulated && (
+        <PointageStatus pointages={filteredPointages} reports={reports} loading={loading} />
+      )}
 
       <TransportersList rows={transport.transporters} total={totalTransport} loading={loading} />
 
