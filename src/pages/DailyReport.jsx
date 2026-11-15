@@ -7,6 +7,7 @@ import DraftHeader from '@/components/dailyreport/DraftHeader';
 import TaskLineCard from '@/components/dailyreport/TaskLineCard';
 import ReportHistory from '@/components/dailyreport/ReportHistory';
 import ReportEditDialog from '@/components/dailyreport/ReportEditDialog';
+import UnsoldDialog from '@/components/dailyreport/UnsoldDialog';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
 import { todayISO } from '@/lib/format';
@@ -18,6 +19,7 @@ import { buildRateIndex } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
 import { assignedToFarm } from '@/lib/workerFarms';
 import { buildEditDraft, entryReports } from '@/lib/reportDraft';
+import { addLabourDays, assignedDays, remainingDays, unsoldWorkers } from '@/lib/pointageBalance';
 import { draftLine, lineIssues, lineOutflow, newLine, shortagesOf } from '@/lib/reportLines';
 import { commitLine } from '@/lib/reportCommit';
 import { applyReportHours, reportHoursByMachine } from '@/lib/machineCounter';
@@ -58,6 +60,7 @@ export default function DailyReport() {
   const [editing, setEditing] = useState(null);
   const [editChoice, setEditChoice] = useState(null);
   const [message, setMessage] = useState(null);
+  const [unsold, setUnsold] = useState([]);
 
   const draftKey = `${date}|${farmId}`;
   const loadedKeyRef = useRef('');
@@ -167,6 +170,7 @@ export default function DailyReport() {
         setLines(loaded);
         setIssuesByLine({});
         setOpenKey(null);
+        setUnsold([]);
       })
       .finally(() => {
         if (!cancelled) setLoadingDraft(false);
@@ -235,35 +239,29 @@ export default function DailyReport() {
     return () => clearTimeout(timer);
   }, [lines, draftKey, draftId, date, farmId, farmName]);
 
-  // A worker clocked in any report of the same day cannot be pointed a second time,
-  // whatever the farm or the task. The workers of the line being written stay visible.
-  const takenBase = useMemo(() => {
-    const taken = new Set();
-    const reopened = new Set(editing ? editing.rows.map((row) => row.id) : []);
-    reports
-      .filter((report) => report.date === date && !reopened.has(report.id))
-      .forEach((report) => (report.labour || []).forEach((row) => row.worker_id && taken.add(row.worker_id)));
-    return taken;
-  }, [reports, date, editing]);
+  // Days already given to the reports of that farm and that day: what is left of each
+  // pointed worker is what its labour lines have yet to carry.
+  const assignedMap = useMemo(() => {
+    if (!date || !farmName) return new Map();
+    const excluded = new Set(editing ? editing.rows.map((row) => row.id) : []);
+    const map = assignedDays(reports, { date, farmName, blockMap, excludeIds: excluded });
+    if (editing) addLabourDays(map, editing.line.labour);
+    return map;
+  }, [reports, date, farmName, blockMap, editing]);
 
+  const pointageRemaining = useMemo(
+    () => remainingDays(pointageDays, assignedMap),
+    [pointageDays, assignedMap],
+  );
+
+  // The labour list holds only the workers pointed for that farm and that day: the
+  // farm's own workers first, then the teams, and the workers without a team last.
   const labourGroupsFor = (line) => {
     const own = new Set((line?.labour || []).map((row) => row.worker_id).filter(Boolean));
-    const taken = new Set(takenBase);
-    [...lines, ...(editing ? [editing.line] : [])].forEach((other) => {
-      if (!other || other.key === line?.key) return;
-      (other.labour || []).forEach((row) => row.worker_id && taken.add(row.worker_id));
-    });
-
-    const available = workers.filter((worker) => own.has(worker.id) || !taken.has(worker.id));
-    // The workers pointed on that day and farm come first, with the days of the pointage.
-    const pointed = available.filter((worker) => pointageDays.has(worker.id));
-    const others = available.filter((worker) => !pointed.includes(worker));
+    const proposed = workers.filter((worker) => pointageDays.has(worker.id) || own.has(worker.id));
+    const fixed = farmName ? proposed.filter((worker) => assignedToFarm(worker, farmName)) : [];
+    const rest = proposed.filter((worker) => !fixed.includes(worker));
     const groups = [];
-    if (pointed.length) {
-      groups.push({ key: 'pointage', label: t('report.labourPointage'), workers: pointed });
-    }
-    const fixed = farmName ? others.filter((worker) => assignedToFarm(worker, farmName)) : [];
-    const rest = others.filter((worker) => !fixed.includes(worker));
     if (fixed.length) {
       groups.push({ key: 'farm', label: t('report.labourFarmFixed', { farm: farmName }), workers: fixed });
     }
@@ -308,7 +306,7 @@ export default function DailyReport() {
   const ctx = {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, date,
-    storages, invoices, onHand: storageOnHand, farmName, pointageDays,
+    storages, invoices, onHand: storageOnHand, farmName, pointageDays, pointageRemaining,
   };
 
   const addLine = () => {
@@ -413,6 +411,18 @@ export default function DailyReport() {
       setMessage({ tone: 'error', key: 'report.commitPending', vars: { n: pending.length } });
       return;
     }
+
+    // The validation of a farm's report waits for the pointage of the day to be entirely
+    // given out: every pointed worker must have all his days assigned to the reports.
+    const left = new Map(assignedMap);
+    active.forEach((line) => addLabourDays(left, line.labour));
+    const notSettled = unsoldWorkers({ pointageDays, assigned: left, workerMap });
+    if (notSettled.length) {
+      setUnsold(notSettled);
+      setMessage({ tone: 'error', key: 'report.unsoldBlocked' });
+      return;
+    }
+    setUnsold([]);
 
     // Each depot answers only for its own stock: the demands of all lines are gathered
     // per depot before anything is written.
@@ -641,6 +651,14 @@ export default function DailyReport() {
         refreshKey={version}
         onEdit={openEdit}
         onDelete={removeReport}
+      />
+
+      <UnsoldDialog
+        open={unsold.length > 0}
+        workers={unsold}
+        date={date}
+        farmName={farmName}
+        onClose={() => setUnsold([])}
       />
 
       <ReportEditDialog

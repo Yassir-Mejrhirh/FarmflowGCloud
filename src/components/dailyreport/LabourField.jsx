@@ -3,24 +3,30 @@ import { Check, ChevronDown, Plus, Trash2, Users } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
+import { fmtNum } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
 
-// Labour is picked from collapsible team sections: the workers fixed to the chosen
-// farm come first, then the rest grouped by team.
+// Labour is picked from collapsible team sections: the workers pointed on that farm
+// and that day come first, the farm's own ones at the top, then the teams.
 export default function LabourField({
-  title, placeholder, lines, onChange, groups, workerMap, qtyLabel, emptyLabel, renderMeta, suggested,
+  title, placeholder, lines, onChange, groups, workerMap, qtyLabel, emptyLabel, renderMeta, suggested, remaining,
 }) {
   const { t } = useI18n();
   // A section opens on demand; the first one (the farm's own workers) opens by default.
   const [opened, setOpened] = useState({});
 
   const picked = (workerId) => lines.some((line) => line.worker_id === workerId);
+  const leftOf = (workerId) =>
+    remaining instanceof Map && remaining.has(workerId) ? Number(remaining.get(workerId)) || 0 : null;
+
   const addWorker = (workerId) => {
     if (picked(workerId)) return;
-    // A worker pointed that day arrives with the days already written on the pointage.
+    // A pointed worker arrives with what the pointage still has to give him.
+    const left = leftOf(workerId);
     const pointed = suggested instanceof Map ? Number(suggested.get(workerId)) || 0 : 0;
-    onChange([...lines, { worker_id: workerId, days: pointed > 0 ? String(pointed) : '1' }]);
+    const days = left > 0 ? left : pointed > 0 ? pointed : 1;
+    onChange([...lines, { worker_id: workerId, days: String(days) }]);
   };
   const update = (index, patch) => onChange(lines.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   const remove = (index) => onChange(lines.filter((_, i) => i !== index));
@@ -104,6 +110,7 @@ export default function LabourField({
                         <div className="grid gap-1.5 border-t border-border/60 p-2 sm:grid-cols-2">
                           {group.workers.map((worker) => {
                             const isPicked = picked(worker.id);
+                            const left = leftOf(worker.id);
                             return (
                               <button
                                 key={worker.id}
@@ -123,6 +130,16 @@ export default function LabourField({
                                   <Plus className="h-3 w-3 shrink-0 opacity-60" />
                                 )}
                                 <span className="truncate">{worker.name}</span>
+                                {left !== null && (
+                                  <span
+                                    className={cn(
+                                      'ms-auto shrink-0 text-[10px] tabular-nums',
+                                      left > 0 ? 'font-medium text-primary' : 'text-muted-foreground',
+                                    )}
+                                  >
+                                    {t('report.pointageLeft', { n: fmtNum(left, 2) })}
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
@@ -133,7 +150,7 @@ export default function LabourField({
                 })}
               </div>
             )}
-            <p className="text-[10px] leading-snug text-muted-foreground">{t('report.labourHidden')}</p>
+            <p className="text-[10px] leading-snug text-muted-foreground">{t('report.labourPointageOnly')}</p>
           </div>
         </PopoverContent>
       </Popover>

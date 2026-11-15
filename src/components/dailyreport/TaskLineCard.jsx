@@ -31,7 +31,7 @@ export default function TaskLineCard({
   const {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, replaced, date,
-    storages, invoices, onHand, farmName, pointageDays,
+    storages, invoices, onHand, farmName, pointageDays, pointageRemaining,
   } = ctx;
 
   const task = tasks.find((row) => row.id === line.task_id);
@@ -155,6 +155,7 @@ export default function TaskLineCard({
                 qtyLabel={t('report.days')}
                 emptyLabel={t('report.noLabour')}
                 suggested={pointageDays}
+                remaining={pointageRemaining}
                 renderMeta={(row) => (
                   <LabourRateNote
                     line={row}

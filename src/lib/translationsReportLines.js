@@ -24,6 +24,16 @@ export const REPORT_LINES_TRANSLATIONS = {
     'report.commitHint':
       'La validation enregistre les rapports, le stock et les compteurs horaires de toutes les lignes prévalidées.',
     'report.commitPending': '{n} ligne(s) restent à prévalider.',
+    'report.unsoldTitle': 'Ouvriers non soldés',
+    'report.unsoldBody':
+      'Validation bloquée : {n} ouvrier(s) pointé(s) le {date} pour {farm} n’ont pas encore tous leurs jours affectés dans les rapports.',
+    'report.unsoldBlocked':
+      'Validation bloquée : le pointage du jour n’est pas entièrement affecté. Voir les ouvriers non soldés.',
+    'report.unsoldLine': '{pointed} j pointés · {assigned} affectés · reste {left} j',
+    'report.unsoldClose': 'Fermer',
+    'report.pointageLeft': 'reste {n} j',
+    'report.labourPointageOnly':
+      'Seuls les ouvriers du pointage de cette ferme et de ce jour sont proposés, avec les jours qui leur restent à affecter.',
     'report.commitDone': 'Rapport validé pour {farm}. Ferme suivante : {next}.',
     'report.commitDoneLast': 'Rapport validé pour {farm}. Toutes les fermes du jour sont saisies.',
     'report.commitFailed': 'La validation a échoué. Réessayez.',
@@ -64,6 +74,15 @@ export const REPORT_LINES_TRANSLATIONS = {
     'report.commit': 'المصادقة على التقرير',
     'report.commitHint': 'تُحفظ المصادقة التقارير والمخزون وعدادات الساعات لكل الأسطر المصادق عليها.',
     'report.commitPending': 'يتبقى {n} سطر للمصادقة عليه.',
+    'report.unsoldTitle': 'عمال غير مسوّين',
+    'report.unsoldBody':
+      'المصادقة موقوفة: {n} عاملاً مسجلين بتاريخ {date} في {farm} لم تُوزَّع كل أيامهم في التقارير.',
+    'report.unsoldBlocked': 'المصادقة موقوفة: لم تُوزَّع كل أيام الحضور المسجلة في هذا اليوم. راجع العمال غير المسوّين.',
+    'report.unsoldLine': '{pointed} يوم مسجل · {assigned} موزع · يتبقى {left} يوم',
+    'report.unsoldClose': 'إغلاق',
+    'report.pointageLeft': 'يتبقى {n} يوم',
+    'report.labourPointageOnly':
+      'تُقترح فقط عمال الحضور المسجلين لهذه المزرعة وهذا اليوم، مع الأيام المتبقية لتوزيعها.',
     'report.commitDone': 'تمت المصادقة على تقرير {farm}. المزرعة التالية: {next}.',
     'report.commitDoneLast': 'تمت المصادقة على تقرير {farm}. كل مزارع اليوم مسجلة.',
     'report.commitFailed': 'فشلت المصادقة. أعد المحاولة.',
