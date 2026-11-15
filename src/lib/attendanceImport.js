@@ -28,10 +28,29 @@ function fromSerial(serial) {
   return iso(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
 }
 
+// Noms de mois écrits en toutes lettres, en français et en arabe.
+const MONTH_NAMES = {
+  janvier: 1, janv: 1, jan: 1, fevrier: 2, fevr: 2, fev: 2,
+  mars: 3, mar: 3, avril: 4, avr: 4, mai: 5, juin: 6,
+  juillet: 7, juil: 7, aout: 8, aou: 8, septembre: 9, sept: 9, sep: 9,
+  octobre: 10, oct: 10, novembre: 11, nov: 11, decembre: 12, dec: 12,
+  'يناير': 1, 'فبراير': 2, 'مارس': 3, 'ابريل': 4, 'أبريل': 4, 'ماي': 5, 'مايو': 5,
+  'يونيو': 6, 'يوليوز': 7, 'يوليو': 7, 'غشت': 8, 'اغسطس': 8, 'أغسطس': 8,
+  'شتنبر': 9, 'سبتمبر': 9, 'اكتوبر': 10, 'أكتوبر': 10, 'نونبر': 11, 'نوفمبر': 11,
+  'دجنبر': 12, 'ديسمبر': 12,
+};
+
+const monthNumber = (word) => MONTH_NAMES[normalize(word).replace(/\./g, '')] || 0;
+
+// Un en-tête de colonne peut commencer par le jour de la semaine (« sam 01/11 »).
+const WEEKDAY = /^(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|lun|mar|mer|jeu|ven|sam|dim|mon|tue|wed|thu|fri|sat|sun|الاثنين|الإثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|السبت|الأحد|الاحد)\s*\.?\s*/i;
+
 // Un en-tête de colonne donne la date du jour ; sans mois ni année, la date de
 // référence complète l'en-tête.
 export function parseHeaderDate(value, reference = new Date()) {
-  const text = String(value ?? '').trim();
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const text = raw.replace(WEEKDAY, '').trim();
   if (!text) return '';
 
   const yearFirst = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(text);
@@ -47,6 +66,20 @@ export function parseHeaderDate(value, reference = new Date()) {
       if (dayFirst[3].length === 2) year += 2000;
     }
     return iso(year, month, day);
+  }
+
+  // « 3 nov », « 03-nov-2026 », « 3 نوفمبر ».
+  const named = /^(\d{1,2})[\s./-]*([a-z\u0600-\u06FF]{3,})[\s./-]*(\d{2,4})?$/i.exec(text);
+  if (named) {
+    const month = monthNumber(named[2]);
+    if (month) {
+      let year = reference.getFullYear();
+      if (named[3]) {
+        year = Number(named[3]);
+        if (named[3].length === 2) year += 2000;
+      }
+      return iso(year, month, Number(named[1]));
+    }
   }
 
   if (/^\d+(\.\d+)?$/.test(text)) {
@@ -75,11 +108,14 @@ export function findWorker(index, name) {
   return index.get(normalize(name)) || index.get(compact(name)) || null;
 }
 
-// Ligne d'en-tête : celle qui contient le plus de jours reconnus.
-export function detectGrid(rows, reference = new Date()) {
+// Grille du classeur : la ligne des dates (en général la première), puis la ligne
+// d'attribution des fermes qui suit et colore les colonnes. Les pointages
+// commencent sous ces deux lignes.
+export function detectGrid(rows, reference = new Date(), fills = [], farms = []) {
+  const farmNames = new Set(farms.map((farm) => normalize(farm.name)).filter(Boolean));
   let headerIndex = -1;
   let best = 0;
-  const limit = Math.min(rows.length, 15);
+  const limit = Math.min(rows.length, 10);
   for (let row = 0; row < limit; row += 1) {
     const count = (rows[row] || []).filter((cell) => parseHeaderDate(cell, reference)).length;
     if (count > best) {
@@ -94,14 +130,44 @@ export function detectGrid(rows, reference = new Date()) {
     const date = parseHeaderDate(cell, reference);
     if (date) dayColumns.push({ index, date, label: String(cell ?? '').trim() });
   });
-  return { headerIndex, dayColumns };
+
+  // Ligne d'attribution : elle colore la plupart des colonnes de jours et ne
+  // porte pas de valeur de présence, contrairement à une ligne d'ouvrier.
+  const threshold = Math.max(2, Math.ceil(dayColumns.length * 0.6));
+  let colorRow = -1;
+  for (let row = headerIndex + 1; row <= Math.min(headerIndex + 2, rows.length - 1); row += 1) {
+    if (!rows[row]) continue;
+    const colored = dayColumns.filter(({ index }) => String(fills?.[row]?.[index] || '')).length;
+    const filled = dayColumns.filter(({ index }) => /^\d/.test(String(rows[row][index] ?? '').trim())).length;
+    const named = farmNames.size > 0 && (rows[row] || []).some((cell) => farmNames.has(normalize(cell)));
+    if ((colored >= threshold && filled <= Math.floor(dayColumns.length * 0.2)) || (named && filled === 0)) {
+      colorRow = row;
+      break;
+    }
+  }
+
+  const columnColors = {};
+  if (colorRow >= 0) {
+    dayColumns.forEach(({ index }) => {
+      const color = String(fills?.[colorRow]?.[index] || '').toUpperCase();
+      if (color) columnColors[index] = color;
+    });
+  }
+
+  return {
+    headerIndex,
+    colorRow,
+    columnColors,
+    dataStart: (colorRow >= 0 ? colorRow : headerIndex) + 1,
+    dayColumns,
+  };
 }
 
 // Colonne des noms : celle où les ouvriers connus se retrouvent le plus.
-export function findNameColumn(rows, headerIndex, dayColumns, workers = []) {
-  const blocked = new Set(dayColumns.map((column) => column.index));
+export function findNameColumn(rows, grid, workers = []) {
+  const blocked = new Set(grid.dayColumns.map((column) => column.index));
   const index = workerIndexes(workers);
-  const body = rows.slice(headerIndex + 1);
+  const body = rows.slice(grid.dataStart);
   const width = body.reduce((widest, row) => Math.max(widest, row?.length || 0), 0);
 
   let bestIndex = -1;
@@ -131,12 +197,13 @@ export function findNameColumn(rows, headerIndex, dayColumns, workers = []) {
 // Couleurs présentes dans les colonnes de jours, avec le nombre de cellules.
 export function detectColors(rows, fills, grid) {
   const counts = new Map();
-  for (let row = grid.headerIndex + 1; row < rows.length; row += 1) {
-    grid.dayColumns.forEach(({ index }) => {
-      const color = String(fills?.[row]?.[index] || '').toUpperCase();
-      if (!color) return;
-      counts.set(color, (counts.get(color) || 0) + 1);
-    });
+  const bump = (color) => {
+    if (color) counts.set(color, (counts.get(color) || 0) + 1);
+  };
+  // Les couleurs de la ligne d'attribution donnent la ferme de chaque colonne.
+  Object.values(grid.columnColors || {}).forEach(bump);
+  for (let row = grid.dataStart; row < rows.length; row += 1) {
+    grid.dayColumns.forEach(({ index }) => bump(String(fills?.[row]?.[index] || '').toUpperCase()));
   }
   return [...counts.entries()]
     .map(([color, count]) => ({ color, count }))
@@ -170,16 +237,27 @@ export function buildAnalysis({ rows, fills, grid, nameColumn, workers, farms, c
   const unknown = new Map();
   const unmapped = new Set();
   const missingColor = { count: 0, samples: [] };
+  const columns = grid.dayColumns.map(({ index: column, date }) => ({
+    column,
+    date,
+    color: grid.columnColors?.[column] || '',
+  }));
 
-  for (let row = grid.headerIndex + 1; row < rows.length; row += 1) {
+  for (let row = grid.dataStart; row < rows.length; row += 1) {
     const cells = rows[row] || [];
     const name = String(cells[nameColumn] ?? '').trim();
     if (!name) continue;
     const worker = findWorker(index, name);
 
-    grid.dayColumns.forEach(({ index: column, date }) => {
+    columns.forEach(({ column, date, color: columnColor }) => {
       const raw = String(cells[column] ?? '').trim();
-      const color = String(fills?.[row]?.[column] || '').toUpperCase();
+      // La couleur de la ligne d'attribution donne la ferme de la colonne ; à
+      // défaut, la couleur de la cellule de présence la donne.
+      const cellColor = String(fills?.[row]?.[column] || '').toUpperCase();
+      const color = columnColor || cellColor;
+
+      // Une cellule vide ne compte que si elle est elle-même colorée.
+      if (!raw && !cellColor) return;
 
       if (!color) {
         if (raw) {

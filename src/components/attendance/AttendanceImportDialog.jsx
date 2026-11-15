@@ -38,9 +38,12 @@ export default function AttendanceImportDialog({ open, onOpenChange, farms = [],
   }, [open]);
 
   const reference = useMemo(() => new Date(`${refDate}T00:00:00`), [refDate]);
-  const grid = useMemo(() => (sheet ? detectGrid(sheet.rows, reference) : null), [sheet, reference]);
+  const grid = useMemo(
+    () => (sheet ? detectGrid(sheet.rows, reference, sheet.fills, farms) : null),
+    [sheet, reference, farms],
+  );
   const nameColumn = useMemo(
-    () => (sheet && grid ? findNameColumn(sheet.rows, grid.headerIndex, grid.dayColumns, workers) : -1),
+    () => (sheet && grid ? findNameColumn(sheet.rows, grid, workers) : -1),
     [sheet, grid, workers],
   );
   const colors = useMemo(() => (sheet && grid ? detectColors(sheet.rows, sheet.fills, grid) : []), [sheet, grid]);
