@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { CheckCircle2, ClipboardList, FileSpreadsheet } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ClipboardList, FileSpreadsheet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
@@ -8,6 +9,8 @@ import DayField from '@/components/labour/DayField';
 import PointageWorkerList from '@/components/attendance/PointageWorkerList';
 import AttendanceImportDialog from '@/components/attendance/AttendanceImportDialog';
 import ImportHistory from '@/components/attendance/ImportHistory';
+import ReconcileQueue from '@/components/reconcile/ReconcileQueue';
+import { integrateQueueItem } from '@/lib/attendanceReconcile';
 import { Button } from '@/components/ui/button';
 import { fetchList } from '@/lib/data';
 import { fmtNum, todayISO } from '@/lib/format';
@@ -32,6 +35,8 @@ export default function Attendance() {
   const [imports, setImports] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [queue, setQueue] = useState([]);
+  const [queueLoading, setQueueLoading] = useState(true);
 
   const loadLists = async () => {
     const [farmRows, workerRows] = await Promise.all([
@@ -52,10 +57,35 @@ export default function Attendance() {
     }
   };
 
+  // Liste d'attente des pointages rapprochés, tenue par la section de rapprochement.
+  const loadQueue = async () => {
+    setQueueLoading(true);
+    try {
+      const rows = await fetchList(base44.entities.AttendanceReconciliation, {}, { sort: '-created_date', limit: 20 });
+      setQueue(rows);
+    } finally {
+      setQueueLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadLists();
     loadImports();
+    loadQueue();
   }, []);
+
+  // Intégration d'un pointage rapproché : il devient un pointage du jour.
+  const integrateReconciliation = async (item) => {
+    const result = await integrateQueueItem(item);
+    await loadQueue();
+    setRefreshToken((token) => token + 1);
+    return result;
+  };
+
+  const deleteReconciliation = async (item) => {
+    await base44.entities.AttendanceReconciliation.delete(item.id);
+    await loadQueue();
+  };
 
   // Retire l'import de l'historique ; les feuilles de pointage qu'il a écrites restent.
   const deleteImport = async (id) => {
@@ -186,10 +216,18 @@ export default function Attendance() {
         title={t('att.title')}
         description={t('att.description')}
         action={
-          <Button type="button" variant="outline" className="rounded-xl" onClick={() => setImportOpen(true)}>
-            <FileSpreadsheet className="h-4 w-4" />
-            {t('aimport.button')}
-          </Button>
+          <>
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link to="/attendance-reconciliation">
+                <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+                {t('rec.title')}
+              </Link>
+            </Button>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setImportOpen(true)}>
+              <FileSpreadsheet className="h-4 w-4" />
+              {t('aimport.button')}
+            </Button>
+          </>
         }
       />
 
@@ -241,6 +279,14 @@ export default function Attendance() {
           </p>
         )}
       </section>
+
+      <ReconcileQueue
+        items={queue}
+        loading={queueLoading}
+        onIntegrate={integrateReconciliation}
+        onDelete={deleteReconciliation}
+        defaultCollapsed
+      />
 
       <ImportHistory
         imports={imports}

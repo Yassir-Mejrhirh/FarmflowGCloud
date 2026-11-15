@@ -24,6 +24,7 @@ import Storages from '@/pages/Storages';
 import PlantingEntry from '@/pages/PlantingEntry';
 import DailyReport from '@/pages/DailyReport';
 import Attendance from '@/pages/Attendance';
+import AttendanceReconciliation from '@/pages/AttendanceReconciliation';
 import InputInvoices from '@/pages/InputInvoices';
 import InputInvoicesList from '@/pages/InputInvoicesList';
 import StockCount from '@/pages/StockCount';
@@ -82,6 +83,7 @@ const AuthenticatedApp = () => {
         <Route path="/planting" element={<PlantingEntry />} />
         <Route path="/daily-report" element={<DailyReport />} />
         <Route path="/attendance" element={<Attendance />} />
+        <Route path="/attendance-reconciliation" element={<AttendanceReconciliation />} />
         <Route path="/input-invoices" element={<InputInvoices />} />
         <Route path="/input-invoices/all" element={<InputInvoicesList />} />
         <Route path="/stock-count" element={<StockCount />} />

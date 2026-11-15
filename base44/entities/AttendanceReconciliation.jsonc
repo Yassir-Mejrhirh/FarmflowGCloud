@@ -1,0 +1,129 @@
+{
+  "name": "AttendanceReconciliation",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company this record belongs to"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Name of the spreadsheet that was reconciled"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "applied"
+      ],
+      "enumColors": [
+        "yellow",
+        "green"
+      ],
+      "default": "pending",
+      "description": "Whether the reconciled pointage is still waiting to be written into the attendance module"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "First day of the reconciled pointage"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Last day of the reconciled pointage"
+    },
+    "farm_names": {
+      "type": "array",
+      "description": "Farms the reconciled pointage covers",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lines": {
+      "type": "array",
+      "description": "One line per worker and per farm, with the days worked on each date and the daily rate applied",
+      "items": {
+        "type": "object",
+        "properties": {
+          "worker_id": {
+            "type": "string"
+          },
+          "worker_name": {
+            "type": "string"
+          },
+          "farm_id": {
+            "type": "string"
+          },
+          "farm_name": {
+            "type": "string"
+          },
+          "daily_rate": {
+            "type": "number"
+          },
+          "total_days": {
+            "type": "number"
+          },
+          "days": {
+            "type": "object",
+            "description": "Days worked on each date, keyed by date (YYYY-MM-DD)",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "source_names": {
+            "type": "array",
+            "description": "Names written in the spreadsheet that were matched to this worker",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "unmatched": {
+      "type": "array",
+      "description": "Names of the spreadsheet left out of the reconciliation",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "days": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "workers_count": {
+      "type": "number",
+      "description": "Workers kept in the reconciled pointage"
+    },
+    "total_days": {
+      "type": "number",
+      "description": "Days worked kept in the reconciliation"
+    },
+    "total_cost": {
+      "type": "number",
+      "description": "Wage total of the reconciled pointage, from the daily rates"
+    },
+    "applied_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Day the reconciliation was written into the attendance module"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "file_name"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}
