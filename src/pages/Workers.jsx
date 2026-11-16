@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { FileSpreadsheet, Plus, Users, Wallet } from 'lucide-react';
+import { FileSpreadsheet, Plus, Printer, Users, Wallet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import WorkerTable from '@/components/workers/WorkerTable';
 import WageHistoryDialog from '@/components/workers/WageHistoryDialog';
 import TeamRateDialog from '@/components/workers/TeamRateDialog';
 import WorkerImportDialog from '@/components/workers/import/WorkerImportDialog';
+import WorkerPrintDialog from '@/components/workers/WorkerPrintDialog';
 import { fetchList } from '@/lib/data';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ export default function Workers() {
   const [rateWorker, setRateWorker] = useState(null);
   const [teamRateOpen, setTeamRateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [wageRates, setWageRates] = useState([]);
   const [transportRates, setTransportRates] = useState([]);
 
@@ -67,6 +69,9 @@ export default function Workers() {
         description={t('workers.description')}
         action={
           <>
+            <Button variant="outline" className="rounded-xl" onClick={() => setPrintOpen(true)}>
+              <Printer className="mr-1.5 h-4 w-4" /> {t('wprint.open')}
+            </Button>
             <Button variant="outline" className="rounded-xl" onClick={() => setImportOpen(true)}>
               <FileSpreadsheet className="mr-1.5 h-4 w-4" /> {t('wimport.open')}
             </Button>
@@ -137,6 +142,13 @@ export default function Workers() {
         functions={functions}
         workers={workers}
         onImported={load}
+      />
+
+      <WorkerPrintDialog
+        open={printOpen}
+        onOpenChange={setPrintOpen}
+        workers={workers}
+        rates={wageRates}
       />
 
       <WorkerDialog
