@@ -493,6 +493,44 @@ export async function fetchPeriodSheets({ dates = [], farmIds = [] }) {
   );
 }
 
+// Suppression totale : les journées de ce rapprochement sont retirées des feuilles de
+// pointage, une par une, sans toucher aux autres ouvriers ni aux autres pointages de la
+// même feuille. Une feuille vidée de toutes ses lignes est supprimée.
+export async function removeQueueItemPointages(item) {
+  const entries = toEntries(item?.lines || []);
+  if (!entries.length) return { updated: 0, deleted: 0 };
+
+  const targets = new Set(entries.map((entry) => `${entry.date}|${entry.farm_id}|${entry.worker_id}`));
+  const sheets = await fetchPeriodSheets({
+    dates: [...new Set(entries.map((entry) => entry.date))].sort(),
+    farmIds: [...new Set(entries.map((entry) => entry.farm_id))],
+  });
+
+  const updates = [];
+  const emptied = [];
+
+  sheets.forEach((sheet) => {
+    const lines = (sheet.lines || []).filter(
+      (line) => !targets.has(`${sheet.date}|${sheet.farm_id}|${line.worker_id}`),
+    );
+    if (lines.length === (sheet.lines || []).length) return;
+    if (!lines.length) {
+      emptied.push(sheet.id);
+      return;
+    }
+    updates.push({
+      id: sheet.id,
+      lines,
+      total_days: round(lines.reduce((sum, line) => sum + (Number(line.days) || 0), 0)),
+    });
+  });
+
+  if (updates.length) await base44.entities.AttendanceSheet.bulkUpdate(updates);
+  if (emptied.length) await base44.entities.AttendanceSheet.deleteMany({ id: { $in: emptied } });
+
+  return { updated: updates.length, deleted: emptied.length };
+}
+
 // Intégration au module Pointage : les journées validées rejoignent les feuilles
 // existantes de la période, puis la mise en attente passe en « intégré ».
 export async function integrateQueueItem(item) {

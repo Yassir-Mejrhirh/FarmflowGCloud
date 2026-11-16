@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, FileCheck2, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import WorkerName from '@/components/WorkerName';
+import ReconcileDeleteDialog from '@/components/reconcile/ReconcileDeleteDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,30 +23,50 @@ export default function ReconcileQueue({ items = [], loading = false, onIntegrat
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [openId, setOpenId] = useState('');
   const [action, setAction] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState('');
   const [message, setMessage] = useState(null);
 
   const pending = items.filter((item) => item.status !== 'applied');
 
   const run = async () => {
     if (!action) return;
-    setBusy(true);
+    setBusy('integrate');
     setMessage(null);
     try {
-      if (action.type === 'integrate') {
-        const result = await onIntegrate(action.item);
-        setMessage({
-          tone: 'success',
-          text: t('rec.integrateDone', { created: result.created, updated: result.updated }),
-        });
-      } else {
-        await onDelete(action.item);
-      }
+      const result = await onIntegrate(action.item);
+      setMessage({
+        tone: 'success',
+        text: t('rec.integrateDone', { created: result.created, updated: result.updated }),
+      });
       setAction(null);
     } catch {
-      setMessage({ tone: 'error', text: t(action.type === 'integrate' ? 'rec.integrateError' : 'rec.saveError') });
+      setMessage({ tone: 'error', text: t('rec.integrateError') });
     } finally {
-      setBusy(false);
+      setBusy('');
+    }
+  };
+
+  // Suppression : sortie de la liste d'attente seule, ou suppression totale qui retire
+  // aussi du Pointage les journées de ce rapprochement.
+  const remove = async (mode) => {
+    const item = action?.item;
+    if (!item) return;
+    setBusy(mode);
+    setMessage(null);
+    try {
+      const result = await onDelete(item, mode);
+      setMessage({
+        tone: 'success',
+        text:
+          mode === 'full'
+            ? t('rec.deleteFullDone', { updated: result?.updated || 0, deleted: result?.deleted || 0 })
+            : t('rec.deleteQueueDone'),
+      });
+      setAction(null);
+    } catch {
+      setMessage({ tone: 'error', text: t('rec.deleteError') });
+    } finally {
+      setBusy('');
     }
   };
 
@@ -188,46 +209,41 @@ export default function ReconcileQueue({ items = [], loading = false, onIntegrat
         </div>
       )}
 
-      <AlertDialog open={Boolean(action)} onOpenChange={(open) => !open && !busy && setAction(null)}>
+      <AlertDialog
+        open={action?.type === 'integrate'}
+        onOpenChange={(open) => !open && !busy && setAction(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(action?.type === 'integrate' ? 'rec.integrateTitle' : 'rec.deleteTitle')}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{t('rec.integrateTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {action?.type === 'integrate'
-                ? `${action.item.file_name || ''} · ${t('rec.integrateDesc')}`
-                : t('rec.deleteDesc')}
+              {action?.item.file_name || ''} · {t('rec.integrateDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {action?.type === 'integrate' && (
-            <p className="rounded-xl border border-border/70 bg-secondary/40 px-3 py-2 text-[11.5px] tabular-nums">
-              {t('rec.queueItem', {
-                workers: fmtNum(action.item.workers_count, 0),
-                days: fmtNum(action.item.total_days, 1),
-                cost: fmtMoney(action.item.total_cost),
-              })}
-            </p>
-          )}
+          <p className="rounded-xl border border-border/70 bg-secondary/40 px-3 py-2 text-[11.5px] tabular-nums">
+            {t('rec.queueItem', {
+              workers: fmtNum(action?.item?.workers_count, 0),
+              days: fmtNum(action?.item?.total_days, 1),
+              cost: fmtMoney(action?.item?.total_cost),
+            })}
+          </p>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={busy}
-              onClick={run}
-              className={
-                action?.type === 'delete'
-                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                  : ''
-              }
-            >
+            <AlertDialogCancel disabled={Boolean(busy)}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction disabled={Boolean(busy)} onClick={run}>
               {busy && <Loader2 className="me-1.5 h-4 w-4 animate-spin" />}
-              {busy
-                ? t(action?.type === 'delete' ? 'rec.deleting' : 'rec.integrating')
-                : t(action?.type === 'delete' ? 'rec.deleteConfirm' : 'rec.integrateConfirm')}
+              {busy ? t('rec.integrating') : t('rec.integrateConfirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ReconcileDeleteDialog
+        item={action?.type === 'delete' ? action.item : null}
+        open={action?.type === 'delete'}
+        busyMode={busy === 'queue' || busy === 'full' ? busy : ''}
+        onClose={() => !busy && setAction(null)}
+        onDelete={remove}
+      />
     </section>
   );
 }

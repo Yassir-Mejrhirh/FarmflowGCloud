@@ -21,6 +21,7 @@ import {
   excelSalaries,
   fetchPeriodSheets,
   integrateQueueItem,
+  removeQueueItemPointages,
 } from '@/lib/attendanceReconcile';
 import { nameKey, proposeMatches, usageCount } from '@/lib/nameMatch';
 import { fetchList } from '@/lib/data';
@@ -496,9 +497,14 @@ export default function AttendanceReconciliation() {
     return result;
   };
 
-  const remove = async (item) => {
+  // Suppression : « queue » sort seulement la ligne de la liste d'attente ; « full »
+  // retire d'abord du Pointage les journées de ce rapprochement (les autres pointages
+  // des mêmes feuilles restent), puis la ligne de la liste d'attente.
+  const remove = async (item, mode = 'queue') => {
+    const result = mode === 'full' ? await removeQueueItemPointages(item) : { updated: 0, deleted: 0 };
     await base44.entities.AttendanceReconciliation.delete(item.id);
     await loadQueue();
+    return result;
   };
 
   const labels = [t('rec.stepFile'), t('rec.stepNames'), t('rec.stepReview')];
