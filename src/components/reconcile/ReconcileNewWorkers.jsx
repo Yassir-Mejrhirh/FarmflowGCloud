@@ -11,7 +11,7 @@ import { useI18n } from '@/lib/I18nContext';
 // déclaration et sa fonction. Les équipes inconnues reçoivent leur transport.
 export default function ReconcileNewWorkers({
   entries = [], picks, teams = [], transports, teamPicks = {}, onTeamPick, functions = [],
-  onPick, onAdd, adding = false,
+  transporters = [], onRememberTransporter, onPick, onAdd, adding = false,
 }) {
   const { t } = useI18n();
   const selected = entries.filter((entry) => picks.get(entry.name)?.include);
@@ -81,7 +81,13 @@ export default function ReconcileNewWorkers({
         </div>
       </section>
 
-      <ReconcileNewTeams teams={newTeams} settings={teamPicks} onChange={onTeamPick} />
+      <ReconcileNewTeams
+        teams={newTeams}
+        settings={teamPicks}
+        onChange={onTeamPick}
+        transporters={transporters}
+        onRememberTransporter={onRememberTransporter}
+      />
     </>
   );
 }

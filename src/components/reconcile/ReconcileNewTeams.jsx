@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
+import TransporterField from '@/components/reconcile/TransporterField';
 import { useI18n } from '@/lib/I18nContext';
 
 // Les saisies sont gardées ici et remontées après une courte pause : la frappe ne
@@ -11,7 +12,9 @@ const COMMIT_DELAY = 400;
 // Équipes détectées dans le classeur mais absentes de la liste MO : pour chacune, le
 // transporteur, le mode de facturation et le tarif journalier sont saisis ici et
 // repris par les ouvriers créés ensuite.
-export default function ReconcileNewTeams({ teams = [], settings = {}, onChange }) {
+export default function ReconcileNewTeams({
+  teams = [], settings = {}, onChange, transporters = [], onRememberTransporter,
+}) {
   const { t } = useI18n();
   const [draft, setDraft] = useState(settings);
   const pending = useRef({});
@@ -71,11 +74,11 @@ export default function ReconcileNewTeams({ teams = [], settings = {}, onChange 
 
               <div className="mt-2 grid gap-2 sm:grid-cols-3">
                 <Field label={t('rec.transporter')}>
-                  <Input
+                  <TransporterField
                     value={value.transporter || ''}
-                    onChange={(event) => queue(team.key, { transporter: event.target.value })}
-                    onBlur={flush}
-                    placeholder={t('rec.transporterPlaceholder')}
+                    options={transporters}
+                    onChange={(next, instant) => (instant ? choose : queue)(team.key, { transporter: next })}
+                    onRemember={onRememberTransporter}
                   />
                 </Field>
                 <Field label={t('rec.transportMode')}>

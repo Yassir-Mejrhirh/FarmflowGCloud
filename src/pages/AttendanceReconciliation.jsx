@@ -20,7 +20,7 @@ import {
 } from '@/lib/attendanceReconcile';
 import { nameKey, proposeMatches, usageCount } from '@/lib/nameMatch';
 import { fetchList } from '@/lib/data';
-import { fetchGlobalOptions } from '@/lib/globalOptions';
+import { fetchGlobalOptions, rememberGlobalOption } from '@/lib/globalOptions';
 import { addReconcileWorkers, detectTeams, teamKey, teamTransports } from '@/lib/reconcileWorkers';
 import { mappingTerms } from '@/lib/workerImport';
 import { quinzaineOf, quinzaineRange } from '@/lib/quinzaine';
@@ -38,6 +38,7 @@ export default function AttendanceReconciliation() {
   const [wageRates, setWageRates] = useState([]);
   const [transportRates, setTransportRates] = useState([]);
   const [globalTeams, setGlobalTeams] = useState([]);
+  const [transporterNames, setTransporterNames] = useState([]);
   const [queue, setQueue] = useState([]);
   const [queueLoading, setQueueLoading] = useState(true);
 
@@ -77,20 +78,23 @@ export default function AttendanceReconciliation() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const [farmRows, workerRows, rateRows, transportRows, teamRows, functionRows] = await Promise.all([
-        fetchList(base44.entities.Farm, {}, { sort: 'name' }),
-        fetchList(base44.entities.Worker, {}, { sort: 'name' }),
-        fetchList(base44.entities.WageRate, {}),
-        fetchList(base44.entities.TransportRate, {}),
-        fetchGlobalOptions('team'),
-        fetchList(base44.entities.WorkerFunction, {}, { sort: 'name' }),
-      ]);
+      const [farmRows, workerRows, rateRows, transportRows, teamRows, functionRows, transporterRows] =
+        await Promise.all([
+          fetchList(base44.entities.Farm, {}, { sort: 'name' }),
+          fetchList(base44.entities.Worker, {}, { sort: 'name' }),
+          fetchList(base44.entities.WageRate, {}),
+          fetchList(base44.entities.TransportRate, {}),
+          fetchGlobalOptions('team'),
+          fetchList(base44.entities.WorkerFunction, {}, { sort: 'name' }),
+          fetchGlobalOptions('transporter'),
+        ]);
       if (!active) return;
       setFarms(farmRows);
       setWorkers(workerRows.filter((worker) => worker.active !== false));
       setWageRates(rateRows);
       setTransportRates(transportRows);
       setGlobalTeams(teamRows);
+      setTransporterNames(transporterRows);
       setWorkerFunctions(functionRows.map((row) => row.name).filter(Boolean));
     };
     load();
@@ -197,6 +201,30 @@ export default function AttendanceReconciliation() {
     () => teamTransports(workers, transportRates, from || period.start),
     [workers, transportRates, from, period],
   );
+
+  // Transporteurs proposés : ceux déjà enregistrés, complétés par ceux de la liste MO.
+  const transporterChoices = useMemo(() => {
+    const names = [];
+    [
+      ...transporterNames,
+      ...workers.map((worker) => worker.transporter_name),
+      ...transportRates.map((rate) => rate.transporter_name),
+    ].forEach((value) => {
+      const name = String(value || '').trim();
+      if (name && !names.some((existing) => existing.toLowerCase() === name.toLowerCase())) names.push(name);
+    });
+    return names.sort((a, b) => a.localeCompare(b));
+  }, [transporterNames, workers, transportRates]);
+
+  // Un transporteur créé depuis le rapprochement est mémorisé pour les fiches suivantes.
+  const rememberTransporter = (name) => {
+    const clean = String(name || '').trim();
+    if (!clean) return;
+    setTransporterNames((current) =>
+      current.some((existing) => existing.toLowerCase() === clean.toLowerCase()) ? current : [...current, clean],
+    );
+    rememberGlobalOption('transporter', clean);
+  };
 
   // Choix par personne : équipe et salaire lus dans le classeur, tous deux modifiables.
   const picksFor = useMemo(() => {
@@ -475,6 +503,8 @@ export default function AttendanceReconciliation() {
               transports={transports}
               teamPicks={teamPicks}
               onTeamPick={setTeamPick}
+              transporters={transporterChoices}
+              onRememberTransporter={rememberTransporter}
               functions={workerFunctions}
               onPick={setPick}
               onAdd={addToWorkers}
