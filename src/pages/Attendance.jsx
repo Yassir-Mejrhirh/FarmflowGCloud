@@ -289,6 +289,7 @@ export default function Attendance() {
       <SheetPeriodValidation
         farmId={farmId}
         farmName={farmName}
+        farms={farms}
         onChanged={() => setRefreshToken((token) => token + 1)}
       />
 

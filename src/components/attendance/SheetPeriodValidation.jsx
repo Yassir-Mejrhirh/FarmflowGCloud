@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { BadgeCheck, CheckCheck, Loader2 } from 'lucide-react';
 import QuinzainePicker from '@/components/reconcile/QuinzainePicker';
+import Field from '@/components/Field';
+import SelectField from '@/components/SelectField';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -23,8 +25,10 @@ const round = (value) => Math.round(value * 100) / 100;
 
 // Validation de la quinzaine : les feuilles déjà écrites pour une ferme sont marquées
 // validées d'un coup, ou une par une. Aucune feuille n'est créée ni supprimée ici.
-export default function SheetPeriodValidation({ farmId, farmName, onChanged }) {
+export default function SheetPeriodValidation({ farmId, farmName, farms = [], onChanged }) {
   const { t } = useI18n();
+  // Périmètre de la validation : la ferme affichée, ou toutes les fermes.
+  const [scope, setScope] = useState(farmId || '');
   const [quinzaine, setQuinzaine] = useState(() => quinzaineOf(todayISO()));
   const [sheets, setSheets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,28 +38,30 @@ export default function SheetPeriodValidation({ farmId, farmName, onChanged }) {
 
   const period = useMemo(() => quinzaineRange(quinzaine), [quinzaine]);
 
+  // Le périmètre reprend la ferme de la page ; « toutes les fermes » vide la sélection.
+  useEffect(() => {
+    setScope(farmId || '');
+  }, [farmId]);
+
   const load = useCallback(async () => {
-    if (!farmId) {
-      setSheets([]);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const rows = await fetchList(
-        base44.entities.AttendanceSheet,
-        { farm_id: farmId, date: { $gte: period.start, $lte: period.end } },
-        { sort: 'date' },
-      );
+      const query = { date: { $gte: period.start, $lte: period.end } };
+      if (scope) query.farm_id = scope;
+      const rows = await fetchList(base44.entities.AttendanceSheet, query, { sort: 'date' });
       setSheets(rows);
     } finally {
       setLoading(false);
     }
-  }, [farmId, period]);
+  }, [scope, period]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const scopeName = scope
+    ? farms.find((farm) => farm.id === scope)?.name || farmName || '—'
+    : t('att.allFarms');
 
   const pending = sheets.filter((sheet) => !sheet.validated);
   const validatedCount = sheets.length - pending.length;
@@ -130,6 +136,17 @@ export default function SheetPeriodValidation({ farmId, farmName, onChanged }) {
           </Button>
         </div>
 
+        <div className="mt-3 max-w-xs">
+          <Field label={t('att.periodFarm')}>
+            <SelectField
+              value={scope}
+              onChange={setScope}
+              noneLabel={t('att.allFarms')}
+              options={farms.map((farm) => ({ value: farm.id, label: farm.name }))}
+            />
+          </Field>
+        </div>
+
         <p className="mt-2.5 text-[11px] tabular-nums text-muted-foreground">
           {t('att.periodSummary', {
             n: fmtNum(sheets.length, 0),
@@ -160,6 +177,11 @@ export default function SheetPeriodValidation({ farmId, farmName, onChanged }) {
             {sheets.map((sheet) => (
               <li key={sheet.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5">
                 <span className="text-[12px] font-medium tabular-nums">{fmtDate(sheet.date)}</span>
+                {!scope && sheet.farm_name && (
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">
+                    {sheet.farm_name}
+                  </span>
+                )}
                 <span className="text-[11px] tabular-nums text-muted-foreground">
                   {t('att.daysUnit', { n: fmtNum(sheet.total_days, 1) })}
                 </span>
@@ -194,7 +216,7 @@ export default function SheetPeriodValidation({ farmId, farmName, onChanged }) {
             <AlertDialogTitle>{t('att.validateTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               {t('att.validateDesc', {
-                farm: farmName || '—',
+                farm: scopeName,
                 from: fmtDate(period.start),
                 to: fmtDate(period.end),
               })}
