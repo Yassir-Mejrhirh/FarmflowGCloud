@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { ArrowLeft, ArrowRight, Check, FileSpreadsheet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
@@ -283,16 +283,21 @@ export default function AttendanceReconciliation() {
     setReading(false);
   };
 
-  const setMatch = (name, workerId) => setResolution((current) => ({ ...current, [name]: workerId }));
+  const setMatch = useCallback(
+    (name, workerId) => setResolution((current) => ({ ...current, [name]: workerId })),
+    [],
+  );
 
-  const autoConfirm = () => {
-    const next = { ...resolution };
-    names.forEach((entry) => {
-      const best = proposals.get(entry.name)?.best;
-      if (best && (best.level === 'exact' || best.level === 'likely')) next[entry.name] = best.worker_id;
+  const autoConfirm = useCallback(() => {
+    setResolution((current) => {
+      const next = { ...current };
+      names.forEach((entry) => {
+        const best = proposals.get(entry.name)?.best;
+        if (best && (best.level === 'exact' || best.level === 'likely')) next[entry.name] = best.worker_id;
+      });
+      return next;
     });
-    setResolution(next);
-  };
+  }, [names, proposals]);
 
   const setRate = (workerId, value) => setRates((current) => ({ ...current, [workerId]: value }));
 

@@ -1,10 +1,11 @@
+import { memo } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ReconcileNameRow from '@/components/reconcile/ReconcileNameRow';
 import { useI18n } from '@/lib/I18nContext';
 
 // Deuxième temps : chaque nom du classeur reçoit une proposition à confirmer.
-export default function ReconcileNameStep({
+function ReconcileNameStep({
   names = [], proposals, resolution = {}, onChange, onAutoConfirm, workers = [], usage,
 }) {
   const { t } = useI18n();
@@ -49,3 +50,6 @@ export default function ReconcileNameStep({
     </div>
   );
 }
+
+// Les lignes de noms ne se redessinent pas quand seule la saisie d'une équipe change.
+export default memo(ReconcileNameStep);
