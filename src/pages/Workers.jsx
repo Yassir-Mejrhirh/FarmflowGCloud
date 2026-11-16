@@ -9,6 +9,7 @@ import WorkerTable from '@/components/workers/WorkerTable';
 import WageHistoryDialog from '@/components/workers/WageHistoryDialog';
 import TeamRateDialog from '@/components/workers/TeamRateDialog';
 import TeamTransportDialog from '@/components/workers/TeamTransportDialog';
+import TransportNotice from '@/components/workers/TransportNotice';
 import WorkerImportDialog from '@/components/workers/import/WorkerImportDialog';
 import WorkerPrintDialog from '@/components/workers/WorkerPrintDialog';
 import { fetchList } from '@/lib/data';
@@ -28,6 +29,7 @@ export default function Workers() {
   const [rateWorker, setRateWorker] = useState(null);
   const [teamRateOpen, setTeamRateOpen] = useState(false);
   const [teamTransportOpen, setTeamTransportOpen] = useState(false);
+  const [transportNotice, setTransportNotice] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [wageRates, setWageRates] = useState([]);
@@ -108,6 +110,8 @@ export default function Workers() {
         }
       />
 
+      <TransportNotice notice={transportNotice} onDismiss={() => setTransportNotice(null)} />
+
       <div className="grid gap-3 sm:grid-cols-3">
         <MiniStat label={t('workers.activeCrew')} value={activeCount} />
         <MiniStat label={t('workers.declaredCount')} value={declaredCount} />
@@ -157,7 +161,10 @@ export default function Workers() {
         onOpenChange={setTeamTransportOpen}
         workers={workers}
         transportRates={transportRates}
-        onSaved={load}
+        onSaved={(result) => {
+          setTransportNotice(result);
+          load();
+        }}
       />
 
       <WorkerImportDialog

@@ -4,7 +4,7 @@
 
 import { base44 } from '@/api/base44Client';
 import { rememberGlobalOptions } from '@/lib/globalOptions';
-import { buildTransportIndex, transportFor } from '@/lib/transportRates';
+import { buildTransportIndex, normalizeTransporterName, transportFor } from '@/lib/transportRates';
 import { teamKey, teamTransports } from '@/lib/reconcileWorkers';
 
 // Un ouvrier du pointage dont l'équipe a un transport connu, mais qui n'en bénéficie
@@ -32,8 +32,34 @@ export function transportGaps({ workers = [], matchedIds, rates = [], date }) {
     );
 }
 
-// Équipes dont des ouvriers n'ont pas de transport : le transport déjà paramétré par
-// l'équipe est proposé pour ces ouvriers, une équipe sans transport reste signalée.
+// Transport de référence d'une équipe : le transporteur porté par le plus grand nombre
+// d'ouvriers, puis le mode et le tarif les plus fréquents chez ce transporteur.
+function dominantTransport(members = []) {
+  const configured = members.filter((member) => member.usable);
+  if (!configured.length) return null;
+
+  const byTransporter = new Map();
+  configured.forEach((member) => {
+    const name = normalizeTransporterName(member.transporter);
+    const found = byTransporter.get(name) || { name, label: member.transporter, count: 0, configs: new Map() };
+    found.count += 1;
+    const configKey = `${member.mode}|${member.rate}`;
+    const config = found.configs.get(configKey) || { mode: member.mode, rate: member.rate, count: 0 };
+    config.count += 1;
+    found.configs.set(configKey, config);
+    byTransporter.set(name, found);
+  });
+
+  const winner = [...byTransporter.values()].sort(
+    (a, b) => b.count - a.count || a.label.localeCompare(b.label),
+  )[0];
+  const config = [...winner.configs.values()].sort((a, b) => b.count - a.count)[0];
+  return { transporter: winner.label, mode: config.mode, rate: config.rate };
+}
+
+// Anomalies de transport d'une équipe : ouvriers sans transport, et ouvriers portés par
+// un transporteur différent de celui de la majorité de l'équipe. Chaque anomalie porte le
+// transport de référence à appliquer ; une équipe sans aucun transport reste signalée.
 export function teamTransportGaps({ workers = [], rates = [], date }) {
   const index = buildTransportIndex(rates);
   const teams = new Map();
@@ -41,17 +67,37 @@ export function teamTransportGaps({ workers = [], rates = [], date }) {
   (workers || []).forEach((worker) => {
     const key = teamKey(worker.team);
     if (!key) return;
-    const entry = teams.get(key) || { key, team: String(worker.team).trim(), members: [], missing: [] };
-    entry.members.push(worker);
+    const entry = teams.get(key) || { key, team: String(worker.team).trim(), members: [] };
     const current = transportFor(worker, index, date);
-    if (current.mode === 'none' || Number(current.rate) <= 0) entry.missing.push(worker);
+    entry.members.push({
+      worker,
+      usable: current.mode !== 'none' && Number(current.rate) > 0,
+      transporter: String(current.transporter || '').trim(),
+      mode: current.mode,
+      rate: Number(current.rate) || 0,
+    });
     teams.set(key, entry);
   });
 
-  const proposed = teamTransports(workers, rates, date);
   return [...teams.values()]
-    .filter((entry) => entry.missing.length)
-    .map((entry) => ({ ...entry, proposed: proposed.get(entry.key) || null }))
+    .map((entry) => {
+      const proposed = dominantTransport(entry.members);
+      const reference = normalizeTransporterName(proposed?.transporter);
+      const missing = entry.members.filter((member) => !member.usable).map((member) => member.worker);
+      const divergent = entry.members
+        .filter((member) => member.usable && normalizeTransporterName(member.transporter) !== reference)
+        .map((member) => member.worker);
+      return {
+        key: entry.key,
+        team: entry.team,
+        members: entry.members.map((member) => member.worker),
+        missing,
+        divergent,
+        affected: [...missing, ...divergent],
+        proposed,
+      };
+    })
+    .filter((entry) => entry.affected.length)
     .sort((a, b) => a.team.localeCompare(b.team));
 }
 

@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Truck } from 'lucide-react';
+import { AlertTriangle, Truck } from 'lucide-react';
 import FormDialog from '@/components/FormDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { fmtMoney, todayISO } from '@/lib/format';
 import { applyTransportAssignments, teamTransportGaps } from '@/lib/reconcileTransport';
 import { useI18n } from '@/lib/I18nContext';
 
-// Proposition puis confirmation : chaque équipe concernée affiche le transport qui lui
-// est déjà paramétré et le nombre d'ouvriers à mettre à jour. Seules les équipes
-// cochées reçoivent ce transport, daté au jour de la confirmation.
+// Anomalies de transport par équipe : ouvriers sans transport et ouvriers portés par un
+// autre transporteur que la majorité de leur équipe. Chaque équipe cochée reçoit le
+// transport retenu, daté au jour de la confirmation, puis un message de validation.
 export default function TeamTransportDialog({ open, onOpenChange, workers, transportRates, onSaved }) {
   const { t } = useI18n();
   const [ignored, setIgnored] = useState(() => new Set());
@@ -25,7 +25,7 @@ export default function TeamTransportDialog({ open, onOpenChange, workers, trans
   }, [open]);
 
   const selected = gaps.filter((gap) => gap.proposed && !ignored.has(gap.key));
-  const total = selected.reduce((sum, gap) => sum + gap.missing.length, 0);
+  const total = selected.reduce((sum, gap) => sum + gap.affected.length, 0);
 
   const toggle = (key) =>
     setIgnored((current) => {
@@ -40,14 +40,12 @@ export default function TeamTransportDialog({ open, onOpenChange, workers, trans
     if (!selected.length) return;
     setSaving(true);
     try {
-      await applyTransportAssignments({
-        assignments: selected.flatMap((gap) =>
-          gap.missing.map((worker) => ({ worker, team: gap.team, proposed: gap.proposed })),
-        ),
-        effectiveDate: date,
-      });
+      const assignments = selected.flatMap((gap) =>
+        gap.affected.map((worker) => ({ worker, team: gap.team, proposed: gap.proposed })),
+      );
+      await applyTransportAssignments({ assignments, effectiveDate: date });
       onOpenChange(false);
-      onSaved();
+      onSaved({ count: assignments.length, teams: selected.map((gap) => gap.team) });
     } finally {
       setSaving(false);
     }
@@ -92,19 +90,36 @@ export default function TeamTransportDialog({ open, onOpenChange, workers, trans
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium leading-snug">{gap.team}</p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground">
-                    <span className="tabular-nums">
-                      {t('wtr.members', { n: gap.missing.length, total: gap.members.length })}
-                    </span>
-                    {usable ? (
+                    {gap.missing.length > 0 && (
+                      <span className="tabular-nums">{t('wtr.reasonMissing', { n: gap.missing.length })}</span>
+                    )}
+                    {gap.missing.length > 0 && gap.divergent.length > 0 && <span>·</span>}
+                    {gap.divergent.length > 0 && (
                       <span className="tabular-nums">
-                        · {gap.proposed.transporter || t('lab.unknownTransporter')} ·{' '}
+                        {t('wtr.reasonDivergent', { n: gap.divergent.length })}
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {t('wtr.affected', {
+                      names: gap.affected.map((worker) => worker.name).join(', '),
+                    })}
+                  </p>
+                  {usable ? (
+                    <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-foreground">
+                      <Truck className="h-3 w-3 text-clay" strokeWidth={1.9} />
+                      <span className="tabular-nums">
+                        {gap.proposed.transporter || t('lab.unknownTransporter')} ·{' '}
                         {gap.proposed.mode === 'per_person' ? t('lab.modePerPerson') : t('lab.modeFixed')} ·{' '}
                         {fmtMoney(gap.proposed.rate)} / {t('lab.perDay')}
                       </span>
-                    ) : (
-                      <span className="text-clay">· {t('wtr.noConfig')}</span>
-                    )}
-                  </p>
+                    </p>
+                  ) : (
+                    <p className="mt-1 flex items-center gap-1.5 text-[11px] text-clay">
+                      <AlertTriangle className="h-3 w-3" strokeWidth={1.9} />
+                      {t('wtr.noConfig')}
+                    </p>
+                  )}
                 </div>
               </article>
             );

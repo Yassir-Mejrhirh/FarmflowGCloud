@@ -1,29 +1,39 @@
 // Transport des équipes dans la liste MO : bouton dédié à côté du taux équipe, qui
-// propose d'affecter aux ouvriers sans transport le transport déjà paramétré pour
-// leur équipe.
+// signale les équipes dont le transport n'est pas uniforme et propose le transporteur
+// majoritaire pour les membres divergents ou sans transport.
 export const TEAM_TRANSPORT_TRANSLATIONS = {
   fr: {
     'wtr.teamBtn': 'Transport équipes',
     'wtr.teamTitle': 'Transport des équipes',
     'wtr.teamDesc':
-      'Équipes dont certains ouvriers n’ont pas de transport. Confirmez pour leur affecter le transporteur et le tarif déjà paramétrés pour leur équipe.',
+      'Tous les ouvriers d’une équipe doivent avoir le même transporteur. Les équipes ci-dessous présentent des ouvriers sans transport ou portés par un transporteur différent ; le transport retenu est celui de la majorité de l’équipe.',
     'wtr.teams': '{n} équipe(s)',
-    'wtr.members': '{n} sans transport sur {total}',
+    'wtr.reasonMissing': '{n} sans transport',
+    'wtr.reasonDivergent': '{n} transporteur différent',
+    'wtr.affected': 'À corriger : {names}',
     'wtr.noConfig': 'Aucun transport paramétré pour cette équipe',
-    'wtr.apply': 'Affecter le transport ({n})',
-    'wtr.empty': 'Toutes les équipes ont un transport configuré.',
-    'wtr.done': 'Transport affecté à {n} ouvrier(s).',
+    'wtr.proposed': 'Transport retenu',
+    'wtr.apply': 'Uniformiser le transport ({n})',
+    'wtr.empty': 'Toutes les équipes ont le même transporteur et un transport configuré.',
+    'wtr.doneTitle': 'Transport uniformisé',
+    'wtr.done': '{n} ouvrier(s) mis à jour',
+    'wtr.doneTeams': 'Équipes : {teams}',
   },
   ar: {
     'wtr.teamBtn': 'نقل الفرق',
     'wtr.teamTitle': 'نقل الفرق',
     'wtr.teamDesc':
-      'فرق بعض عمالها بدون نقل. أكّد لمنحهم الناقل والتسعيرة المحددة لفريقهم.',
+      'يجب أن يكون لكل عمال الفريق نفس الناقل. الفرق التالية بها عمال بدون نقل أو بناقل مختلف ؛ يُعتمد نقل أغلبية الفريق.',
     'wtr.teams': '{n} فريق',
-    'wtr.members': '{n} بدون نقل من {total}',
+    'wtr.reasonMissing': '{n} بدون نقل',
+    'wtr.reasonDivergent': '{n} بناقل مختلف',
+    'wtr.affected': 'للتصحيح : {names}',
     'wtr.noConfig': 'لا يوجد نقل محدد لهذا الفريق',
-    'wtr.apply': 'منح النقل ({n})',
-    'wtr.empty': 'كل الفرق لديها نقل محدد.',
-    'wtr.done': 'تم منح النقل لـ {n} عامل.',
+    'wtr.proposed': 'النقل المعتمد',
+    'wtr.apply': 'توحيد النقل ({n})',
+    'wtr.empty': 'كل الفرق لديها نفس الناقل ونقل محدد.',
+    'wtr.doneTitle': 'تم توحيد النقل',
+    'wtr.done': '{n} عامل تم تحديثه',
+    'wtr.doneTeams': 'الفرق : {teams}',
   },
 };
