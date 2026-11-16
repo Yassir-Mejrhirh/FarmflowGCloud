@@ -238,7 +238,7 @@ export default function AttendanceReconciliation() {
         include: saved.include ?? true,
         team,
         salary: saved.salary ?? (suggestion ? String(suggestion) : ''),
-        priority: saved.priority ?? '1',
+        priority: saved.priority ?? '3',
         declared: saved.declared ?? false,
         worker_function: saved.worker_function ?? 'Ouvrier',
       });

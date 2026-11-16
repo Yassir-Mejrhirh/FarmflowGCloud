@@ -74,7 +74,7 @@ export async function addReconcileWorkers({
         newTeam: Boolean(teamSettings[key]),
         payload: {
           name: String(selection.name).trim(),
-          priority: selection.priority || '1',
+          priority: selection.priority || '3',
           team: String(selection.team || '').trim(),
           worker_function: String(selection.worker_function || '').trim() || 'Ouvrier',
           declared: Boolean(selection.declared),
