@@ -42,31 +42,41 @@ function teamColumnOf(rows, headerIndex, terms = {}) {
   return -1;
 }
 
-// Titre écrit une seule fois au-dessus des ouvriers (« Équipe Yassir ») : il donne
-// l'équipe de tout le classeur. Une équipe déjà connue est reprise telle quelle.
+// Titres d'équipe (« Équipe Yassir ») écrits seuls : ils coiffent tout le classeur
+// ou, quand ils sont dans la liste, ouvrent une section d'ouvriers.
 const stripAccents = (value) =>
   String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 
 const TEAM_LABEL = /^(?:equipe|team|groupe|الفريق)\b\s*[:\-–.]?\s*/i;
 
-export function teamFromTitles(rows = [], dataStart = 1, knownTeams = []) {
-  const known = knownTeams
-    .map((name) => ({ name, key: normalizeText(name) }))
-    .filter((team) => team.key.length >= 3);
+const knownList = (names = []) =>
+  names
+    .map((name) => ({ name: String(name || '').trim(), key: normalizeText(name) }))
+    .filter((team) => team.name && team.key.length >= 3);
 
+// Une équipe déjà connue est reprise avec son écriture exacte ; sinon le nom écrit
+// après le mot « Équipe » est retenu.
+function teamFromCells(cells = [], known = []) {
+  for (const cell of cells) {
+    const text = String(cell ?? '').trim();
+    if (!text || text.length > 80) continue;
+    const key = normalizeText(text);
+    const found = known.find((team) => key.includes(team.key));
+    if (found) return found.name;
+    const plain = stripAccents(text);
+    const label = TEAM_LABEL.exec(plain);
+    if (!label) continue;
+    const rest = plain.slice(label[0].length).replace(/[\s:\-–.]+$/, '').trim();
+    if (rest) return rest;
+  }
+  return '';
+}
+
+export function teamFromTitles(rows = [], dataStart = 1, knownTeams = []) {
+  const known = knownList(knownTeams);
   for (let row = 0; row < Math.min(dataStart, rows.length); row += 1) {
-    for (const cell of rows[row] || []) {
-      const text = String(cell ?? '').trim();
-      if (!text || text.length > 80) continue;
-      const key = normalizeText(text);
-      const found = known.find((team) => key.includes(team.key));
-      if (found) return found.name;
-      const plain = stripAccents(text);
-      const label = TEAM_LABEL.exec(plain);
-      if (!label) continue;
-      const rest = plain.slice(label[0].length).replace(/[\s:\-–.]+$/, '').trim();
-      if (rest) return rest;
-    }
+    const team = teamFromCells(rows[row] || [], known);
+    if (team) return team;
   }
   return '';
 }
@@ -147,29 +157,33 @@ export function analyseSheet({ sheet, reference, farms = [], workers = [], perio
     terms,
   });
 
+  const names = readNames({
+    rows: sheet.rows,
+    fills: sheet.fills,
+    grid,
+    nameColumn,
+    farms,
+    teamColumn,
+    titleTeam,
+    knownTeams,
+    salaryColumn,
+  });
+
   return {
     grid,
     nameColumn,
     teamColumn,
     titleTeam,
+    teams: [...new Set(names.map((entry) => entry.team).filter(Boolean))],
     salaryColumn,
     colors: detectColors(sheet.rows, sheet.fills, grid),
-    names: readNames({
-      rows: sheet.rows,
-      fills: sheet.fills,
-      grid,
-      nameColumn,
-      farms,
-      teamColumn,
-      titleTeam,
-      salaryColumn,
-    }),
+    names,
   };
 }
 
 // Une entrée par nom écrit dans le classeur, avec ses journées et leur ferme.
 function readNames({
-  rows, fills, grid, nameColumn, farms, teamColumn = -1, titleTeam = '', salaryColumn = -1,
+  rows, fills, grid, nameColumn, farms, teamColumn = -1, titleTeam = '', knownTeams = [], salaryColumn = -1,
 }) {
   const farmByColor = new Map();
   (farms || []).forEach((farm) => {
@@ -178,11 +192,11 @@ function readNames({
   });
 
   const found = new Map();
+  const known = knownList(knownTeams);
+  let sectionTeam = '';
 
   for (let row = grid.dataStart; row < rows.length; row += 1) {
     const cells = rows[row] || [];
-    const name = String(cells[nameColumn] ?? '').trim();
-    if (!name) continue;
 
     const worked = [];
     grid.dayColumns.forEach(({ index: column, date }) => {
@@ -196,12 +210,21 @@ function readNames({
       worked.push({ date, days, color, farm_id: farm?.id || '', farm_name: farm?.name || '' });
     });
 
-    if (!worked.length) continue;
+    // Une ligne sans journée est un titre : si elle nomme une équipe, elle ouvre une
+    // section et ses ouvriers en héritent jusqu'au titre d'équipe suivant.
+    if (!worked.length) {
+      const section = teamFromCells(cells, known);
+      if (section) sectionTeam = section;
+      continue;
+    }
+
+    const name = String(cells[nameColumn] ?? '').trim();
+    if (!name) continue;
 
     const entry = found.get(name) || { name, key: nameKey(name), cells: [], total: 0, team: '', salary: '' };
     const team = teamColumn >= 0 ? String(cells[teamColumn] ?? '').trim() : '';
     const salary = salaryColumn >= 0 ? parseNumber(cells[salaryColumn]) : 0;
-    if (!entry.team) entry.team = team || titleTeam;
+    if (!entry.team) entry.team = team || sectionTeam || titleTeam;
     if (!entry.salary && salary > 0) entry.salary = salary;
     worked.forEach((cell) => {
       entry.cells.push(cell);

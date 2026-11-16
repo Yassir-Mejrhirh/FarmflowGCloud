@@ -426,6 +426,7 @@ export default function AttendanceReconciliation() {
             grid={analysis?.grid}
             namesCount={names.length}
             team={analysis?.titleTeam || ''}
+            teams={analysis?.teams || []}
             hasSalary={(analysis?.salaryColumn ?? -1) >= 0}
             quinzaine={quinzaine}
             onChangeQuinzaine={setQuinzaine}
