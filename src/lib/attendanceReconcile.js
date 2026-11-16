@@ -49,6 +49,17 @@ const stripAccents = (value) =>
 
 const TEAM_LABEL = /^(?:equipe|team|groupe|الفريق)\b\s*[:\-–.]?\s*/i;
 
+// Titre qui annonce explicitement des ouvriers sans équipe : il ferme la section en
+// cours, pour que ses ouvriers ne reprennent pas l'équipe précédente.
+const NO_TEAM_LABEL =
+  /^(?:sans\s*(?:equipe|team|groupe)|aucune?\s*(?:equipe|team|groupe)|non\s*affect\w*|بدون\s*(?:فريق|مجموعة))/i;
+
+const isNoTeamRow = (cells = []) =>
+  (cells || []).some((cell) => {
+    const text = String(cell ?? '').trim();
+    return Boolean(text) && text.length <= 80 && NO_TEAM_LABEL.test(stripAccents(text));
+  });
+
 const knownList = (names = []) =>
   names
     .map((name) => ({ name: String(name || '').trim(), key: normalizeText(name) }))
@@ -175,6 +186,8 @@ export function analyseSheet({ sheet, reference, farms = [], workers = [], perio
     teamColumn,
     titleTeam,
     teams: [...new Set(names.map((entry) => entry.team).filter(Boolean))],
+    // Noms restés sans équipe : ils sont signalés avant le rapprochement.
+    noTeamCount: names.filter((entry) => !entry.team).length,
     salaryColumn,
     colors: detectColors(sheet.rows, sheet.fills, grid),
     names,
@@ -194,6 +207,7 @@ function readNames({
   const found = new Map();
   const known = knownList(knownTeams);
   let sectionTeam = '';
+  let noTeamSection = false;
 
   for (let row = grid.dataStart; row < rows.length; row += 1) {
     const cells = rows[row] || [];
@@ -214,7 +228,13 @@ function readNames({
     // section et ses ouvriers en héritent jusqu'au titre d'équipe suivant.
     if (!worked.length) {
       const section = teamFromCells(cells, known);
-      if (section) sectionTeam = section;
+      if (section) {
+        sectionTeam = section;
+        noTeamSection = false;
+      } else if (isNoTeamRow(cells)) {
+        sectionTeam = '';
+        noTeamSection = true;
+      }
       continue;
     }
 
@@ -224,7 +244,9 @@ function readNames({
     const entry = found.get(name) || { name, key: nameKey(name), cells: [], total: 0, team: '', salary: '' };
     const team = teamColumn >= 0 ? String(cells[teamColumn] ?? '').trim() : '';
     const salary = salaryColumn >= 0 ? parseNumber(cells[salaryColumn]) : 0;
-    if (!entry.team) entry.team = team || sectionTeam || titleTeam;
+    // Une section « sans équipe » ne reprend ni l'équipe précédente ni celle du titre.
+    const inherited = noTeamSection ? '' : sectionTeam || titleTeam;
+    if (!entry.team) entry.team = team || inherited || '';
     if (!entry.salary && salary > 0) entry.salary = salary;
     worked.forEach((cell) => {
       entry.cells.push(cell);

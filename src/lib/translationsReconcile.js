@@ -29,6 +29,7 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.dayColumns': 'Jours',
     'rec.teamRead': 'Équipe',
     'rec.salaryRead': 'Salaire',
+    'rec.noTeamRead': 'Sans équipe',
     'rec.salaryFound': 'colonne reconnue',
     'rec.unmappedTitle': 'Couleurs sans ferme',
     'rec.unmappedHint':
@@ -167,6 +168,7 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.dayColumns': 'أيام',
     'rec.teamRead': 'الفريق',
     'rec.salaryRead': 'الأجر',
+    'rec.noTeamRead': 'بدون فريق',
     'rec.salaryFound': 'عمود معروف',
     'rec.unmappedTitle': 'ألوان بدون ضيعة',
     'rec.unmappedHint':

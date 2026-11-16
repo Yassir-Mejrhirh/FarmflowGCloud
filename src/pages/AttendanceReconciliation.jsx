@@ -501,6 +501,7 @@ export default function AttendanceReconciliation() {
             team={analysis?.titleTeam || ''}
             teams={analysis?.teams || []}
             hasSalary={(analysis?.salaryColumn ?? -1) >= 0}
+            noTeam={analysis?.noTeamCount || 0}
             quinzaine={quinzaine}
             onChangeQuinzaine={setQuinzaine}
             colors={analysis?.colors || []}

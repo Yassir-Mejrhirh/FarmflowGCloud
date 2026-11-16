@@ -45,6 +45,14 @@ export default function ReconcileNameRow({ entry, proposal, value, onChange, wor
           </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
             <span className="tabular-nums">{t('rec.daysCount', { days: fmtNum(entry.total, 1) })}</span>
+            <span
+              className={cn(
+                'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                entry.team ? 'bg-secondary text-secondary-foreground' : 'bg-clay/10 text-clay',
+              )}
+            >
+              {entry.team || t('rec.noTeamRead')}
+            </span>
             {duplicate && (
               <span className="rounded-full bg-clay/15 px-1.5 py-0.5 text-[10px] font-medium text-clay">
                 {t('rec.duplicate')}
