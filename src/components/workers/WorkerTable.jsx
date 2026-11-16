@@ -4,8 +4,7 @@ import WorkerFilters from '@/components/workers/WorkerFilters';
 import WorkerRow from '@/components/workers/WorkerRow';
 import WorkerFarmHeader from '@/components/workers/WorkerFarmHeader';
 import WorkerTeamHeader from '@/components/workers/WorkerTeamHeader';
-import { buildWorkerSections } from '@/lib/workerSections';
-import { workerFarmNames } from '@/lib/workerFarms';
+import { buildWorkerSections, sortWorkers } from '@/lib/workerSections';
 import { todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
 import { buildTransportIndex } from '@/lib/transportRates';
@@ -16,34 +15,6 @@ import {
   workerMatchesFilters,
 } from '@/lib/workerFilters';
 import { useI18n } from '@/lib/I18nContext';
-
-const definitionRank = (worker) =>
-  worker.definition === 'nominative' ? 0 : worker.definition === 'salary_band' ? 2 : 1;
-
-const priorityOf = (worker) => String(worker.priority || '1');
-const hasTeam = (worker) => Boolean(String(worker.team || '').trim());
-
-// Farm used to group a worker: its own farm, otherwise the first of its mobile farms.
-const farmLabel = (worker) => worker.farm || workerFarmNames(worker)[0] || '';
-
-// Default order: no team and priority 1 by farm, then teams by farm,
-// and finally the no team workers of priority 2 and 3.
-const rowRank = (worker) => (hasTeam(worker) ? 1 : priorityOf(worker) === '1' ? 0 : 2);
-
-const sortWorkers = (a, b) => {
-  const rank = rowRank(a) - rowRank(b);
-  if (rank) return rank;
-  if (rowRank(a) !== 2) {
-    const farm = farmLabel(a).localeCompare(farmLabel(b));
-    if (farm) return farm;
-  } else {
-    const priority = priorityOf(a).localeCompare(priorityOf(b));
-    if (priority) return priority;
-  }
-  return (
-    definitionRank(a) - definitionRank(b) || (a.name || '').localeCompare(b.name || '')
-  );
-};
 
 export default function WorkerTable({ workers, rates = [], transportRates = [], onEdit, onRates }) {
   const { t } = useI18n();

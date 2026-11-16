@@ -1,6 +1,7 @@
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
 import { todayISO } from '@/lib/format';
 import { isFixedWorker, workerFarmNames } from '@/lib/workerFarms';
+import { buildWorkerSections } from '@/lib/workerSections';
 
 // Champs complémentaires proposés avant l'impression : le nom est toujours inclus.
 export const WORKER_PRINT_FIELDS = [
@@ -35,30 +36,53 @@ const mobilityOf = (worker, mobileLabel) => {
   return names.length ? `${mobileLabel} · ${names.join(', ')}` : mobileLabel;
 };
 
-// Colonnes et lignes de la liste imprimée, dans l'ordre alphabétique des noms.
+// Colonnes, groupes et lignes de la liste imprimée. Les ouvriers sont lus dans le
+// même ordre que le paramétrage MO : les fermes d'abord, puis les équipes, puis les
+// ouvriers sans équipe, chaque groupe gardant son titre dans le document.
 export function buildWorkerPrintData({ workers = [], rates = [], fields = [], t, date = todayISO() }) {
   const index = buildRateIndex(rates);
   const mobileLabel = t('wprint.mobileOnly');
   const selected = ['name', ...WORKER_PRINT_FIELDS.map((field) => field.id).filter((id) => fields.includes(id))];
 
   const columns = selected.map((id) => columnOf[id](t));
-  const rows = [...workers]
-    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
-    .map((worker) => {
-      const rate = rateFor(worker, index, date);
-      return {
-        name: worker.name || '',
-        salary: rate > 0 ? rate : '',
-        mobility: mobilityOf(worker, mobileLabel),
-        role: worker.worker_function || '',
-        team: worker.team || '',
-        priority: worker.priority ? String(worker.priority) : '',
-        declared: worker.declared ? t('common.yes') : t('common.no'),
-        phone: worker.phone || '',
-      };
-    });
 
-  return { columns, rows };
+  const toRow = (worker) => {
+    const rate = rateFor(worker, index, date);
+    return {
+      name: worker.name || '',
+      salary: rate > 0 ? rate : '',
+      mobility: mobilityOf(worker, mobileLabel),
+      role: worker.worker_function || '',
+      team: worker.team || '',
+      priority: worker.priority ? String(worker.priority) : '',
+      declared: worker.declared ? t('common.yes') : t('common.no'),
+      phone: worker.phone || '',
+    };
+  };
+
+  const { farmBlocks, teams, rest } = buildWorkerSections(workers);
+  const sections = [
+    ...farmBlocks.map((block) => ({
+      key: `farm-${block.farm || 'none'}`,
+      label: block.farm || '—',
+      rows: block.rows.map(toRow),
+    })),
+    ...teams.map((team) => ({
+      key: `team-${team.key}`,
+      label: team.farm ? `${team.key} · ${team.farm}` : team.key,
+      rows: team.rows.map(toRow),
+    })),
+    ...(rest.length ? [{ key: 'rest', label: t('wprint.noTeam'), rows: rest.map(toRow) }] : []),
+  ];
+
+  const count = sections.reduce((total, section) => total + section.rows.length, 0);
+  // Titre de groupe dans les fichiers Excel et CSV : le libellé seul sur la ligne.
+  const rows = sections.flatMap((section) => [
+    { __group: true, name: section.label },
+    ...section.rows,
+  ]);
+
+  return { columns, sections, rows, count };
 }
 
 const localeOf = (lang) => (lang === 'ar' ? 'ar-MA' : 'fr-FR');
@@ -97,7 +121,7 @@ const escapeHtml = (value) =>
     .replace(/>/g, '&gt;');
 
 // Ouvre une fenêtre prête à imprimer ; le navigateur propose aussi l'enregistrement en PDF.
-export function printWorkerList({ title, subtitle, columns, rows, lang }) {
+export function printWorkerList({ title, subtitle, columns, sections = [], count = 0, lang }) {
   const win = window.open('', '_blank', 'width=1120,height=820');
   if (!win) return false;
 
@@ -108,17 +132,25 @@ export function printWorkerList({ title, subtitle, columns, rows, lang }) {
         `<th style="text-align:${align(column)}">${escapeHtml(column.label)}</th>`,
     )
     .join('');
-  const body = rows
-    .map((row, index) => {
-      const cells = columns
-        .map(
-          (column) =>
-            `<td style="text-align:${align(column)}"${
-              column.align === 'end' ? ' class="num"' : ''
-            }>${escapeHtml(cellText(row[column.key], column, lang))}</td>`,
-        )
+  const body = sections
+    .map((section) => {
+      const groupTitle = `<tr class="group"><th colspan="${columns.length}" style="text-align:${
+        lang === 'ar' ? 'right' : 'left'
+      }">${escapeHtml(section.label)}</th></tr>`;
+      const lines = section.rows
+        .map((row, index) => {
+          const cells = columns
+            .map(
+              (column) =>
+                `<td style="text-align:${align(column)}"${
+                  column.align === 'end' ? ' class="num"' : ''
+                }>${escapeHtml(cellText(row[column.key], column, lang))}</td>`,
+            )
+            .join('');
+          return `<tr class="${index % 2 ? 'odd' : 'even'}">${cells}</tr>`;
+        })
         .join('');
-      return `<tr class="${index % 2 ? 'odd' : 'even'}">${cells}</tr>`;
+      return groupTitle + lines;
     })
     .join('');
 
@@ -141,6 +173,10 @@ export function printWorkerList({ title, subtitle, columns, rows, lang }) {
     font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #5c6a61; }
   td { padding: 6px 9px; border-bottom: 1px solid #eceae1; font-size: 11px; }
   tr.odd td { background: #fbfaf5; }
+  tr.group th { padding: 6px 9px; background: #e9e5d8; border-bottom: 1px solid #d6d1c1;
+    border-top: 1px solid #d6d1c1; font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #3d4a42; }
+  tr.group:first-child th { border-top: none; }
   td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   footer { margin-top: 10px; font-size: 9.5px; color: #8a988f; }
   thead { display: table-header-group; }
@@ -156,7 +192,7 @@ export function printWorkerList({ title, subtitle, columns, rows, lang }) {
     <thead><tr>${head}</tr></thead>
     <tbody>${body}</tbody>
   </table>
-  <footer>${rows.length} ${lang === 'ar' ? 'سطر' : rows.length > 1 ? 'lignes' : 'ligne'}</footer>
+  <footer>${count} ${lang === 'ar' ? 'سطر' : count > 1 ? 'lignes' : 'ligne'}</footer>
 </body>
 </html>`);
   win.document.close();

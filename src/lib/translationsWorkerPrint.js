@@ -24,6 +24,8 @@ export const WORKER_PRINT_TRANSLATIONS = {
     'wprint.generated': 'Liste générée le {date}',
     'wprint.colName': 'Nom complet',
     'wprint.mobileOnly': 'Mobile',
+    'wprint.noTeam': 'Sans équipe',
+    'wprint.grouped': 'groupés par ferme puis par équipe',
   },
   ar: {
     'wprint.open': 'طباعة / تصدير',
@@ -49,5 +51,7 @@ export const WORKER_PRINT_TRANSLATIONS = {
     'wprint.generated': 'قائمة مُنشأة بتاريخ {date}',
     'wprint.colName': 'الاسم الكامل',
     'wprint.mobileOnly': 'متنقل',
+    'wprint.noTeam': 'بدون فريق',
+    'wprint.grouped': 'مجمعين حسب الضيعة ثم الفريق',
   },
 };

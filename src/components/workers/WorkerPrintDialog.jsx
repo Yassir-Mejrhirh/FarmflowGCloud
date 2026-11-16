@@ -51,7 +51,8 @@ export default function WorkerPrintDialog({ open, onOpenChange, workers = [], ra
           title: t('wprint.listTitle'),
           subtitle,
           columns: data.columns,
-          rows: data.rows,
+          sections: data.sections,
+          count: data.count,
           lang,
         });
         if (!opened) toast({ title: t('wprint.blocked'), variant: 'destructive' });
@@ -101,7 +102,9 @@ export default function WorkerPrintDialog({ open, onOpenChange, workers = [], ra
             ))}
           </div>
 
-          <p className="text-[11px] text-muted-foreground">{t('wprint.count', { n: data.rows.length })}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t('wprint.count', { n: data.count })} · {t('wprint.grouped')}
+          </p>
         </div>
 
         <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-background px-6 py-4">
