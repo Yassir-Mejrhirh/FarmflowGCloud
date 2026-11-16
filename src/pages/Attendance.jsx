@@ -9,6 +9,7 @@ import DayField from '@/components/labour/DayField';
 import PointageWorkerList from '@/components/attendance/PointageWorkerList';
 import AttendanceImportDialog from '@/components/attendance/AttendanceImportDialog';
 import ImportHistory from '@/components/attendance/ImportHistory';
+import SheetPeriodValidation from '@/components/attendance/SheetPeriodValidation';
 import ReconcileQueue from '@/components/reconcile/ReconcileQueue';
 import { integrateQueueItem } from '@/lib/attendanceReconcile';
 import { Button } from '@/components/ui/button';
@@ -254,6 +255,11 @@ export default function Attendance() {
               {t('att.exists')}
             </span>
           )}
+          {sheet?.validated && !loading && (
+            <span className="rounded-full bg-sage/15 px-2 py-0.5 text-[10px] font-medium text-sage">
+              {t('att.validated')}
+            </span>
+          )}
           <Button
             type="button"
             onClick={save}
@@ -279,6 +285,12 @@ export default function Attendance() {
           </p>
         )}
       </section>
+
+      <SheetPeriodValidation
+        farmId={farmId}
+        farmName={farmName}
+        onChanged={() => setRefreshToken((token) => token + 1)}
+      />
 
       <ReconcileQueue
         items={queue}

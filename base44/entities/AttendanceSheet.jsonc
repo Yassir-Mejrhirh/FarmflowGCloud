@@ -39,6 +39,16 @@
       "type": "number",
       "description": "Sum of the days worked on the pointage, kept for the lists"
     },
+    "validated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the pointage sheet was checked and validated"
+    },
+    "validated_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Day the pointage sheet was validated"
+    },
     "notes": {
       "type": "string"
     }
