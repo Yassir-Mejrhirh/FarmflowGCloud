@@ -372,6 +372,64 @@ export function compareWithPointages({ lines = [], sheets = [] }) {
   return { differences, newCells };
 }
 
+// Salaires lus dans le classeur, un par ouvrier rapproché.
+export function excelSalaries({ names = [], resolution = {} }) {
+  const salaries = new Map();
+  names.forEach((entry) => {
+    const workerId = resolution[entry.name];
+    const salary = Number(entry.salary) || 0;
+    if (!workerId || salary <= 0 || salaries.has(workerId)) return;
+    salaries.set(workerId, salary);
+  });
+  return salaries;
+}
+
+// Écarts de salaire entre la fiche et le classeur, au taux en vigueur au début de période.
+export function compareSalaries({ salaries = new Map(), workers = [], wageRates = [], periodStart }) {
+  const workersById = new Map((workers || []).map((worker) => [worker.id, worker]));
+  const rateIndex = buildRateIndex(wageRates);
+  const changes = [];
+  salaries.forEach((salary, workerId) => {
+    const worker = workersById.get(workerId);
+    if (!worker) return;
+    const current = rateFor(worker, rateIndex, periodStart);
+    if (Math.abs(current - salary) < 0.01) return;
+    changes.push({
+      worker_id: workerId,
+      worker_name: worker.name,
+      team: worker.team || '',
+      current: round(current),
+      salary: round(salary),
+    });
+  });
+  return changes.sort((a, b) => a.worker_name.localeCompare(b.worker_name));
+}
+
+// Salaires du classeur enregistrés comme taux daté du début de période : celui déjà
+// écrit à cette date est remplacé, les taux précédents restent dans l'historique.
+export async function applySalaryChanges({ changes = [], effectiveDate }) {
+  if (!changes.length || !effectiveDate) return 0;
+
+  const rows = await fetchList(base44.entities.WageRate, {
+    worker_id: { $in: changes.map((change) => change.worker_id) },
+    effective_date: effectiveDate,
+  });
+  const byWorker = new Map(rows.map((row) => [row.worker_id, row]));
+  const creations = [];
+  const updates = [];
+
+  changes.forEach((change) => {
+    const existing = byWorker.get(change.worker_id);
+    const values = { daily_rate: round(change.salary), team: change.team || '' };
+    if (existing) updates.push({ id: existing.id, ...values });
+    else creations.push({ worker_id: change.worker_id, effective_date: effectiveDate, ...values });
+  });
+
+  if (creations.length) await base44.entities.WageRate.bulkCreate(creations);
+  if (updates.length) await base44.entities.WageRate.bulkUpdate(updates);
+  return changes.length;
+}
+
 // Contenu de la liste d'attente : tout ce qu'il faut pour reprendre la vérification
 // plus tard, sans écrire aucune feuille de pointage à ce stade.
 export function buildQueuePayload({ fileName, names = [], resolution = {}, lines = [], period = {} }) {

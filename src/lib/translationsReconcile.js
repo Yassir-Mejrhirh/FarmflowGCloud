@@ -59,6 +59,9 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.rate': 'Taux / jour',
     'rec.cost': 'Montant',
     'rec.total': 'Total',
+    'rec.salaryTitle': 'Salaires du classeur',
+    'rec.salaryHint':
+      'Ces ouvriers ont un salaire différent dans le classeur. En validant, le salaire du classeur devient le taux en vigueur au {date} ; le taux précédent reste dans l’historique de la fiche ouvrier.',
     'rec.diffTitle': 'Écarts avec le pointage existant',
     'rec.diffHint': 'Journées déjà pointées dont la valeur diffère du classeur.',
     'rec.diffNone': 'Aucun écart : le pointage existant correspond au classeur.',
@@ -192,6 +195,9 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.rate': 'الأجر اليومي',
     'rec.cost': 'المبلغ',
     'rec.total': 'المجموع',
+    'rec.salaryTitle': 'أجور الملف',
+    'rec.salaryHint':
+      'هؤلاء العمال لهم أجر مختلف في الملف. عند المصادقة يصبح أجر الملف هو الأجر المعمول به في {date}، ويبقى الأجر السابق في سجل بطاقة العامل.',
     'rec.diffTitle': 'الفروق مع النقط المسجل',
     'rec.diffHint': 'أيام مسجلة سابقًا تختلف قيمتها عن الملف.',
     'rec.diffNone': 'لا فروق: النقط المسجل يطابق الملف.',

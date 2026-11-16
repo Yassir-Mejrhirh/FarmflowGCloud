@@ -11,10 +11,13 @@ import ReconcileQueue from '@/components/reconcile/ReconcileQueue';
 import { readXlsxSheet } from '@/lib/xlsxReader';
 import {
   analyseSheet,
+  applySalaryChanges,
   buildLines,
   buildQueuePayload,
+  compareSalaries,
   compareWithPointages,
   daysWithoutFarm,
+  excelSalaries,
   fetchPeriodSheets,
   integrateQueueItem,
 } from '@/lib/attendanceReconcile';
@@ -166,13 +169,25 @@ export default function AttendanceReconciliation() {
     [analysis, resolution, workers, wageRates, from],
   );
 
+  // Salaires lus dans le classeur, comparés à ceux de la fiche à la date d'effet.
+  const salaries = useMemo(() => excelSalaries({ names, resolution }), [names, resolution]);
+  const effectiveDate = from || period.start;
+  const salaryChanges = useMemo(
+    () => compareSalaries({ salaries, workers, wageRates, periodStart: effectiveDate }),
+    [salaries, workers, wageRates, effectiveDate],
+  );
+
+  // Le salaire du classeur devient le taux appliqué sur la période, sauf saisie contraire.
   const ratedLines = useMemo(
     () =>
       lines.map((line) => ({
         ...line,
-        daily_rate: rates[line.worker_id] !== undefined ? Number(rates[line.worker_id]) || 0 : line.daily_rate,
+        daily_rate:
+          rates[line.worker_id] !== undefined
+            ? Number(rates[line.worker_id]) || 0
+            : salaries.get(line.worker_id) ?? line.daily_rate,
       })),
-    [lines, rates],
+    [lines, rates, salaries],
   );
 
   const usage = useMemo(() => usageCount(resolution), [resolution]);
@@ -378,6 +393,11 @@ export default function AttendanceReconciliation() {
     setSaving(true);
     setError('');
     try {
+      // Validation : les salaires différents du classeur sont enregistrés en taux datés.
+      if (salaryChanges.length) {
+        await applySalaryChanges({ changes: salaryChanges, effectiveDate });
+        setWageRates(await fetchList(base44.entities.WageRate, {}));
+      }
       const payload = buildQueuePayload({
         fileName,
         names,
@@ -539,6 +559,8 @@ export default function AttendanceReconciliation() {
             unmatched={unmatched}
             noFarm={noFarm}
             loading={loadingExisting}
+            salaryChanges={salaryChanges}
+            salaryDate={effectiveDate}
           />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(2)}>

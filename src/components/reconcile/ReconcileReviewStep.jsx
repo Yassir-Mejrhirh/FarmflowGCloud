@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/I18nContext';
 export default function ReconcileReviewStep({
   from, to, onChangeFrom, onChangeTo, lines = [], rates = {}, onChangeRate,
   differences = [], newCells = 0, unmatched = [], noFarm = 0, loading = false,
+  salaryChanges = [], salaryDate = '',
 }) {
   const { t } = useI18n();
 
@@ -91,6 +92,30 @@ export default function ReconcileReviewStep({
           )}
         </div>
       </section>
+
+      {salaryChanges.length > 0 && (
+        <section className="rounded-2xl border border-clay/40 bg-clay/5 p-4">
+          <h3 className="flex items-center gap-1.5 text-[12.5px] font-medium text-clay">
+            <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.9} />
+            {t('rec.salaryTitle')}
+          </h3>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            {t('rec.salaryHint', { date: fmtDate(salaryDate) })}
+          </p>
+          <ul className="mt-2 divide-y divide-clay/20">
+            {salaryChanges.map((change) => (
+              <li key={change.worker_id} className="flex items-center justify-between gap-2 py-1.5 text-[12px]">
+                <span className="min-w-0 truncate">{change.worker_name}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {fmtMoney(change.current)}
+                  <span className="mx-1.5 text-clay">→</span>
+                  <span className="font-medium text-foreground">{fmtMoney(change.salary)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="rounded-2xl border border-border/70 bg-card p-4">
         <h3 className="flex items-center gap-1.5 text-[12.5px] font-medium">
