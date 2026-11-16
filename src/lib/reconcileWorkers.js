@@ -93,7 +93,9 @@ export async function addReconcileWorkers({
   if (!rows.length) return [];
 
   const created = await base44.entities.Worker.bulkCreate(rows.map((row) => row.payload));
-  const workers = Array.isArray(created) ? created : [];
+  // La réponse de création est reprise telle quelle : les noms ajoutés sont rapprochés
+  // de ces fiches, sans dépendre d'une relecture de la liste complète.
+  const workers = Array.isArray(created) ? created : Array.isArray(created?.items) ? created.items : [];
   const date = effectiveDate || new Date().toISOString().slice(0, 10);
 
   // Le transport de chaque fiche est daté à la période du pointage : les prochains

@@ -355,19 +355,39 @@ export default function AttendanceReconciliation() {
     setAdding(true);
     setError('');
     try {
-      await addReconcileWorkers({
+      const created = await addReconcileWorkers({
         selections,
         transports,
         teamSettings: teamPicks,
         effectiveDate: from || period.start,
       });
-      const rows = await fetchList(base44.entities.Worker, {}, { sort: 'name' });
-      const active = rows.filter((worker) => worker.active !== false);
-      setWorkers(active);
+
+      // Les fiches créées rapprochent directement leurs noms : elles sont ajoutées à
+      // la liste MO et rattachées, sans relire une liste tronquée.
+      const list = Array.isArray(created) ? created.filter((worker) => worker?.id) : [];
+      const byName = new Map(list.map((worker) => [nameKey(worker.name), worker]));
+      const missingNames = selections
+        .map((selection) => selection.name)
+        .filter((name) => !byName.has(nameKey(name)));
+      if (missingNames.length) {
+        const found = await fetchList(
+          base44.entities.Worker,
+          { name: { $in: missingNames } },
+          { limit: 100 },
+        );
+        found.forEach((worker) => byName.set(nameKey(worker.name), worker));
+      }
+
+      setWorkers((current) => {
+        const next = [...current];
+        byName.forEach((worker) => {
+          if (worker?.id && !next.some((existing) => existing.id === worker.id)) next.push(worker);
+        });
+        return next.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+      });
       setGlobalTeams((current) => [
         ...new Set([...current, ...selections.map((selection) => selection.team).filter(Boolean)]),
       ]);
-      const byName = new Map(active.map((worker) => [nameKey(worker.name), worker]));
       setResolution((current) => {
         const next = { ...current };
         selections.forEach((selection) => {
