@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/I18nContext';
 // Premier temps du rapprochement : la quinzaine, puis le classeur de pointage et sa grille de jours.
 export default function ReconcileFileStep({
   fileName, onFile, reading, error, grid, namesCount, quinzaine, onChangeQuinzaine, colors = [], farms = [],
+  team = '', hasSalary = false,
 }) {
   const { t, lang } = useI18n();
   const inputRef = useRef(null);
@@ -76,6 +77,16 @@ export default function ReconcileFileStep({
             {t('rec.namesRead')} :{' '}
             <span className="font-medium tabular-nums text-foreground">{fmtNum(namesCount, 0)}</span>
           </span>
+          {team && (
+            <span>
+              {t('rec.teamRead')} : <span className="font-medium text-foreground">{team}</span>
+            </span>
+          )}
+          {hasSalary && (
+            <span>
+              {t('rec.salaryRead')} : <span className="font-medium text-foreground">{t('rec.salaryFound')}</span>
+            </span>
+          )}
         </div>
       )}
 

@@ -27,6 +27,9 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.periodRead': 'Période lue',
     'rec.namesRead': 'Noms lus',
     'rec.dayColumns': 'Jours',
+    'rec.teamRead': 'Équipe',
+    'rec.salaryRead': 'Salaire',
+    'rec.salaryFound': 'colonne reconnue',
     'rec.unmappedTitle': 'Couleurs sans ferme',
     'rec.unmappedHint':
       'Ces couleurs ne correspondent à aucune ferme : leurs journées ne seront pas reprises. Renseignez la couleur de la ferme dans les paramètres.',
@@ -157,6 +160,9 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.periodRead': 'الفترة المقروءة',
     'rec.namesRead': 'أسماء مقروءة',
     'rec.dayColumns': 'أيام',
+    'rec.teamRead': 'الفريق',
+    'rec.salaryRead': 'الأجر',
+    'rec.salaryFound': 'عمود معروف',
     'rec.unmappedTitle': 'ألوان بدون ضيعة',
     'rec.unmappedHint':
       'هذه الألوان لا تطابق أي ضيعة، لذلك لن تُؤخذ أيامها. حدّد لون الضيعة في الإعدادات.',

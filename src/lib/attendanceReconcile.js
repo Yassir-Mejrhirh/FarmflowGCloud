@@ -12,6 +12,113 @@ import { guessMapping, parseNumber } from '@/lib/workerImport';
 
 const round = (value) => Math.round(value * 100) / 100;
 
+const normalizeText = (value) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\u0600-\u06ff]+/g, '');
+
+// Titres lus de haut en bas : la ligne des dates d'abord, puis les lignes de titre
+// au-dessus, où l'équipe et le salaire sont parfois écrits seuls.
+const titleRows = (headerIndex) => [
+  headerIndex,
+  ...Array.from({ length: headerIndex }, (_, index) => headerIndex - 1 - index),
+];
+
+const TEAM_TITLES = ['equipe', 'team', 'groupe', 'الفريق'];
+
+// Colonne d'équipe : reconnue uniquement à l'identique, pour ne pas confondre un
+// titre « Équipe Yassir » écrit dans une cellule avec un en-tête de colonne.
+function teamColumnOf(rows, headerIndex, terms = {}) {
+  const wanted = new Set([...(terms.team || []), ...TEAM_TITLES].map(normalizeText).filter(Boolean));
+  for (const rowIndex of titleRows(headerIndex)) {
+    const cells = rows[rowIndex] || [];
+    for (let column = 0; column < cells.length; column += 1) {
+      const text = normalizeText(cells[column]);
+      if (text && wanted.has(text)) return column;
+    }
+  }
+  return -1;
+}
+
+// Titre écrit une seule fois au-dessus des ouvriers (« Équipe Yassir ») : il donne
+// l'équipe de tout le classeur. Une équipe déjà connue est reprise telle quelle.
+const stripAccents = (value) =>
+  String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+
+const TEAM_LABEL = /^(?:equipe|team|groupe|الفريق)\b\s*[:\-–.]?\s*/i;
+
+export function teamFromTitles(rows = [], dataStart = 1, knownTeams = []) {
+  const known = knownTeams
+    .map((name) => ({ name, key: normalizeText(name) }))
+    .filter((team) => team.key.length >= 3);
+
+  for (let row = 0; row < Math.min(dataStart, rows.length); row += 1) {
+    for (const cell of rows[row] || []) {
+      const text = String(cell ?? '').trim();
+      if (!text || text.length > 80) continue;
+      const key = normalizeText(text);
+      const found = known.find((team) => key.includes(team.key));
+      if (found) return found.name;
+      const plain = stripAccents(text);
+      const label = TEAM_LABEL.exec(plain);
+      if (!label) continue;
+      const rest = plain.slice(label[0].length).replace(/[\s:\-–.]+$/, '').trim();
+      if (rest) return rest;
+    }
+  }
+  return '';
+}
+
+// Colonne sans titre, repérée par son contenu : des montants réguliers sur les
+// lignes d'ouvriers. Une numérotation 1, 2, 3… ou un matricule ne compte pas.
+function amountColumn({ rows, grid, skip = new Set() }) {
+  const blocked = new Set([...grid.dayColumns.map((column) => column.index), ...skip]);
+  const width = rows
+    .slice(grid.dataStart)
+    .reduce((widest, row) => Math.max(widest, row?.length || 0), 0);
+  let best = -1;
+  let bestRatio = 0;
+
+  for (let column = 0; column < width; column += 1) {
+    if (blocked.has(column)) continue;
+    const values = [];
+    let filled = 0;
+    for (let row = grid.dataStart; row < rows.length; row += 1) {
+      const text = String(rows[row]?.[column] ?? '').trim();
+      if (!text) continue;
+      filled += 1;
+      const value = parseNumber(text);
+      if (value > 0) values.push(value);
+    }
+    if (filled < 2 || values.length < 2) continue;
+    if (values.every((value, index) => value === index + 1)) continue;
+    const plausible = values.filter((value) => value >= 10 && value <= 5000).length;
+    if (plausible * 2 < values.length) continue;
+    const ratio = values.length / filled;
+    if (ratio >= 0.8 && ratio > bestRatio) {
+      best = column;
+      bestRatio = ratio;
+    }
+  }
+
+  return best;
+}
+
+// Colonne de salaire : son titre d'abord, puis son contenu à défaut de titre.
+function salaryColumnOf({ rows, grid, nameColumn, teamColumn, terms = {} }) {
+  for (const rowIndex of titleRows(grid.headerIndex)) {
+    const mapping = guessMapping(rows[rowIndex] || [], terms);
+    const column = mapping.daily_rate;
+    if (column === undefined || column < 0) continue;
+    if (column === nameColumn || column === teamColumn) continue;
+    if (grid.dayColumns.some((day) => day.index === column)) continue;
+    return column;
+  }
+  return amountColumn({ rows, grid, skip: new Set([nameColumn, teamColumn]) });
+}
+
 // Grille du classeur : jours, colonne des noms, couleurs et lignes d'ouvriers.
 // Quand une quinzaine est choisie, seules ses journées sont retenues.
 export function analyseSheet({ sheet, reference, farms = [], workers = [], period = null, terms = {} }) {
@@ -23,15 +130,29 @@ export function analyseSheet({ sheet, reference, farms = [], workers = [], perio
   const nameColumn = findNameColumn(sheet.rows, grid, workers);
   if (nameColumn < 0) return null;
 
-  // Équipe et salaire : colonnes reconnues par leur titre, comme dans l'import des
-  // ouvriers. Sans titre reconnu, la colonne reste ignorée.
-  const mapping = guessMapping(sheet.rows[grid.headerIndex] || [], terms);
+  // Équipe et salaire : une colonne reconnue par son titre, sinon l'équipe écrite en
+  // première ligne et une colonne de montants. Tout reste modifiable à l'écran.
+  const knownTeams = [...new Set((workers || []).map((worker) => String(worker.team || '').trim()))]
+    .filter(Boolean);
+  // La colonne des noms ne peut pas être celle de l'équipe : un titre « Équipe » posé
+  // au-dessus de la liste ne doit pas transformer chaque nom en équipe.
+  const found = teamColumnOf(sheet.rows, grid.headerIndex, terms);
+  const teamColumn = found === nameColumn ? -1 : found;
+  const titleTeam = teamFromTitles(sheet.rows, grid.dataStart, knownTeams);
+  const salaryColumn = salaryColumnOf({
+    rows: sheet.rows,
+    grid,
+    nameColumn,
+    teamColumn,
+    terms,
+  });
 
   return {
     grid,
     nameColumn,
-    teamColumn: mapping.team ?? -1,
-    salaryColumn: mapping.daily_rate ?? -1,
+    teamColumn,
+    titleTeam,
+    salaryColumn,
     colors: detectColors(sheet.rows, sheet.fills, grid),
     names: readNames({
       rows: sheet.rows,
@@ -39,14 +160,17 @@ export function analyseSheet({ sheet, reference, farms = [], workers = [], perio
       grid,
       nameColumn,
       farms,
-      teamColumn: mapping.team ?? -1,
-      salaryColumn: mapping.daily_rate ?? -1,
+      teamColumn,
+      titleTeam,
+      salaryColumn,
     }),
   };
 }
 
 // Une entrée par nom écrit dans le classeur, avec ses journées et leur ferme.
-function readNames({ rows, fills, grid, nameColumn, farms, teamColumn = -1, salaryColumn = -1 }) {
+function readNames({
+  rows, fills, grid, nameColumn, farms, teamColumn = -1, titleTeam = '', salaryColumn = -1,
+}) {
   const farmByColor = new Map();
   (farms || []).forEach((farm) => {
     const color = String(farm.color || '').toUpperCase();
@@ -77,7 +201,7 @@ function readNames({ rows, fills, grid, nameColumn, farms, teamColumn = -1, sala
     const entry = found.get(name) || { name, key: nameKey(name), cells: [], total: 0, team: '', salary: '' };
     const team = teamColumn >= 0 ? String(cells[teamColumn] ?? '').trim() : '';
     const salary = salaryColumn >= 0 ? parseNumber(cells[salaryColumn]) : 0;
-    if (!entry.team && team) entry.team = team;
+    if (!entry.team) entry.team = team || titleTeam;
     if (!entry.salary && salary > 0) entry.salary = salary;
     worked.forEach((cell) => {
       entry.cells.push(cell);
