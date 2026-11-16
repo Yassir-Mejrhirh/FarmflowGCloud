@@ -32,6 +32,29 @@ export function transportGaps({ workers = [], matchedIds, rates = [], date }) {
     );
 }
 
+// Équipes dont des ouvriers n'ont pas de transport : le transport déjà paramétré par
+// l'équipe est proposé pour ces ouvriers, une équipe sans transport reste signalée.
+export function teamTransportGaps({ workers = [], rates = [], date }) {
+  const index = buildTransportIndex(rates);
+  const teams = new Map();
+
+  (workers || []).forEach((worker) => {
+    const key = teamKey(worker.team);
+    if (!key) return;
+    const entry = teams.get(key) || { key, team: String(worker.team).trim(), members: [], missing: [] };
+    entry.members.push(worker);
+    const current = transportFor(worker, index, date);
+    if (current.mode === 'none' || Number(current.rate) <= 0) entry.missing.push(worker);
+    teams.set(key, entry);
+  });
+
+  const proposed = teamTransports(workers, rates, date);
+  return [...teams.values()]
+    .filter((entry) => entry.missing.length)
+    .map((entry) => ({ ...entry, proposed: proposed.get(entry.key) || null }))
+    .sort((a, b) => a.team.localeCompare(b.team));
+}
+
 // Affectation confirmée : le transport de l'équipe part sur la fiche de l'ouvrier et
 // dans son historique à la date d'effet, sans toucher aux autres ouvriers.
 export async function applyTransportAssignments({ assignments = [], effectiveDate }) {

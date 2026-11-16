@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { FileSpreadsheet, Plus, Printer, Users, Wallet } from 'lucide-react';
+import { FileSpreadsheet, Plus, Printer, Truck, Users, Wallet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,12 @@ import WorkerDialog from '@/components/workers/WorkerDialog';
 import WorkerTable from '@/components/workers/WorkerTable';
 import WageHistoryDialog from '@/components/workers/WageHistoryDialog';
 import TeamRateDialog from '@/components/workers/TeamRateDialog';
+import TeamTransportDialog from '@/components/workers/TeamTransportDialog';
 import WorkerImportDialog from '@/components/workers/import/WorkerImportDialog';
 import WorkerPrintDialog from '@/components/workers/WorkerPrintDialog';
 import { fetchList } from '@/lib/data';
+import { todayISO } from '@/lib/format';
+import { teamTransportGaps } from '@/lib/reconcileTransport';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +27,7 @@ export default function Workers() {
   const [editingWorker, setEditingWorker] = useState(null);
   const [rateWorker, setRateWorker] = useState(null);
   const [teamRateOpen, setTeamRateOpen] = useState(false);
+  const [teamTransportOpen, setTeamTransportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [wageRates, setWageRates] = useState([]);
@@ -60,6 +64,11 @@ export default function Workers() {
   const activeCount = workers.filter((worker) => worker.active !== false).length;
   const declaredCount = workers.filter((worker) => worker.declared).length;
   const teamNames = useMemo(() => [...new Set(workers.map((worker) => worker.team).filter(Boolean))], [workers]);
+  // Équipes dont des ouvriers n'ont pas encore de transport : le bouton dédié les signale.
+  const transportTeams = useMemo(
+    () => teamTransportGaps({ workers, rates: transportRates, date: todayISO() }),
+    [workers, transportRates],
+  );
 
   return (
     <div className="space-y-8">
@@ -77,6 +86,14 @@ export default function Workers() {
             </Button>
             <Button variant="outline" className="rounded-xl" onClick={() => setTeamRateOpen(true)}>
               <Wallet className="mr-1.5 h-4 w-4" /> {t('wage.newRateBtn')}
+            </Button>
+            <Button variant="outline" className="rounded-xl" onClick={() => setTeamTransportOpen(true)}>
+              <Truck className="mr-1.5 h-4 w-4" /> {t('wtr.teamBtn')}
+              {transportTeams.length > 0 && (
+                <span className="ms-1 rounded-full bg-clay/15 px-1.5 text-[10px] tabular-nums text-clay">
+                  {transportTeams.length}
+                </span>
+              )}
             </Button>
             <Button
               className="rounded-xl"
@@ -133,6 +150,14 @@ export default function Workers() {
         workers={workers}
         rates={wageRates}
         onSaved={reloadRates}
+      />
+
+      <TeamTransportDialog
+        open={teamTransportOpen}
+        onOpenChange={setTeamTransportOpen}
+        workers={workers}
+        transportRates={transportRates}
+        onSaved={load}
       />
 
       <WorkerImportDialog
