@@ -8,12 +8,13 @@ import { fetchList } from '@/lib/data';
 import { todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
 import { nameKey } from '@/lib/nameMatch';
+import { guessMapping, parseNumber } from '@/lib/workerImport';
 
 const round = (value) => Math.round(value * 100) / 100;
 
 // Grille du classeur : jours, colonne des noms, couleurs et lignes d'ouvriers.
 // Quand une quinzaine est choisie, seules ses journées sont retenues.
-export function analyseSheet({ sheet, reference, farms = [], workers = [], period = null }) {
+export function analyseSheet({ sheet, reference, farms = [], workers = [], period = null, terms = {} }) {
   const grid = detectGrid(sheet.rows, reference, sheet.fills, farms);
   if (!grid) return null;
   if (period?.start && period?.end) {
@@ -22,16 +23,30 @@ export function analyseSheet({ sheet, reference, farms = [], workers = [], perio
   const nameColumn = findNameColumn(sheet.rows, grid, workers);
   if (nameColumn < 0) return null;
 
+  // Équipe et salaire : colonnes reconnues par leur titre, comme dans l'import des
+  // ouvriers. Sans titre reconnu, la colonne reste ignorée.
+  const mapping = guessMapping(sheet.rows[grid.headerIndex] || [], terms);
+
   return {
     grid,
     nameColumn,
+    teamColumn: mapping.team ?? -1,
+    salaryColumn: mapping.daily_rate ?? -1,
     colors: detectColors(sheet.rows, sheet.fills, grid),
-    names: readNames({ rows: sheet.rows, fills: sheet.fills, grid, nameColumn, farms }),
+    names: readNames({
+      rows: sheet.rows,
+      fills: sheet.fills,
+      grid,
+      nameColumn,
+      farms,
+      teamColumn: mapping.team ?? -1,
+      salaryColumn: mapping.daily_rate ?? -1,
+    }),
   };
 }
 
 // Une entrée par nom écrit dans le classeur, avec ses journées et leur ferme.
-function readNames({ rows, fills, grid, nameColumn, farms }) {
+function readNames({ rows, fills, grid, nameColumn, farms, teamColumn = -1, salaryColumn = -1 }) {
   const farmByColor = new Map();
   (farms || []).forEach((farm) => {
     const color = String(farm.color || '').toUpperCase();
@@ -59,7 +74,11 @@ function readNames({ rows, fills, grid, nameColumn, farms }) {
 
     if (!worked.length) continue;
 
-    const entry = found.get(name) || { name, key: nameKey(name), cells: [], total: 0 };
+    const entry = found.get(name) || { name, key: nameKey(name), cells: [], total: 0, team: '', salary: '' };
+    const team = teamColumn >= 0 ? String(cells[teamColumn] ?? '').trim() : '';
+    const salary = salaryColumn >= 0 ? parseNumber(cells[salaryColumn]) : 0;
+    if (!entry.team && team) entry.team = team;
+    if (!entry.salary && salary > 0) entry.salary = salary;
     worked.forEach((cell) => {
       entry.cells.push(cell);
       entry.total = round(entry.total + cell.days);

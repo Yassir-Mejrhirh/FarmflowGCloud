@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { ArrowLeft, ArrowRight, Check, FileSpreadsheet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import ReconcileFileStep from '@/components/reconcile/ReconcileFileStep';
 import ReconcileNameStep from '@/components/reconcile/ReconcileNameStep';
 import ReconcileReviewStep from '@/components/reconcile/ReconcileReviewStep';
+import ReconcileNewWorkers from '@/components/reconcile/ReconcileNewWorkers';
 import ReconcileQueue from '@/components/reconcile/ReconcileQueue';
 import { readXlsxSheet } from '@/lib/xlsxReader';
 import {
@@ -17,8 +18,11 @@ import {
   fetchPeriodSheets,
   integrateQueueItem,
 } from '@/lib/attendanceReconcile';
-import { proposeMatches, usageCount } from '@/lib/nameMatch';
+import { nameKey, proposeMatches, usageCount } from '@/lib/nameMatch';
 import { fetchList } from '@/lib/data';
+import { fetchGlobalOptions } from '@/lib/globalOptions';
+import { addReconcileWorkers, detectTeams, teamKey, teamTransports } from '@/lib/reconcileWorkers';
+import { mappingTerms } from '@/lib/workerImport';
 import { quinzaineOf, quinzaineRange } from '@/lib/quinzaine';
 import { fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -32,6 +36,8 @@ export default function AttendanceReconciliation() {
   const [farms, setFarms] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [wageRates, setWageRates] = useState([]);
+  const [transportRates, setTransportRates] = useState([]);
+  const [globalTeams, setGlobalTeams] = useState([]);
   const [queue, setQueue] = useState([]);
   const [queueLoading, setQueueLoading] = useState(true);
 
@@ -51,6 +57,10 @@ export default function AttendanceReconciliation() {
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null);
+  const [fileSeq, setFileSeq] = useState(0);
+  const [picks, setPicks] = useState({});
+  const [adding, setAdding] = useState(false);
+  const preparedFor = useRef('');
 
   const loadQueue = async () => {
     setQueueLoading(true);
@@ -65,15 +75,19 @@ export default function AttendanceReconciliation() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const [farmRows, workerRows, rateRows] = await Promise.all([
+      const [farmRows, workerRows, rateRows, transportRows, teamRows] = await Promise.all([
         fetchList(base44.entities.Farm, {}, { sort: 'name' }),
         fetchList(base44.entities.Worker, {}, { sort: 'name' }),
         fetchList(base44.entities.WageRate, {}),
+        fetchList(base44.entities.TransportRate, {}),
+        fetchGlobalOptions('team'),
       ]);
       if (!active) return;
       setFarms(farmRows);
       setWorkers(workerRows.filter((worker) => worker.active !== false));
       setWageRates(rateRows);
+      setTransportRates(transportRows);
+      setGlobalTeams(teamRows);
     };
     load();
     loadQueue();
@@ -86,10 +100,11 @@ export default function AttendanceReconciliation() {
   // lecture des en-têtes et borne les journées retenues dans le classeur.
   const period = useMemo(() => quinzaineRange(quinzaine), [quinzaine]);
   const reference = useMemo(() => new Date(`${period.start}T00:00:00`), [period]);
+  const terms = useMemo(() => mappingTerms(t), [t]);
 
   const analysis = useMemo(
-    () => (sheet ? analyseSheet({ sheet, reference, farms, workers, period }) : null),
-    [sheet, reference, farms, workers, period],
+    () => (sheet ? analyseSheet({ sheet, reference, farms, workers, period, terms }) : null),
+    [sheet, reference, farms, workers, period, terms],
   );
   const names = analysis?.names || [];
   const fileError =
@@ -100,9 +115,13 @@ export default function AttendanceReconciliation() {
 
   const proposals = useMemo(() => proposeMatches(names.map((entry) => entry.name), workers), [names, workers]);
 
-  // Fichier lu : les propositions sures sont pré-cochées, les autres restent à confirmer.
+  // Fichier lu : les propositions sûres sont pré-cochées, les autres restent à confirmer.
+  // Le garde évite de réinitialiser les choix quand la liste d'ouvriers se recharge.
   useEffect(() => {
     if (!analysis) return;
+    const key = `${fileName}|${fileSeq}|${period.start}|${period.end}`;
+    if (preparedFor.current === key) return;
+    preparedFor.current = key;
     const next = {};
     analysis.names.forEach((entry) => {
       const best = proposals.get(entry.name)?.best;
@@ -110,8 +129,28 @@ export default function AttendanceReconciliation() {
     });
     setResolution(next);
     setRates({});
+    setPicks({});
     setFrom(analysis.grid.dayColumns[0]?.date || '');
     setTo(analysis.grid.dayColumns[analysis.grid.dayColumns.length - 1]?.date || '');
+  }, [analysis, proposals, fileName, fileSeq, period]);
+
+  // Un nom écrit à l'identique est coché dès que sa fiche apparaît : ouvriers chargés
+  // après le classeur, ou fiches créées depuis ce rapprochement.
+  useEffect(() => {
+    if (!analysis) return;
+    setResolution((current) => {
+      const next = { ...current };
+      let changed = false;
+      analysis.names.forEach((entry) => {
+        if (next[entry.name]) return;
+        const best = proposals.get(entry.name)?.best;
+        if (best && best.level === 'exact') {
+          next[entry.name] = best.worker_id;
+          changed = true;
+        }
+      });
+      return changed ? next : current;
+    });
   }, [analysis, proposals]);
 
   const lines = useMemo(
@@ -130,6 +169,50 @@ export default function AttendanceReconciliation() {
 
   const usage = useMemo(() => usageCount(resolution), [resolution]);
   const noFarm = useMemo(() => daysWithoutFarm({ names, resolution }), [names, resolution]);
+
+  const unmatchedEntries = useMemo(
+    () => names.filter((entry) => !resolution[entry.name]),
+    [names, resolution],
+  );
+
+  const moTeams = useMemo(
+    () => [...new Set([...globalTeams, ...workers.map((worker) => worker.team).filter(Boolean)])],
+    [globalTeams, workers],
+  );
+
+  // Équipes du classeur, complétées par celles de la liste MO qui n'y figurent pas.
+  const teamChoices = useMemo(() => {
+    const list = detectTeams(names, moTeams);
+    moTeams.forEach((name) => {
+      if (!list.some((team) => teamKey(team.name) === teamKey(name))) list.push({ name, known: true, count: 0 });
+    });
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [names, moTeams]);
+
+  const transports = useMemo(
+    () => teamTransports(workers, transportRates, from || period.start),
+    [workers, transportRates, from, period],
+  );
+
+  // Choix par personne : équipe et salaire lus dans le classeur, tous deux modifiables.
+  const picksFor = useMemo(() => {
+    const map = new Map();
+    unmatchedEntries.forEach((entry) => {
+      const saved = picks[entry.name] || {};
+      const team = saved.team ?? entry.team ?? '';
+      const suggestion =
+        entry.salary || teamChoices.find((choice) => teamKey(choice.name) === teamKey(team))?.salary || 0;
+      map.set(entry.name, {
+        include: saved.include ?? true,
+        team,
+        salary: saved.salary ?? (suggestion ? String(suggestion) : ''),
+      });
+    });
+    return map;
+  }, [unmatchedEntries, picks, teamChoices]);
+
+  const setPick = (name, patch) =>
+    setPicks((current) => ({ ...current, [name]: { ...(picksFor.get(name) || {}), ...patch } }));
 
   // Pointages déjà enregistrés sur la période, pour montrer les écarts avant validation.
   // La clé ne dépend que des jours et des fermes : changer un taux ne relance pas la lecture.
@@ -174,6 +257,7 @@ export default function AttendanceReconciliation() {
     try {
       const next = await readXlsxSheet(file);
       setFileName(file.name);
+      setFileSeq((current) => current + 1);
       if (!next.rows.length) {
         setSheet(null);
         setReadError(t('rec.empty'));
@@ -200,6 +284,41 @@ export default function AttendanceReconciliation() {
   };
 
   const setRate = (workerId, value) => setRates((current) => ({ ...current, [workerId]: value }));
+
+  // Ajout des personnes choisies à la liste MO, puis reprise du rapprochement avec
+  // leurs nouvelles fiches : le pointage peut les reprendre immédiatement.
+  const addToWorkers = async () => {
+    const selections = unmatchedEntries
+      .map((entry) => ({ name: entry.name, ...picksFor.get(entry.name) }))
+      .filter((selection) => selection.include && Number(selection.salary) > 0);
+    if (!selections.length) return;
+
+    setAdding(true);
+    setError('');
+    try {
+      await addReconcileWorkers({ selections, transports });
+      const rows = await fetchList(base44.entities.Worker, {}, { sort: 'name' });
+      const active = rows.filter((worker) => worker.active !== false);
+      setWorkers(active);
+      setGlobalTeams((current) => [
+        ...new Set([...current, ...selections.map((selection) => selection.team).filter(Boolean)]),
+      ]);
+      const byName = new Map(active.map((worker) => [nameKey(worker.name), worker]));
+      setResolution((current) => {
+        const next = { ...current };
+        selections.forEach((selection) => {
+          const worker = byName.get(nameKey(selection.name));
+          if (worker) next[selection.name] = worker.id;
+        });
+        return next;
+      });
+      setPicks({});
+    } catch {
+      setError(t('rec.newFailed'));
+    } finally {
+      setAdding(false);
+    }
+  };
 
   const save = async () => {
     if (!ratedLines.length) {
@@ -236,6 +355,8 @@ export default function AttendanceReconciliation() {
     setError('');
     setResolution({});
     setRates({});
+    setPicks({});
+    preparedFor.current = '';
   };
 
   const integrate = async (item) => {
@@ -319,6 +440,19 @@ export default function AttendanceReconciliation() {
             workers={workers}
             usage={usage}
           />
+
+          {unmatchedEntries.length > 0 && (
+            <ReconcileNewWorkers
+              entries={unmatchedEntries}
+              picks={picksFor}
+              teams={teamChoices}
+              transports={transports}
+              onPick={setPick}
+              onAdd={addToWorkers}
+              adding={adding}
+            />
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(1)}>
               <ArrowLeft className="me-1.5 h-4 w-4 rtl:rotate-180" /> {t('rec.back')}
