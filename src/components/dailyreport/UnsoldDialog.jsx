@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import WorkerName from '@/components/WorkerName';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fmtDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -25,7 +26,7 @@ export default function UnsoldDialog({ open, onClose, workers = [], date, farmNa
             {workers.map((worker) => (
               <li key={worker.worker_id} className="flex items-center gap-2 px-3 py-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" strokeWidth={1.8} />
-                <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{worker.name}</span>
+                <WorkerName name={worker.name} className="min-w-0 flex-1 truncate text-[13px] font-medium" />
                 <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
                   {t('report.unsoldLine', {
                     pointed: fmtNum(worker.pointed, 2),

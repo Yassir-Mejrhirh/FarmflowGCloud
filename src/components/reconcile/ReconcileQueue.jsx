@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, FileCheck2, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import WorkerName from '@/components/WorkerName';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -134,7 +135,7 @@ export default function ReconcileQueue({ items = [], loading = false, onIntegrat
                   {(item.lines || []).slice(0, 40).map((line) => (
                     <div key={`${line.worker_id}-${line.farm_id}`} className="flex items-baseline justify-between gap-2 text-[11px]">
                       <span className="min-w-0 truncate">
-                        {line.worker_name}
+                        <WorkerName name={line.worker_name} />
                         <span className="text-muted-foreground"> · {line.farm_name}</span>
                       </span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">

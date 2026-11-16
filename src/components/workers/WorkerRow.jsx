@@ -1,6 +1,7 @@
 import { History } from 'lucide-react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { workerFarmNames } from '@/lib/workerFarms';
+import WorkerName from '@/components/WorkerName';
 import { fmtMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +29,7 @@ export default function WorkerRow({ worker, t, onEdit, onRates }) {
   return (
     <TableRow onClick={() => onEdit(worker)} className="cursor-pointer">
       <TableCell className="whitespace-nowrap">
-        <span className="font-medium">{worker.name}</span>
+        <WorkerName name={worker.name} className="font-medium" />
         {worker.worker_function && (
           <span className="ml-2 text-xs text-muted-foreground">{worker.worker_function}</span>
         )}

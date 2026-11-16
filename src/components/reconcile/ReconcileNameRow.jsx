@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import SelectField from '@/components/SelectField';
+import WorkerName from '@/components/WorkerName';
 import { fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -39,7 +40,9 @@ export default function ReconcileNameRow({ entry, proposal, value, onChange, wor
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium leading-snug">{entry.name}</p>
+          <p className="truncate text-[13px] font-medium leading-snug">
+            <WorkerName name={entry.name} />
+          </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
             <span className="tabular-nums">{t('rec.daysCount', { days: fmtNum(entry.total, 1) })}</span>
             {duplicate && (

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import Field from '@/components/Field';
+import WorkerName from '@/components/WorkerName';
 import DayField from '@/components/labour/DayField';
 import { Input } from '@/components/ui/input';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
@@ -69,7 +70,9 @@ export default function ReconcileReviewStep({
           {workers.map((worker) => (
             <div key={worker.id} className="flex items-center gap-2 px-4 py-2">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[12.5px] leading-snug">{worker.name}</p>
+                <p className="truncate text-[12.5px] leading-snug">
+                  <WorkerName name={worker.name} />
+                </p>
                 <p className="text-[10.5px] tabular-nums text-muted-foreground">
                   {fmtNum(worker.days, 1)} j
                   {worker.farms > 1 ? ` · ${worker.farms}` : ''}
@@ -105,7 +108,9 @@ export default function ReconcileReviewStep({
           <ul className="mt-2 divide-y divide-clay/20">
             {salaryChanges.map((change) => (
               <li key={change.worker_id} className="flex items-center justify-between gap-2 py-1.5 text-[12px]">
-                <span className="min-w-0 truncate">{change.worker_name}</span>
+                <span className="min-w-0 truncate">
+                  <WorkerName name={change.worker_name} />
+                </span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
                   {fmtMoney(change.current)}
                   <span className="mx-1.5 text-clay">→</span>

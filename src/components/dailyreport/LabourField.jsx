@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, ChevronDown, Plus, Trash2, Users } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import WorkerName from '@/components/WorkerName';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { fmtNum } from '@/lib/format';
@@ -57,7 +58,7 @@ export default function LabourField({
                 <li key={`${line.worker_id}-${index}`} className="flex items-start gap-2">
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="truncate text-sm font-medium">
-                      {workerMap[line.worker_id]?.name || '—'}
+                      <WorkerName name={workerMap[line.worker_id]?.name} />
                     </p>
                     {renderMeta && renderMeta(line)}
                   </div>
@@ -129,7 +130,7 @@ export default function LabourField({
                                 ) : (
                                   <Plus className="h-3 w-3 shrink-0 opacity-60" />
                                 )}
-                                <span className="truncate">{worker.name}</span>
+                                <WorkerName name={worker.name} className="truncate" />
                                 {left !== null && (
                                   <span
                                     className={cn(

@@ -2,6 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import Field from '@/components/Field';
+import WorkerName from '@/components/WorkerName';
 import SelectField from '@/components/SelectField';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -37,7 +38,9 @@ export default function ReconcileNewWorkerRow({
           onCheckedChange={(checked) => onPick(entry.name, { include: checked === true })}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium leading-snug">{entry.name}</p>
+          <p className="truncate text-[13px] font-medium leading-snug">
+            <WorkerName name={entry.name} />
+          </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
             <span className="tabular-nums">{t('rec.daysCount', { days: fmtNum(entry.total, 1) })}</span>
             {pick?.team && !known && (

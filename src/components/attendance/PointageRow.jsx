@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import WorkerName from '@/components/WorkerName';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -26,7 +27,7 @@ export default function PointageRow({ worker, value, onChange }) {
           <Check className="h-3.5 w-3.5" strokeWidth={2.4} />
         </span>
         <span className="min-w-0">
-          <span className={cn('block truncate text-sm', pointed && 'font-medium')}>{worker.name}</span>
+          <WorkerName name={worker.name} className={cn('block truncate text-sm', pointed && 'font-medium')} />
           <span className="block truncate text-[11px] text-muted-foreground">
             {[worker.worker_function, worker.team].filter(Boolean).join(' · ') || '—'}
           </span>

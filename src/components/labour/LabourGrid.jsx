@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, Users } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
+import WorkerName from '@/components/WorkerName';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -76,7 +77,11 @@ function GroupRows({ group, days }) {
         group.rows.map((row) => (
           <tr key={row.key} className="border-b border-border/40 last:border-0">
             <td className="whitespace-nowrap px-3 py-1.5">
-              <span className={row.transporter ? 'text-xs italic text-clay' : 'font-medium'}>{row.name}</span>
+              {row.transporter ? (
+                <span className="text-xs italic text-clay">{row.name}</span>
+              ) : (
+                <WorkerName name={row.name} className="font-medium" />
+              )}
               {row.job && <span className="ms-2 text-[11px] text-muted-foreground">{row.job}</span>}
             </td>
             <td className="whitespace-nowrap px-2 py-1.5 text-end text-xs tabular-nums text-muted-foreground">

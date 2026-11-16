@@ -1,5 +1,6 @@
 import { CalendarDays } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
+import WorkerName from '@/components/WorkerName';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -34,7 +35,7 @@ export default function LabourDailyDetail({ groups, loading }) {
               <ul className="mt-2 space-y-1.5">
                 {group.entries.map((entry) => (
                   <li key={entry.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    <span className="font-medium">{entry.worker}</span>
+                    <WorkerName name={entry.worker} className="font-medium" />
                     <span className="tabular-nums text-muted-foreground">
                       {fmtNum(entry.days, 1)} {t('lab.daysUnit')}
                     </span>
