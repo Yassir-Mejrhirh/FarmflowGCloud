@@ -3,7 +3,7 @@
 // et le transport déjà paramétré pour leur équipe.
 
 import { base44 } from '@/api/base44Client';
-import { rememberGlobalOption } from '@/lib/globalOptions';
+import { rememberGlobalOptions } from '@/lib/globalOptions';
 import { buildTransportIndex, transportFor } from '@/lib/transportRates';
 
 export const teamKey = (value) => String(value || '').trim().toLowerCase();
@@ -55,33 +55,70 @@ export function teamTransports(workers = [], rates = [], date) {
   return map;
 }
 
-// Fiches créées : ouvrier mobile rattaché à son équipe, salaire lu dans le classeur
-// et transport de l'équipe. Une équipe inconnue rejoint la liste des équipes.
-export async function addReconcileWorkers({ selections = [], transports = new Map() }) {
-  const payloads = (selections || [])
+// Fiches créées : ouvrier mobile rattaché à son équipe, salaire lu dans le classeur,
+// priorité, déclaration et fonction choisies. Le transport de l'équipe — repris de la
+// liste MO ou saisi pour une nouvelle équipe — est enregistré sur la fiche et daté
+// dans l'historique des taux.
+export async function addReconcileWorkers({
+  selections = [], transports = new Map(), teamSettings = {}, effectiveDate,
+}) {
+  const rows = (selections || [])
     .filter((selection) => String(selection.name || '').trim())
     .map((selection) => {
-      const transport = transports.get(teamKey(selection.team)) || null;
+      const key = teamKey(selection.team);
+      const transport = teamSettings[key] || transports.get(key) || null;
       const rate = Number(transport?.rate) || 0;
       return {
-        name: String(selection.name).trim(),
-        priority: '1',
-        team: String(selection.team || '').trim(),
-        farm: '',
-        farms: [],
-        daily_rate: Number(selection.salary) || 0,
-        active: true,
-        transport_enabled: rate > 0,
-        transporter_name: transport?.transporter || '',
-        transport_rate_type: transport?.mode === 'per_person' ? 'per_person' : 'fixed',
-        transport_rate: rate,
+        transport,
+        // Transport saisi pour une équipe nouvellement créée : il est daté en plus.
+        newTeam: Boolean(teamSettings[key]),
+        payload: {
+          name: String(selection.name).trim(),
+          priority: selection.priority || '1',
+          team: String(selection.team || '').trim(),
+          worker_function: String(selection.worker_function || '').trim() || 'Ouvrier',
+          declared: Boolean(selection.declared),
+          farm: '',
+          farms: [],
+          daily_rate: Number(selection.salary) || 0,
+          active: true,
+          transport_enabled: rate > 0,
+          transporter_name: String(transport?.transporter || '').trim(),
+          transport_rate_type: transport?.mode === 'per_person' ? 'per_person' : 'fixed',
+          transport_rate: rate,
+        },
       };
     });
 
-  if (!payloads.length) return [];
+  if (!rows.length) return [];
 
-  const created = await base44.entities.Worker.bulkCreate(payloads);
-  const teams = [...new Set(payloads.map((payload) => payload.team).filter(Boolean))];
-  await Promise.all(teams.map((team) => rememberGlobalOption('team', team)));
-  return Array.isArray(created) ? created : [];
+  const created = await base44.entities.Worker.bulkCreate(rows.map((row) => row.payload));
+  const workers = Array.isArray(created) ? created : [];
+  const date = effectiveDate || new Date().toISOString().slice(0, 10);
+
+  // Le transport de chaque fiche est daté à la période du pointage : les prochains
+  // rapports reprennent ce paramétrage, y compris pour une équipe nouvellement créée.
+  const rateRows = workers
+    .map((worker, index) => {
+      const row = rows[index];
+      const rate = Number(row?.transport?.rate) || 0;
+      if (!row?.newTeam || !worker?.id || rate <= 0) return null;
+      return {
+        worker_id: worker.id,
+        effective_date: date,
+        mode: row.transport.mode === 'per_person' ? 'per_person' : 'fixed',
+        transporter_name: String(row.transport.transporter || '').trim(),
+        team: row.payload.team,
+        rate,
+      };
+    })
+    .filter(Boolean);
+  if (rateRows.length) await base44.entities.TransportRate.bulkCreate(rateRows);
+
+  const teams = [...new Set(rows.map((row) => row.payload.team).filter(Boolean))];
+  await rememberGlobalOptions('team', teams);
+  const transporterNames = [...new Set(rateRows.map((row) => row.transporter_name).filter(Boolean))];
+  if (transporterNames.length) await rememberGlobalOptions('transporter', transporterNames);
+
+  return workers;
 }

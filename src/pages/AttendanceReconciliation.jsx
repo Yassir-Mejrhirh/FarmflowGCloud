@@ -59,6 +59,8 @@ export default function AttendanceReconciliation() {
   const [saved, setSaved] = useState(null);
   const [fileSeq, setFileSeq] = useState(0);
   const [picks, setPicks] = useState({});
+  const [teamPicks, setTeamPicks] = useState({});
+  const [workerFunctions, setWorkerFunctions] = useState([]);
   const [adding, setAdding] = useState(false);
   const preparedFor = useRef('');
 
@@ -75,12 +77,13 @@ export default function AttendanceReconciliation() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const [farmRows, workerRows, rateRows, transportRows, teamRows] = await Promise.all([
+      const [farmRows, workerRows, rateRows, transportRows, teamRows, functionRows] = await Promise.all([
         fetchList(base44.entities.Farm, {}, { sort: 'name' }),
         fetchList(base44.entities.Worker, {}, { sort: 'name' }),
         fetchList(base44.entities.WageRate, {}),
         fetchList(base44.entities.TransportRate, {}),
         fetchGlobalOptions('team'),
+        fetchList(base44.entities.WorkerFunction, {}, { sort: 'name' }),
       ]);
       if (!active) return;
       setFarms(farmRows);
@@ -88,6 +91,7 @@ export default function AttendanceReconciliation() {
       setWageRates(rateRows);
       setTransportRates(transportRows);
       setGlobalTeams(teamRows);
+      setWorkerFunctions(functionRows.map((row) => row.name).filter(Boolean));
     };
     load();
     loadQueue();
@@ -206,6 +210,9 @@ export default function AttendanceReconciliation() {
         include: saved.include ?? true,
         team,
         salary: saved.salary ?? (suggestion ? String(suggestion) : ''),
+        priority: saved.priority ?? '1',
+        declared: saved.declared ?? false,
+        worker_function: saved.worker_function ?? 'Ouvrier',
       });
     });
     return map;
@@ -213,6 +220,10 @@ export default function AttendanceReconciliation() {
 
   const setPick = (name, patch) =>
     setPicks((current) => ({ ...current, [name]: { ...(picksFor.get(name) || {}), ...patch } }));
+
+  // Transport saisi pour une équipe absente de la liste MO.
+  const setTeamPick = (key, patch) =>
+    setTeamPicks((current) => ({ ...current, [key]: { ...(current[key] || {}), ...patch } }));
 
   // Pointages déjà enregistrés sur la période, pour montrer les écarts avant validation.
   // La clé ne dépend que des jours et des fermes : changer un taux ne relance pas la lecture.
@@ -296,7 +307,12 @@ export default function AttendanceReconciliation() {
     setAdding(true);
     setError('');
     try {
-      await addReconcileWorkers({ selections, transports });
+      await addReconcileWorkers({
+        selections,
+        transports,
+        teamSettings: teamPicks,
+        effectiveDate: from || period.start,
+      });
       const rows = await fetchList(base44.entities.Worker, {}, { sort: 'name' });
       const active = rows.filter((worker) => worker.active !== false);
       setWorkers(active);
@@ -313,6 +329,7 @@ export default function AttendanceReconciliation() {
         return next;
       });
       setPicks({});
+      setTeamPicks({});
     } catch {
       setError(t('rec.newFailed'));
     } finally {
@@ -356,6 +373,7 @@ export default function AttendanceReconciliation() {
     setResolution({});
     setRates({});
     setPicks({});
+    setTeamPicks({});
     preparedFor.current = '';
   };
 
@@ -447,6 +465,9 @@ export default function AttendanceReconciliation() {
               picks={picksFor}
               teams={teamChoices}
               transports={transports}
+              teamPicks={teamPicks}
+              onTeamPick={setTeamPick}
+              functions={workerFunctions}
               onPick={setPick}
               onAdd={addToWorkers}
               adding={adding}
