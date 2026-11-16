@@ -8,6 +8,7 @@ import ReconcileNameStep from '@/components/reconcile/ReconcileNameStep';
 import ReconcileReviewStep from '@/components/reconcile/ReconcileReviewStep';
 import ReconcileNewWorkers from '@/components/reconcile/ReconcileNewWorkers';
 import ReconcileQueue from '@/components/reconcile/ReconcileQueue';
+import ReconcileTransportGaps from '@/components/reconcile/ReconcileTransportGaps';
 import { readXlsxSheet } from '@/lib/xlsxReader';
 import {
   analyseSheet,
@@ -25,6 +26,7 @@ import { nameKey, proposeMatches, usageCount } from '@/lib/nameMatch';
 import { fetchList } from '@/lib/data';
 import { fetchGlobalOptions, rememberGlobalOption } from '@/lib/globalOptions';
 import { addReconcileWorkers, detectTeams, teamKey, teamTransports } from '@/lib/reconcileWorkers';
+import { applyTransportAssignments, transportGaps } from '@/lib/reconcileTransport';
 import { mappingTerms } from '@/lib/workerImport';
 import { quinzaineOf, quinzaineRange } from '@/lib/quinzaine';
 import { fmtMoney, fmtNum, todayISO } from '@/lib/format';
@@ -66,6 +68,8 @@ export default function AttendanceReconciliation() {
   const [teamPicks, setTeamPicks] = useState({});
   const [workerFunctions, setWorkerFunctions] = useState([]);
   const [adding, setAdding] = useState(false);
+  const [transportApplying, setTransportApplying] = useState(false);
+  const [transportNotice, setTransportNotice] = useState('');
   const preparedFor = useRef('');
 
   const loadQueue = async () => {
@@ -217,6 +221,14 @@ export default function AttendanceReconciliation() {
     [workers, transportRates, from, period],
   );
 
+  // Ouvriers du pointage dont l'équipe a un transport, mais qui n'en bénéficient pas
+  // encore : il leur sera proposé le transporteur et le tarif de leur équipe.
+  const matchedIds = useMemo(() => new Set(Object.values(resolution).filter(Boolean)), [resolution]);
+  const transportMissing = useMemo(
+    () => transportGaps({ workers, matchedIds, rates: transportRates, date: from || period.start }),
+    [workers, matchedIds, transportRates, from, period],
+  );
+
   // Transporteurs proposés : ceux déjà enregistrés, complétés par ceux de la liste MO.
   const transporterChoices = useMemo(() => {
     const names = [];
@@ -308,6 +320,7 @@ export default function AttendanceReconciliation() {
     setReading(true);
     setError('');
     setReadError('');
+    setTransportNotice('');
     try {
       const next = await readXlsxSheet(file);
       setFileName(file.name);
@@ -405,6 +418,32 @@ export default function AttendanceReconciliation() {
     }
   };
 
+  // Affectation confirmée : le transport de l'équipe est enregistré sur la fiche de
+  // l'ouvrier et dans son historique daté depuis le début de la période.
+  const assignTransport = async (assignments) => {
+    if (!assignments.length) return;
+    setTransportApplying(true);
+    setError('');
+    try {
+      const result = await applyTransportAssignments({
+        assignments,
+        effectiveDate: from || period.start,
+      });
+      const changes = new Map(result.updates.map((row) => [row.id, row]));
+      setWorkers((current) =>
+        current.map((worker) => (changes.has(worker.id) ? { ...worker, ...changes.get(worker.id) } : worker)),
+      );
+      setTransportRates((current) => [...current, ...result.rates]);
+      setTransportNotice(
+        t('rec.transportDone', { n: assignments.length, date: from || period.start }),
+      );
+    } catch {
+      setError(t('rec.transportFailed'));
+    } finally {
+      setTransportApplying(false);
+    }
+  };
+
   const save = async () => {
     if (!ratedLines.length) {
       setError(t('rec.noLines'));
@@ -447,6 +486,7 @@ export default function AttendanceReconciliation() {
     setRates({});
     setPicks({});
     setTeamPicks({});
+    setTransportNotice('');
     preparedFor.current = '';
   };
 
@@ -551,6 +591,20 @@ export default function AttendanceReconciliation() {
               onAdd={addToWorkers}
               adding={adding}
             />
+          )}
+
+          {transportMissing.length > 0 && (
+            <ReconcileTransportGaps
+              gaps={transportMissing}
+              onApply={assignTransport}
+              applying={transportApplying}
+            />
+          )}
+
+          {transportNotice && (
+            <p className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-[12px] text-primary">
+              {transportNotice}
+            </p>
           )}
 
           <div className="flex flex-wrap items-center gap-2">

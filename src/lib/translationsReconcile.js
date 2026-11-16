@@ -30,6 +30,14 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.teamRead': 'Équipe',
     'rec.salaryRead': 'Salaire',
     'rec.noTeamRead': 'Sans équipe',
+    'rec.transportTitle': 'Transport manquant',
+    'rec.transportHint':
+      'Ces ouvriers appartiennent à une équipe mais n’ont pas de transport : le transporteur et le tarif de leur équipe leur seront affectés à partir du début de la période.',
+    'rec.transportCount': '{n} ouvrier(s)',
+    'rec.transportApply': 'Affecter le transport ({n})',
+    'rec.transportApplying': 'Affectation…',
+    'rec.transportDone': 'Transport affecté à {n} ouvrier(s) depuis le {date}.',
+    'rec.transportFailed': 'Le transport n’a pas pu être enregistré.',
     'rec.salaryFound': 'colonne reconnue',
     'rec.unmappedTitle': 'Couleurs sans ferme',
     'rec.unmappedHint':
@@ -169,6 +177,14 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.teamRead': 'الفريق',
     'rec.salaryRead': 'الأجر',
     'rec.noTeamRead': 'بدون فريق',
+    'rec.transportTitle': 'نقل غير محدد',
+    'rec.transportHint':
+      'هؤلاء العمال ينتمون إلى فريق لكن ليس لديهم نقل: سيُمنحون ناقل وتسعيرة فريقهم انطلاقاً من بداية الفترة.',
+    'rec.transportCount': '{n} عامل',
+    'rec.transportApply': 'منح النقل ({n})',
+    'rec.transportApplying': 'جارٍ المنح…',
+    'rec.transportDone': 'تم منح النقل لـ {n} عامل انطلاقاً من {date}.',
+    'rec.transportFailed': 'تعذّر تسجيل النقل.',
     'rec.salaryFound': 'عمود معروف',
     'rec.unmappedTitle': 'ألوان بدون ضيعة',
     'rec.unmappedHint':
