@@ -19,6 +19,7 @@ import {
 } from '@/lib/attendanceReconcile';
 import { proposeMatches, usageCount } from '@/lib/nameMatch';
 import { fetchList } from '@/lib/data';
+import { quinzaineOf, quinzaineRange } from '@/lib/quinzaine';
 import { fmtMoney, fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -37,7 +38,7 @@ export default function AttendanceReconciliation() {
   const [step, setStep] = useState(1);
   const [fileName, setFileName] = useState('');
   const [sheet, setSheet] = useState(null);
-  const [refDate, setRefDate] = useState(todayISO());
+  const [quinzaine, setQuinzaine] = useState(() => quinzaineOf(todayISO()));
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState('');
   const [error, setError] = useState('');
@@ -81,18 +82,20 @@ export default function AttendanceReconciliation() {
     };
   }, []);
 
-  const reference = useMemo(() => new Date(`${refDate}T00:00:00`), [refDate]);
+  // La quinzaine choisie fixe la période du pointage : elle sert de référence à la
+  // lecture des en-têtes et borne les journées retenues dans le classeur.
+  const period = useMemo(() => quinzaineRange(quinzaine), [quinzaine]);
+  const reference = useMemo(() => new Date(`${period.start}T00:00:00`), [period]);
 
-  // Le classeur lu est réanalysé quand la date de référence change : les en-têtes
-  // écrits sans mois ni année en dépendent.
   const analysis = useMemo(
-    () => (sheet ? analyseSheet({ sheet, reference, farms, workers }) : null),
-    [sheet, reference, farms, workers],
+    () => (sheet ? analyseSheet({ sheet, reference, farms, workers, period }) : null),
+    [sheet, reference, farms, workers, period],
   );
   const names = analysis?.names || [];
   const fileError =
     readError ||
     (sheet && !analysis ? t('rec.noGrid') : '') ||
+    (analysis && !analysis.grid.dayColumns.length ? t('rec.noQuinzaineDays') : '') ||
     (analysis && !analysis.names.length ? t('rec.noNames') : '');
 
   const proposals = useMemo(() => proposeMatches(names.map((entry) => entry.name), workers), [names, workers]);
@@ -283,8 +286,8 @@ export default function AttendanceReconciliation() {
             error={fileError}
             grid={analysis?.grid}
             namesCount={names.length}
-            refDate={refDate}
-            onChangeRefDate={setRefDate}
+            quinzaine={quinzaine}
+            onChangeQuinzaine={setQuinzaine}
             colors={analysis?.colors || []}
             farms={farms}
           />

@@ -12,9 +12,13 @@ import { nameKey } from '@/lib/nameMatch';
 const round = (value) => Math.round(value * 100) / 100;
 
 // Grille du classeur : jours, colonne des noms, couleurs et lignes d'ouvriers.
-export function analyseSheet({ sheet, reference, farms = [], workers = [] }) {
+// Quand une quinzaine est choisie, seules ses journées sont retenues.
+export function analyseSheet({ sheet, reference, farms = [], workers = [], period = null }) {
   const grid = detectGrid(sheet.rows, reference, sheet.fills, farms);
   if (!grid) return null;
+  if (period?.start && period?.end) {
+    grid.dayColumns = grid.dayColumns.filter(({ date }) => date >= period.start && date <= period.end);
+  }
   const nameColumn = findNameColumn(sheet.rows, grid, workers);
   if (nameColumn < 0) return null;
 

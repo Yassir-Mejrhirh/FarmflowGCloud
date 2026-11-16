@@ -1,14 +1,13 @@
 import { useRef } from 'react';
 import { AlertTriangle, FileSpreadsheet, Loader2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Field from '@/components/Field';
-import DayField from '@/components/labour/DayField';
+import QuinzainePicker from '@/components/reconcile/QuinzainePicker';
 import { fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
-// Premier temps du rapprochement : le classeur de pointage et sa grille de jours.
+// Premier temps du rapprochement : la quinzaine, puis le classeur de pointage et sa grille de jours.
 export default function ReconcileFileStep({
-  fileName, onFile, reading, error, grid, namesCount, refDate, onChangeRefDate, colors = [], farms = [],
+  fileName, onFile, reading, error, grid, namesCount, quinzaine, onChangeQuinzaine, colors = [], farms = [],
 }) {
   const { t, lang } = useI18n();
   const inputRef = useRef(null);
@@ -24,6 +23,8 @@ export default function ReconcileFileStep({
 
   return (
     <div className="space-y-4">
+      <QuinzainePicker value={quinzaine} onChange={onChangeQuinzaine} />
+
       <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-secondary/30 px-5 py-7 text-center">
         <FileSpreadsheet className="h-6 w-6 text-primary" />
         <p className="text-sm font-medium">{t('rec.dropTitle')}</p>
@@ -60,28 +61,21 @@ export default function ReconcileFileStep({
       )}
 
       {grid && (
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-border/70 bg-card px-3 py-2.5 text-[11px] text-muted-foreground">
-            <span>
-              {t('rec.period')} :{' '}
-              <span className="font-medium text-foreground">
-                {short(first)} → {short(last)}
-              </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-border/70 bg-card px-3 py-2.5 text-[11px] text-muted-foreground">
+          <span>
+            {t('rec.periodRead')} :{' '}
+            <span className="font-medium text-foreground">
+              {short(first)} → {short(last)}
             </span>
-            <span>
-              {t('rec.dayColumns')} :{' '}
-              <span className="font-medium tabular-nums text-foreground">{grid.dayColumns.length}</span>
-            </span>
-            <span>
-              {t('rec.namesRead')} :{' '}
-              <span className="font-medium tabular-nums text-foreground">{fmtNum(namesCount, 0)}</span>
-            </span>
-          </div>
-          <div className="sm:w-48">
-            <Field label={t('rec.refDate')} hint={t('rec.refHint')}>
-              <DayField value={refDate} onChange={onChangeRefDate} />
-            </Field>
-          </div>
+          </span>
+          <span>
+            {t('rec.dayColumns')} :{' '}
+            <span className="font-medium tabular-nums text-foreground">{grid.dayColumns.length}</span>
+          </span>
+          <span>
+            {t('rec.namesRead')} :{' '}
+            <span className="font-medium tabular-nums text-foreground">{fmtNum(namesCount, 0)}</span>
+          </span>
         </div>
       )}
 
