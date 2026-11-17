@@ -224,7 +224,11 @@ function readNames({
       if (!raw && !cellColor) return;
       const days = cellDays(raw);
       if (!days) return;
-      const color = grid.columnColors?.[column] || cellColor;
+      // La couleur de la cellule décrit la ferme réellement travaillée ce jour-là :
+      // quand elle correspond à une ferme connue, elle prime sur la couleur de la
+      // colonne, qui n'est qu'une affectation par défaut.
+      const color =
+        cellColor && farmByColor.has(cellColor) ? cellColor : grid.columnColors?.[column] || cellColor;
       const farm = farmByColor.get(color) || null;
       worked.push({ date, days, color, column, farm_id: farm?.id || '', farm_name: farm?.name || '' });
     });

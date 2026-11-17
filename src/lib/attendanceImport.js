@@ -406,10 +406,11 @@ export function buildAnalysis({ rows, fills, grid, nameColumn, workers, farms, c
 
     columns.forEach(({ column, date, color: columnColor }) => {
       const raw = String(cells[column] ?? '').trim();
-      // La couleur de la ligne d'attribution donne la ferme de la colonne ; à
-      // défaut, la couleur de la cellule de présence la donne.
+      // La couleur de la ligne d'attribution donne la ferme de la colonne, mais la
+      // couleur de la cellule de présence l'emporte quand elle est reconnue : c'est
+      // elle qui dit sur quelle ferme la journée a été travaillée.
       const cellColor = String(fills?.[row]?.[column] || '').toUpperCase();
-      const color = columnColor || cellColor;
+      const color = cellColor && colorMap[cellColor] ? cellColor : columnColor || cellColor;
 
       // Une cellule vide ne compte que si elle est elle-même colorée.
       if (!raw && !cellColor) return;
