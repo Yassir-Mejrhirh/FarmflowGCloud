@@ -423,6 +423,75 @@ export function compareWithPointages({ lines = [], sheets = [] }) {
   return { differences, newCells };
 }
 
+// Journées du classeur et journées déjà pointées, regroupées par date, ferme et salaire.
+// Les journées pointées sont lues au salaire du classeur quand l'ouvrier y figure, pour
+// comparer les journées et non les taux ; celles restées sans salaire connu forment leur
+// propre groupe, sans être assimilées à une égalité.
+export function compareSalaryDays({ lines = [], sheets = [], workers = [], wageRates = [] }) {
+  const workersById = new Map((workers || []).map((worker) => [worker.id, worker]));
+  const rateIndex = buildRateIndex(wageRates);
+  const workbookRates = new Map();
+  lines.forEach((line) => {
+    if (line.worker_id && !workbookRates.has(line.worker_id)) {
+      workbookRates.set(line.worker_id, Number(line.daily_rate) || 0);
+    }
+  });
+
+  const buckets = new Map();
+  const bucketOf = (date, farmId, farmName, rate) => {
+    const key = `${date}|${farmId}|${round(rate)}`;
+    const row =
+      buckets.get(key) ||
+      {
+        key,
+        date,
+        farm_id: farmId || '',
+        farm_name: farmName || '',
+        rate: round(rate),
+        imported: 0,
+        existing: 0,
+      };
+    buckets.set(key, row);
+    return row;
+  };
+
+  lines.forEach((line) => {
+    Object.entries(line.days || {}).forEach(([date, days]) => {
+      const value = Number(days) || 0;
+      if (value <= 0 || !line.farm_id) return;
+      bucketOf(date, line.farm_id, line.farm_name, Number(line.daily_rate) || 0).imported += value;
+    });
+  });
+
+  (sheets || []).forEach((sheet) => {
+    (sheet.lines || []).forEach((entry) => {
+      const value = Number(entry.days) || 0;
+      if (value <= 0) return;
+      const worker = workersById.get(entry.worker_id);
+      const rate = workbookRates.has(entry.worker_id)
+        ? workbookRates.get(entry.worker_id)
+        : worker
+          ? rateFor(worker, rateIndex, sheet.date)
+          : 0;
+      bucketOf(sheet.date, sheet.farm_id, sheet.farm_name, rate).existing += value;
+    });
+  });
+
+  return [...buckets.values()]
+    .map((row) => ({
+      ...row,
+      imported: round(row.imported),
+      existing: round(row.existing),
+      gap: round(row.imported - row.existing),
+    }))
+    .sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) ||
+        String(a.farm_name).localeCompare(String(b.farm_name)) ||
+        a.rate - b.rate,
+    );
+}
+
 // Salaires lus dans le classeur, un par ouvrier rapproché.
 export function excelSalaries({ names = [], resolution = {} }) {
   const salaries = new Map();

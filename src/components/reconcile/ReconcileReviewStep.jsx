@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import Field from '@/components/Field';
 import WorkerName from '@/components/WorkerName';
+import ReconcileSalaryDays from '@/components/reconcile/ReconcileSalaryDays';
 import DayField from '@/components/labour/DayField';
 import { Input } from '@/components/ui/input';
 import { fmtDate, fmtMoney, fmtNum } from '@/lib/format';
@@ -11,7 +12,7 @@ import { useI18n } from '@/lib/I18nContext';
 export default function ReconcileReviewStep({
   from, to, onChangeFrom, onChangeTo, lines = [], rates = {}, onChangeRate,
   differences = [], newCells = 0, unmatched = [], noFarm = 0, loading = false,
-  salaryChanges = [], salaryDate = '',
+  salaryChanges = [], salaryDate = '', salaryDays = [],
 }) {
   const { t } = useI18n();
 
@@ -157,6 +158,8 @@ export default function ReconcileReviewStep({
           </>
         )}
       </section>
+
+      <ReconcileSalaryDays rows={salaryDays} loading={loading} />
 
       {unmatched.length > 0 && (
         <section className="rounded-2xl border border-clay/40 bg-clay/5 p-4">

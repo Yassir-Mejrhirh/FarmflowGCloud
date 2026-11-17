@@ -18,6 +18,7 @@ import {
   buildQueuePayload,
   cellKey,
   compareSalaries,
+  compareSalaryDays,
   compareWithPointages,
   daysWithoutFarm,
   excelSalaries,
@@ -379,6 +380,12 @@ export default function AttendanceReconciliation() {
   const comparison = useMemo(
     () => compareWithPointages({ lines: ratedLines, sheets: existing }),
     [ratedLines, existing],
+  );
+
+  // Journées du classeur rapprochées du pointage déjà saisi, par date, ferme et salaire.
+  const salaryDays = useMemo(
+    () => compareSalaryDays({ lines: ratedLines, sheets: existing, workers, wageRates }),
+    [ratedLines, existing, workers, wageRates],
   );
 
   const readFile = async (file) => {
@@ -750,6 +757,7 @@ export default function AttendanceReconciliation() {
             loading={loadingExisting}
             salaryChanges={salaryChanges}
             salaryDate={effectiveDate}
+            salaryDays={salaryDays}
           />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(3)}>
