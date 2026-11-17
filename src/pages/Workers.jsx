@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { FileSpreadsheet, Plus, Printer, Truck, Users, Wallet } from 'lucide-react';
+import { FileSpreadsheet, Plus, Printer, ScanSearch, Truck, Users, Wallet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import TeamTransportDialog from '@/components/workers/TeamTransportDialog';
 import TransportNotice from '@/components/workers/TransportNotice';
 import WorkerImportDialog from '@/components/workers/import/WorkerImportDialog';
 import WorkerPrintDialog from '@/components/workers/WorkerPrintDialog';
+import DuplicateReviewDialog from '@/components/workers/DuplicateReviewDialog';
 import { fetchAll, fetchList } from '@/lib/data';
 import { todayISO } from '@/lib/format';
 import { teamTransportGaps } from '@/lib/reconcileTransport';
@@ -32,6 +33,7 @@ export default function Workers() {
   const [transportNotice, setTransportNotice] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [wageRates, setWageRates] = useState([]);
   const [transportRates, setTransportRates] = useState([]);
 
@@ -96,6 +98,9 @@ export default function Workers() {
                   {transportTeams.length}
                 </span>
               )}
+            </Button>
+            <Button variant="outline" className="rounded-xl" onClick={() => setDuplicateOpen(true)}>
+              <ScanSearch className="mr-1.5 h-4 w-4" /> {t('dup.btn')}
             </Button>
             <Button
               className="rounded-xl"
@@ -165,6 +170,13 @@ export default function Workers() {
           setTransportNotice(result);
           load();
         }}
+      />
+
+      <DuplicateReviewDialog
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        workers={workers}
+        onMerged={load}
       />
 
       <WorkerImportDialog
