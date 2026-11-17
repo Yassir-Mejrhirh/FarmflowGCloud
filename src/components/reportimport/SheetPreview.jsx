@@ -17,6 +17,9 @@ export default function SheetPreview({ analysis }) {
       {analysis.sheets.map((sheet) => {
         const isOpen = !!open[sheet.name];
         const rows = expanded[sheet.name] ? sheet.rows : sheet.rows.slice(0, 10);
+        const farmNames = sheet.farmNames || [];
+        const dates = sheet.dates || [];
+        const multiFarm = farmNames.length > 1;
 
         return (
           <section key={sheet.name} className="overflow-hidden rounded-2xl border border-border/70 bg-card">
@@ -30,7 +33,7 @@ export default function SheetPreview({ analysis }) {
               />
               <span className="font-medium">{sheet.name}</span>
               <span className="text-xs text-muted-foreground">
-                {[sheet.farmName, sheet.date].filter(Boolean).join(' · ') || '—'}
+                {[farmNames.join(' · '), dates.join(' · ')].filter(Boolean).join(' · ') || '—'}
               </span>
               <StatusBadge tone={sheet.issue ? 'warn' : 'ok'} className="ms-auto">
                 {sheet.issue ? t(`rimp.issue.${sheet.issue}`) : t('rimp.rowsCount', { n: sheet.rows.length })}
@@ -47,6 +50,9 @@ export default function SheetPreview({ analysis }) {
                       <table className="w-full min-w-[720px] text-[12px]">
                         <thead>
                           <tr className="bg-secondary/60 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                            {multiFarm && (
+                              <th className="px-4 py-2 text-start font-medium">{t('rimp.col.farm')}</th>
+                            )}
                             <th className="px-4 py-2 text-start font-medium">{t('rimp.col.place')}</th>
                             <th className="px-3 py-2 text-start font-medium">{t('rimp.col.nature')}</th>
                             <th className="px-3 py-2 text-end font-medium">{t('rimp.col.work')}</th>
@@ -58,6 +64,11 @@ export default function SheetPreview({ analysis }) {
                         <tbody>
                           {rows.map((row) => (
                             <tr key={row.key} className="border-t border-border/50">
+                              {multiFarm && (
+                                <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">
+                                  {row.farmName || '—'}
+                                </td>
+                              )}
                               <td className="px-4 py-2 font-medium">{row.place}</td>
                               <td className="px-3 py-2">{row.nature || '—'}</td>
                               <td className="px-3 py-2 text-end tabular-nums text-muted-foreground">

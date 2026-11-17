@@ -66,66 +66,84 @@ function columnMap(headerRow) {
   return map;
 }
 
-// La ferme est écrite à droite du libellé « FERME: », quelle que soit sa colonne.
-function farmOf(rows, headerRow) {
-  for (let i = 0; i < headerRow; i += 1) {
-    const cells = rows[i] || [];
-    for (let c = 0; c < cells.length; c += 1) {
-      if (!/^ferme\s*:?$/.test(fold(cells[c]))) continue;
-      for (let n = c + 1; n < cells.length; n += 1) {
-        if (clean(cells[n])) return clean(cells[n]);
-      }
-    }
-  }
-  return '';
-}
-
-function dateOf(rows, headerRow) {
-  for (let i = 0; i < headerRow; i += 1) {
-    const cells = rows[i] || [];
-    for (let c = 0; c < cells.length; c += 1) {
-      if (!fold(cells[c]).startsWith('date')) continue;
-      for (let n = c + 1; n < cells.length; n += 1) {
-        const date = toISODate(cells[n]);
-        if (date) return date;
-      }
-    }
+// La valeur suit le libellé, dans la première cellule non vide à sa droite.
+function labelValue(cells, start, pick) {
+  for (let n = start + 1; n < cells.length; n += 1) {
+    const value = pick(cells[n]);
+    if (value) return value;
   }
   return '';
 }
 
 const STOP_WORDS = /^(total|signature|observation|visa|responsable|arret|commentaire)/;
 
-function parseSheet(sheet) {
-  const rows = sheet.rows || [];
-  const headerRow = rows.findIndex(
-    (row) =>
-      row.some((cell) => fold(cell).includes('nature de travail')) &&
-      row.some((cell) => fold(cell).includes('superficie')),
-  );
-  if (headerRow < 0) {
-    return { name: sheet.name, farmName: '', date: '', rows: [], issue: 'structure' };
-  }
-
-  const columns = columnMap(rows[headerRow]);
-  const farmName = farmOf(rows, headerRow);
-  const date = dateOf(rows, headerRow);
-
-  // Les colonnes de main-d'œuvre sont les nombres de salaire journalier compris entre
-  // la nature de travail et le total.
+// Colonnes de main-d'œuvre : les nombres de salaire journalier situés entre la nature de
+// travail et le total. Elles sont relues à chaque en-tête, une feuille pouvant contenir
+// plusieurs sections.
+function wageColumns(cells, columns) {
   const from = (columns.nature ?? -1) + 1;
-  const to = columns.total ?? columns.engin ?? rows[headerRow].length;
+  const to = columns.total ?? columns.engin ?? cells.length;
   const wages = [];
   for (let c = from; c < to; c += 1) {
-    const rate = num(rows[headerRow][c]);
+    const rate = num(cells[c]);
     if (rate && rate > 0) wages.push({ index: c, rate: Math.round(rate * 100) / 100 });
   }
+  return wages;
+}
+
+// Une même feuille peut contenir plusieurs fermes : « FERME: » réapparaît alors plus bas,
+// et les lignes qui suivent prennent la ferme active. La première ferme trouvée n'est
+// donc plus imposée à toute la feuille, et la date est relue de la même façon.
+function parseSheet(sheet) {
+  const rows = sheet.rows || [];
+  const lines = [];
+  const farmNames = [];
+  const dates = [];
+  const remember = (list, value) => {
+    if (value && !list.includes(value)) list.push(value);
+  };
+
+  let columns = null;
+  let wages = [];
+  let farmName = '';
+  let date = '';
 
   const cellAt = (cells, key) => (columns[key] === undefined ? '' : cells[columns[key]]);
 
-  const lines = [];
-  for (let i = headerRow + 1; i < rows.length; i += 1) {
+  for (let i = 0; i < rows.length; i += 1) {
     const cells = rows[i] || [];
+    const folded = cells.map((cell) => fold(cell));
+
+    // Nouvelle section : l'en-tête des colonnes se répète.
+    if (
+      folded.some((cell) => cell.includes('nature de travail')) &&
+      folded.some((cell) => cell.includes('superficie'))
+    ) {
+      columns = columnMap(cells);
+      wages = wageColumns(cells, columns);
+      continue;
+    }
+
+    // Libellés de section : la ferme (et la date) en vigueur change à partir d'ici.
+    let farmLabel = false;
+    folded.forEach((cell, index) => {
+      if (/^ferme\s*:?$/.test(cell)) {
+        const value = labelValue(cells, index, clean);
+        if (!value) return;
+        farmName = value;
+        remember(farmNames, value);
+        farmLabel = true;
+      } else if (cell.startsWith('date')) {
+        const value = labelValue(cells, index, toISODate);
+        if (!value) return;
+        date = value;
+        remember(dates, value);
+      }
+    });
+    if (farmLabel) continue;
+
+    if (!columns) continue;
+
     const place = clean(cellAt(cells, 'place'));
     if (!place || STOP_WORDS.test(fold(place))) continue;
 
@@ -159,6 +177,8 @@ function parseSheet(sheet) {
     lines.push({
       key: `${sheet.name}|${i}`,
       row: i + 1,
+      farmName,
+      date,
       place,
       nature,
       work: num(cellAt(cells, 'work')),
@@ -169,8 +189,23 @@ function parseSheet(sheet) {
     });
   }
 
-  const issue = !farmName ? 'farm' : !date ? 'date' : '';
-  return { name: sheet.name, farmName, date, rows: lines, issue };
+  const issue = !lines.length
+    ? 'structure'
+    : lines.some((line) => !line.farmName)
+      ? 'farm'
+      : lines.some((line) => !line.date)
+        ? 'date'
+        : '';
+
+  return {
+    name: sheet.name,
+    farmName: farmNames[0] || '',
+    farmNames,
+    date: dates[0] || '',
+    dates,
+    rows: lines,
+    issue,
+  };
 }
 
 // Résumé du classeur : feuilles, jours, fermes, salaires et éléments à rapprocher.
@@ -186,8 +221,8 @@ export function parseReportWorkbook(sheets = []) {
   let totalRows = 0;
 
   parsed.forEach((sheet) => {
-    if (sheet.farmName) farms.add(sheet.farmName);
-    if (sheet.date) dates.add(sheet.date);
+    (sheet.farmNames || []).forEach((name) => farms.add(name));
+    (sheet.dates || []).forEach((date) => dates.add(date));
     totalRows += sheet.rows.length;
 
     sheet.rows.forEach((row) => {
@@ -198,10 +233,10 @@ export function parseReportWorkbook(sheets = []) {
         wages.set(entry.rate, current);
       });
 
-      const placeKey = `${sheet.farmName}|${row.place}`;
+      const placeKey = `${row.farmName}|${row.place}`;
       const place = places.get(placeKey) || {
         key: placeKey,
-        farmName: sheet.farmName,
+        farmName: row.farmName,
         place: row.place,
         rows: 0,
       };

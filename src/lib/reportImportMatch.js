@@ -133,7 +133,7 @@ export function buildImportLines({ analysis, choices, data }) {
 
   analysis.sheets.forEach((sheet) => {
     sheet.rows.forEach((row) => {
-      const blockId = choices.blockChoices[`${sheet.farmName}|${row.place}`] || '';
+      const blockId = choices.blockChoices[`${row.farmName}|${row.place}`] || '';
       const taskId = choices.taskChoices[row.nature] || '';
 
       const labour = (row.labour || [])
@@ -155,8 +155,8 @@ export function buildImportLines({ analysis, choices, data }) {
         key: row.key,
         sheet: sheet.name,
         row: row.row,
-        date: sheet.date,
-        farmName: sheet.farmName,
+        date: row.date,
+        farmName: row.farmName,
         place: row.place,
         nature: row.nature,
         description: row.nature || row.place,
@@ -171,12 +171,12 @@ export function buildImportLines({ analysis, choices, data }) {
 
       let status = 'ready';
       if (choices.ignored[row.key]) status = 'ignored';
-      else if (!sheet.date) status = 'nodate';
+      else if (!row.date) status = 'nodate';
       else if (!blockId) status = 'noblock';
       else if (!taskId) status = 'notask';
       else if (base.unresolved) status = 'nolabour';
       else if (!base.labour.length && !base.machinery.length && !base.inputs.length) status = 'empty';
-      else if (existing.has(`${sheet.date}|${blockId}|${taskId}`)) status = 'duplicate';
+      else if (existing.has(`${row.date}|${blockId}|${taskId}`)) status = 'duplicate';
 
       lines.push({ ...base, status });
     });
