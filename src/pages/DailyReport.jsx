@@ -106,6 +106,16 @@ export default function DailyReport() {
     load();
   }, []);
 
+  // Une tâche créée pendant la saisie entre aussitôt dans les choix du rapport.
+  const reloadTasks = async () => {
+    const [taskRows, natureRows] = await Promise.all([
+      fetchList(base44.entities.Task, {}, { sort: 'created_date' }),
+      fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
+    ]);
+    setTasks(taskRows);
+    setNatures(natureRows);
+  };
+
   const blockMap = useMemo(() => byId(blocks), [blocks]);
   const workerMap = useMemo(() => byId(workers), [workers]);
   const machineMap = useMemo(() => byId(machines), [machines]);
@@ -306,7 +316,7 @@ export default function DailyReport() {
   const ctx = {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, date,
-    storages, invoices, onHand: storageOnHand, farmName, pointageDays, pointageRemaining,
+    storages, invoices, onHand: storageOnHand, farmName, pointageDays, pointageRemaining, reloadTasks,
   };
 
   const addLine = () => {

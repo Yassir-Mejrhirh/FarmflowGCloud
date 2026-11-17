@@ -1,4 +1,6 @@
-import { CheckCircle2, ChevronDown, Tractor, Trash2, Users } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, ChevronDown, Plus, Tractor, Trash2, Users } from 'lucide-react';
+import NewTaskDialog from '@/components/dailyreport/NewTaskDialog';
 import Field from '@/components/Field';
 import SelectField from '@/components/SelectField';
 import StatusPill from '@/components/StatusPill';
@@ -31,8 +33,9 @@ export default function TaskLineCard({
   const {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, replaced, date,
-    storages, invoices, onHand, farmName, pointageDays, pointageRemaining,
+    storages, invoices, onHand, farmName, pointageDays, pointageRemaining, reloadTasks,
   } = ctx;
+  const [creatingTask, setCreatingTask] = useState(false);
 
   const task = tasks.find((row) => row.id === line.task_id);
   const blockNames = line.block_ids.map((id) => blockMap[id]?.name).filter(Boolean);
@@ -104,6 +107,13 @@ export default function TaskLineCard({
                 onChange={(value) => onChange({ task_id: value })}
                 options={tasks.map((row) => ({ value: row.id, label: natureLabel(row.type, natures, t) }))}
               />
+              <button
+                type="button"
+                onClick={() => setCreatingTask(true)}
+                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              >
+                <Plus className="h-3 w-3" /> {t('report.newTask')}
+              </button>
             </Field>
             <Field label={t('report.blocks')}>
               {isEditing ? (
@@ -231,6 +241,16 @@ export default function TaskLineCard({
           </Field>
 
           <StockShortageAlert shortages={shortages} items={items} storages={storages} />
+
+          <NewTaskDialog
+            open={creatingTask}
+            onOpenChange={setCreatingTask}
+            natures={natures}
+            onCreated={async (created) => {
+              await reloadTasks();
+              onChange({ task_id: created.id });
+            }}
+          />
 
           {issues.length > 0 && (
             <ul className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] font-medium text-destructive">

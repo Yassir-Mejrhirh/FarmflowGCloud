@@ -1,0 +1,28 @@
+export const REPORT_TASK_TRANSLATIONS = {
+  fr: {
+    'report.newTask': 'Créer une tâche',
+    'report.newTaskTitle': 'Nouvelle tâche',
+    'report.newTaskDesc': 'La tâche est ajoutée au catalogue et sélectionnée dans cette ligne du rapport.',
+    'report.newTaskName': 'Nom de la tâche',
+    'report.newTaskNamePlaceholder': 'Ex. Démarrage de la pompe',
+    'report.newTaskMachine': 'Nécessite une machine',
+    'report.newTaskDescription': 'Petite description',
+    'report.newTaskDescriptionPlaceholder': 'Ex. Contrôle du débit et des filtres',
+    'report.newTaskCreate': 'Créer la tâche',
+    'report.newTaskRequired': 'Saisissez le nom de la tâche.',
+    'report.newTaskFailed': 'La tâche n’a pas pu être créée.',
+  },
+  ar: {
+    'report.newTask': 'إنشاء مهمة',
+    'report.newTaskTitle': 'مهمة جديدة',
+    'report.newTaskDesc': 'تُضاف المهمة إلى القائمة وتُختار في هذا السطر من التقرير.',
+    'report.newTaskName': 'اسم المهمة',
+    'report.newTaskNamePlaceholder': 'مثال: تشغيل المضخة',
+    'report.newTaskMachine': 'تتطلب آلة',
+    'report.newTaskDescription': 'وصف قصير',
+    'report.newTaskDescriptionPlaceholder': 'مثال: مراقبة التدفق والمصفيات',
+    'report.newTaskCreate': 'إنشاء المهمة',
+    'report.newTaskRequired': 'أدخل اسم المهمة.',
+    'report.newTaskFailed': 'تعذر إنشاء المهمة.',
+  },
+};
