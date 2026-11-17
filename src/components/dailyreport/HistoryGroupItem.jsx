@@ -1,7 +1,7 @@
 import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import StatusPill from '@/components/StatusPill';
-import { fmtDate, fmtNum } from '@/lib/format';
+import { fmtDayDate, fmtNum } from '@/lib/format';
 import { natureLabel } from '@/lib/taskNature';
 
 // One validated report: a compact summary that opens its parcel records on click.
@@ -20,7 +20,7 @@ export default function HistoryGroupItem({ group, open, onToggle, blockMap, mach
       >
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-sm font-medium tabular-nums">{fmtDate(group.date)}</span>
+            <span className="text-sm font-medium tabular-nums">{fmtDayDate(group.date)}</span>
             <span className="text-[11px] text-muted-foreground">{group.farm || '—'}</span>
             {group.tasks.slice(0, 3).map((label) => (
               <StatusPill key={label} tone="moss">

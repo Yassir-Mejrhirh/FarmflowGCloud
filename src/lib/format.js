@@ -29,6 +29,20 @@ export const fmtDate = (iso) => {
   return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' });
 };
 
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// 01 Oct 26 — the compact form used on the report screens.
+export const fmtDayDate = (iso) => {
+  if (!iso) return '—';
+  const [year, month, day] = String(iso).slice(0, 10).split('-').map(Number);
+  if (year && month && day) {
+    return `${String(day).padStart(2, '0')} ${MONTHS_SHORT[month - 1]} ${String(year).slice(-2)}`;
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${String(d.getDate()).padStart(2, '0')} ${MONTHS_SHORT[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
+};
+
 export const fmtLongDate = () =>
   new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
 

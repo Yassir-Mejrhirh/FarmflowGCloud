@@ -2,7 +2,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import WorkerName from '@/components/WorkerName';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { fmtDate, fmtNum } from '@/lib/format';
+import { fmtDayDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 
 // Validation of the report is blocked while pointed workers still have days to give.
@@ -17,7 +17,7 @@ export default function UnsoldDialog({ open, onClose, workers = [], date, farmNa
             {t('report.unsoldTitle')}
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed">
-            {t('report.unsoldBody', { n: workers.length, farm: farmName || '', date: fmtDate(date) })}
+            {t('report.unsoldBody', { n: workers.length, farm: farmName || '', date: fmtDayDate(date) })}
           </DialogDescription>
         </DialogHeader>
 

@@ -4,6 +4,7 @@ import SelectField from '@/components/SelectField';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/I18nContext';
+import { fmtDayDate } from '@/lib/format';
 
 // The day and the farm the report is written for, and the final validation that
 // sends the whole draft of that farm.
@@ -16,7 +17,7 @@ export default function DraftHeader({
     <section className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:max-w-xl">
-          <Field label={t('report.date')}>
+          <Field label={t('report.date')} hint={fmtDayDate(date)}>
             <Input type="date" value={date} onChange={(event) => onDateChange(event.target.value)} />
           </Field>
           <Field label={t('report.farm')}>
