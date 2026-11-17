@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { CheckCircle2, Plus } from 'lucide-react';
+import { CheckCircle2, FileSpreadsheet, Plus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import DraftHeader from '@/components/dailyreport/DraftHeader';
 import TaskLineCard from '@/components/dailyreport/TaskLineCard';
@@ -542,7 +542,20 @@ export default function DailyReport() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow={t('report.eyebrow')} title={t('report.title')} description={t('report.description')} />
+      <PageHeader
+        eyebrow={t('report.eyebrow')}
+        title={t('report.title')}
+        description={t('report.description')}
+        action={
+          <Link
+            to="/report-import"
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={1.8} />
+            {t('rimp.importLink')}
+          </Link>
+        }
+      />
 
       <DraftHeader
         date={date}

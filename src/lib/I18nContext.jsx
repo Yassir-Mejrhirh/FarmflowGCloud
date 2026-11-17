@@ -17,6 +17,7 @@ import { RECONCILE_TRANSLATIONS } from '@/lib/translationsReconcile';
 import { WORKER_PRINT_TRANSLATIONS } from '@/lib/translationsWorkerPrint';
 import { TEAM_TRANSPORT_TRANSLATIONS } from '@/lib/translationsTeamTransport';
 import { DUPLICATE_TRANSLATIONS } from '@/lib/translationsDuplicates';
+import { REPORT_IMPORT_TRANSLATIONS } from '@/lib/translationsReportImport';
 import { setLocale } from '@/lib/format';
 
 const DICTIONARIES = {
@@ -39,6 +40,7 @@ const DICTIONARIES = {
     ...WORKER_PRINT_TRANSLATIONS.fr,
     ...TEAM_TRANSPORT_TRANSLATIONS.fr,
     ...DUPLICATE_TRANSLATIONS.fr,
+    ...REPORT_IMPORT_TRANSLATIONS.fr,
   },
   ar: {
     ...TRANSLATIONS.ar,
@@ -59,6 +61,7 @@ const DICTIONARIES = {
     ...WORKER_PRINT_TRANSLATIONS.ar,
     ...TEAM_TRANSPORT_TRANSLATIONS.ar,
     ...DUPLICATE_TRANSLATIONS.ar,
+    ...REPORT_IMPORT_TRANSLATIONS.ar,
   },
 };
 

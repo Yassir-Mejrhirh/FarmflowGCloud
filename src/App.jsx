@@ -36,6 +36,7 @@ import BlockItinerary from '@/pages/BlockItinerary';
 import BlockPlans from '@/pages/BlockPlans';
 import MachineMaintenance from '@/pages/MachineMaintenance';
 import ImportCsv from '@/pages/ImportCsv';
+import ReportImport from '@/pages/ReportImport';
 import LoadTestProtocol from '@/pages/LoadTestProtocol';
 import { I18nProvider } from '@/lib/I18nContext';
 
@@ -82,6 +83,7 @@ const AuthenticatedApp = () => {
         <Route path="/storages" element={<Storages />} />
         <Route path="/planting" element={<PlantingEntry />} />
         <Route path="/daily-report" element={<DailyReport />} />
+        <Route path="/report-import" element={<ReportImport />} />
         <Route path="/attendance" element={<Attendance />} />
         <Route path="/attendance-reconciliation" element={<AttendanceReconciliation />} />
         <Route path="/input-invoices" element={<InputInvoices />} />

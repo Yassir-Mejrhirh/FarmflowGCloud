@@ -236,3 +236,47 @@ export async function readXlsxSheet(file) {
 export async function readXlsxRows(file) {
   return (await readXlsxSheet(file)).rows;
 }
+
+// Feuilles du classeur, dans l'ordre du fichier, avec leur nom et leur chemin.
+async function workbookSheets(zip) {
+  const [workbook, rels] = await Promise.all([
+    zip.text('xl/workbook.xml'),
+    zip.text('xl/_rels/workbook.xml.rels'),
+  ]);
+  if (!workbook || !rels) return [];
+  const targets = new Map();
+  const relDoc = new DOMParser().parseFromString(rels, 'application/xml');
+  [...relDoc.getElementsByTagName('Relationship')].forEach((node) => {
+    targets.set(node.getAttribute('Id'), node.getAttribute('Target'));
+  });
+  const doc = new DOMParser().parseFromString(workbook, 'application/xml');
+  return [...doc.getElementsByTagName('sheet')].map((node, index) => {
+    const target = targets.get(node.getAttribute('r:id'));
+    const path = target
+      ? target.startsWith('/')
+        ? target.slice(1)
+        : `xl/${target.replace(/^\.\//, '')}`
+      : `xl/worksheets/sheet${index + 1}.xml`;
+    return { name: node.getAttribute('name') || `Feuille ${index + 1}`, path };
+  });
+}
+
+// Toutes les feuilles du classeur : un rapport journalier est souvent un classeur
+// dont chaque feuille est une journée.
+export async function readXlsxSheets(file) {
+  if (typeof DecompressionStream === 'undefined') throw new Error('unsupported');
+  const zip = await openZip(await file.arrayBuffer());
+  const [shared, styleFills] = await Promise.all([
+    zip.text('xl/sharedStrings.xml').then(parseSharedStrings),
+    readStyleFills(zip),
+  ]);
+  const list = await workbookSheets(zip);
+  const sheets = [];
+  for (const sheet of list) {
+    const xml = await zip.text(sheet.path);
+    if (!xml) continue;
+    sheets.push({ name: sheet.name, ...parseSheet(xml, shared, styleFills) });
+  }
+  if (!sheets.length) throw new Error('sheet');
+  return sheets;
+}
