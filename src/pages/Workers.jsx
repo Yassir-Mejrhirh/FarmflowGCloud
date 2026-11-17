@@ -12,7 +12,7 @@ import TeamTransportDialog from '@/components/workers/TeamTransportDialog';
 import TransportNotice from '@/components/workers/TransportNotice';
 import WorkerImportDialog from '@/components/workers/import/WorkerImportDialog';
 import WorkerPrintDialog from '@/components/workers/WorkerPrintDialog';
-import { fetchList } from '@/lib/data';
+import { fetchAll, fetchList } from '@/lib/data';
 import { todayISO } from '@/lib/format';
 import { teamTransportGaps } from '@/lib/reconcileTransport';
 import { useI18n } from '@/lib/I18nContext';
@@ -37,7 +37,7 @@ export default function Workers() {
 
   const load = async () => {
     const [workerRows, farmRows, functionRows, rateRows, transportRows] = await Promise.all([
-      fetchList(base44.entities.Worker, {}, { sort: 'name' }),
+      fetchAll(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.WorkerFunction, {}, { sort: 'name' }),
       fetchList(base44.entities.WageRate, {}, { sort: '-effective_date' }),

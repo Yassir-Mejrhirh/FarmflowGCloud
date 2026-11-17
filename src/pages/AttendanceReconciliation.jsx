@@ -27,7 +27,7 @@ import {
   resolveCells,
 } from '@/lib/attendanceReconcile';
 import { nameKey, proposeMatches, usageCount } from '@/lib/nameMatch';
-import { fetchList } from '@/lib/data';
+import { fetchAll, fetchList } from '@/lib/data';
 import { fetchGlobalOptions, rememberGlobalOption } from '@/lib/globalOptions';
 import { addReconcileWorkers, detectTeams, teamKey, teamTransports } from '@/lib/reconcileWorkers';
 import { applyTransportAssignments, transportGaps } from '@/lib/reconcileTransport';
@@ -76,6 +76,7 @@ export default function AttendanceReconciliation() {
   const [adding, setAdding] = useState(false);
   const [transportApplying, setTransportApplying] = useState(false);
   const [transportNotice, setTransportNotice] = useState('');
+  const [workersNotice, setWorkersNotice] = useState('');
   const preparedFor = useRef('');
 
   const loadQueue = async () => {
@@ -94,7 +95,7 @@ export default function AttendanceReconciliation() {
       const [farmRows, workerRows, rateRows, transportRows, teamRows, functionRows, transporterRows] =
         await Promise.all([
           fetchList(base44.entities.Farm, {}, { sort: 'name' }),
-          fetchList(base44.entities.Worker, {}, { sort: 'name' }),
+          fetchAll(base44.entities.Worker, {}, { sort: 'name' }),
           fetchList(base44.entities.WageRate, {}),
           fetchList(base44.entities.TransportRate, {}),
           fetchGlobalOptions('team'),
@@ -385,6 +386,7 @@ export default function AttendanceReconciliation() {
     setError('');
     setReadError('');
     setTransportNotice('');
+    setWorkersNotice('');
     try {
       const next = await readXlsxSheet(file);
       setFileName(file.name);
@@ -431,6 +433,7 @@ export default function AttendanceReconciliation() {
 
     setAdding(true);
     setError('');
+    setWorkersNotice('');
     try {
       const created = await addReconcileWorkers({
         selections,
@@ -439,20 +442,16 @@ export default function AttendanceReconciliation() {
         effectiveDate: from || period.start,
       });
 
-      // Les fiches créées rapprochent directement leurs noms : elles sont ajoutées à
-      // la liste MO et rattachées, sans relire une liste tronquée.
-      const list = Array.isArray(created) ? created.filter((worker) => worker?.id) : [];
-      const byName = new Map(list.map((worker) => [nameKey(worker.name), worker]));
-      const missingNames = selections
-        .map((selection) => selection.name)
-        .filter((name) => !byName.has(nameKey(name)));
-      if (missingNames.length) {
-        const found = await fetchList(
-          base44.entities.Worker,
-          { name: { $in: missingNames } },
-          { limit: 100 },
-        );
-        found.forEach((worker) => byName.set(nameKey(worker.name), worker));
+      // Les fiches ne comptent qu'une fois relues dans la liste MO : une création
+      // refusée reste visible, au lieu de disparaître sans laisser de trace.
+      const ids = (Array.isArray(created) ? created : []).filter((worker) => worker?.id).map((worker) => worker.id);
+      const verified = ids.length
+        ? await fetchList(base44.entities.Worker, { id: { $in: ids } }, { limit: 300 })
+        : [];
+      const byName = new Map(verified.map((worker) => [nameKey(worker.name), worker]));
+      if (!byName.size) {
+        setError(t('rec.newFailed'));
+        return;
       }
 
       setWorkers((current) => {
@@ -475,6 +474,7 @@ export default function AttendanceReconciliation() {
       });
       setPicks({});
       setTeamPicks({});
+      setWorkersNotice(t('rec.newDone', { n: byName.size }));
     } catch {
       setError(t('rec.newFailed'));
     } finally {
@@ -553,6 +553,7 @@ export default function AttendanceReconciliation() {
     setPicks({});
     setTeamPicks({});
     setTransportNotice('');
+    setWorkersNotice('');
     preparedFor.current = '';
   };
 
@@ -698,6 +699,12 @@ export default function AttendanceReconciliation() {
               onAdd={addToWorkers}
               adding={adding}
             />
+          )}
+
+          {workersNotice && (
+            <p className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-[12px] text-primary">
+              {workersNotice}
+            </p>
           )}
 
           {transportMissing.length > 0 && (
