@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { ArrowLeft, ArrowRight, Check, FileSpreadsheet } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
+import ReconcileColorStep from '@/components/reconcile/ReconcileColorStep';
 import ReconcileFileStep from '@/components/reconcile/ReconcileFileStep';
 import ReconcileNameStep from '@/components/reconcile/ReconcileNameStep';
 import ReconcileReviewStep from '@/components/reconcile/ReconcileReviewStep';
@@ -15,6 +16,7 @@ import {
   applySalaryChanges,
   buildLines,
   buildQueuePayload,
+  cellKey,
   compareSalaries,
   compareWithPointages,
   daysWithoutFarm,
@@ -22,6 +24,7 @@ import {
   fetchPeriodSheets,
   integrateQueueItem,
   removeQueueItemPointages,
+  resolveCells,
 } from '@/lib/attendanceReconcile';
 import { nameKey, proposeMatches, usageCount } from '@/lib/nameMatch';
 import { fetchList } from '@/lib/data';
@@ -57,6 +60,8 @@ export default function AttendanceReconciliation() {
   const [error, setError] = useState('');
 
   const [resolution, setResolution] = useState({});
+  const [colorAssign, setColorAssign] = useState({});
+  const [cellAssign, setCellAssign] = useState({});
   const [rates, setRates] = useState({});
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -144,6 +149,8 @@ export default function AttendanceReconciliation() {
       next[entry.name] = best && (best.level === 'exact' || best.level === 'likely') ? best.worker_id : '';
     });
     setResolution(next);
+    setColorAssign({});
+    setCellAssign({});
     setRates({});
     setPicks({});
     setFrom(analysis.grid.dayColumns[0]?.date || '');
@@ -169,9 +176,53 @@ export default function AttendanceReconciliation() {
     });
   }, [analysis, proposals]);
 
+  // Couleurs du classeur sans ferme et présences écrites sans couleur : elles doivent
+  // être rattachées à une ferme avant la suite du rapprochement.
+  const colorIssues = useMemo(() => {
+    const farmColors = new Set(
+      (farms || []).map((farm) => String(farm.color || '').toUpperCase()).filter(Boolean),
+    );
+    const byColor = new Map();
+    const byCell = new Map();
+
+    names.forEach((entry) => {
+      entry.cells.forEach((cell) => {
+        if (!cell.color) {
+          const key = cellKey(entry.name, cell);
+          const row = byCell.get(key) || { key, name: entry.name, date: cell.date, days: 0 };
+          row.days = Math.round((row.days + cell.days) * 100) / 100;
+          byCell.set(key, row);
+          return;
+        }
+        if (farmColors.has(cell.color)) return;
+        const row = byColor.get(cell.color) || { color: cell.color, days: 0, cells: 0 };
+        row.days = Math.round((row.days + cell.days) * 100) / 100;
+        row.cells += 1;
+        byColor.set(cell.color, row);
+      });
+    });
+
+    return {
+      colors: [...byColor.values()].sort((a, b) => b.days - a.days),
+      cells: [...byCell.values()].sort(
+        (a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name),
+      ),
+    };
+  }, [names, farms]);
+
+  // Les présences reprennent la ferme de leur couleur, ou celle choisie à l'écran.
+  const resolvedNames = useMemo(
+    () => resolveCells({ names, farms, colorAssignments: colorAssign, cellAssignments: cellAssign }),
+    [names, farms, colorAssign, cellAssign],
+  );
+
+  const colorsPending =
+    colorIssues.colors.filter((item) => !colorAssign[item.color]).length +
+    colorIssues.cells.filter((item) => !cellAssign[item.key]).length;
+
   const lines = useMemo(
-    () => (analysis ? buildLines({ names: analysis.names, resolution, workers, wageRates, periodStart: from }) : []),
-    [analysis, resolution, workers, wageRates, from],
+    () => (analysis ? buildLines({ names: resolvedNames, resolution, workers, wageRates, periodStart: from }) : []),
+    [analysis, resolvedNames, resolution, workers, wageRates, from],
   );
 
   // Salaires lus dans le classeur, comparés à ceux de la fiche à la date d'effet.
@@ -196,7 +247,10 @@ export default function AttendanceReconciliation() {
   );
 
   const usage = useMemo(() => usageCount(resolution), [resolution]);
-  const noFarm = useMemo(() => daysWithoutFarm({ names, resolution }), [names, resolution]);
+  const noFarm = useMemo(
+    () => daysWithoutFarm({ names: resolvedNames, resolution }),
+    [resolvedNames, resolution],
+  );
 
   const unmatchedEntries = useMemo(
     () => names.filter((entry) => !resolution[entry.name]),
@@ -284,7 +338,7 @@ export default function AttendanceReconciliation() {
   // Pointages déjà enregistrés sur la période, pour montrer les écarts avant validation.
   // La clé ne dépend que des jours et des fermes : changer un taux ne relance pas la lecture.
   const fetchKey = useMemo(() => {
-    if (step !== 3 || !ratedLines.length) return '';
+    if (step !== 4 || !ratedLines.length) return '';
     const dates = [...new Set(ratedLines.flatMap((line) => Object.keys(line.days || {})))].sort();
     const farmIds = [...new Set(ratedLines.map((line) => line.farm_id))].sort();
     return `${dates.join(',')}|${farmIds.join(',')}`;
@@ -467,7 +521,7 @@ export default function AttendanceReconciliation() {
       });
       const item = await base44.entities.AttendanceReconciliation.create(payload);
       setSaved(item);
-      setStep(4);
+      setStep(5);
       await loadQueue();
     } catch {
       setError(t('rec.saveError'));
@@ -484,6 +538,8 @@ export default function AttendanceReconciliation() {
     setSaved(null);
     setError('');
     setResolution({});
+    setColorAssign({});
+    setCellAssign({});
     setRates({});
     setPicks({});
     setTeamPicks({});
@@ -507,7 +563,7 @@ export default function AttendanceReconciliation() {
     return result;
   };
 
-  const labels = [t('rec.stepFile'), t('rec.stepNames'), t('rec.stepReview')];
+  const labels = [t('rec.stepFile'), t('rec.stepColors'), t('rec.stepNames'), t('rec.stepReview')];
   const unmatched = names
     .filter((entry) => !resolution[entry.name])
     .map((entry) => ({ name: entry.name, days: entry.total }));
@@ -516,7 +572,7 @@ export default function AttendanceReconciliation() {
     <div className="space-y-6">
       <PageHeader eyebrow={t('rec.eyebrow')} title={t('rec.title')} description={t('rec.description')} />
 
-      {step < 4 && (
+      {step < 5 && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] uppercase tracking-[0.12em]">
           {labels.map((label, index) => (
             <span key={label} className="flex items-center gap-2">
@@ -550,7 +606,9 @@ export default function AttendanceReconciliation() {
             noTeam={analysis?.noTeamCount || 0}
             quinzaine={quinzaine}
             onChangeQuinzaine={setQuinzaine}
-            colors={analysis?.colors || []}
+            colors={colorIssues.colors
+              .filter((item) => !colorAssign[item.color])
+              .map((item) => ({ color: item.color, count: item.cells }))}
             farms={farms}
           />
           <div className="flex justify-end">
@@ -571,6 +629,39 @@ export default function AttendanceReconciliation() {
       )}
 
       {step === 2 && (
+        <>
+          <ReconcileColorStep
+            colors={colorIssues.colors}
+            noColor={colorIssues.cells}
+            farms={farms}
+            colorAssignments={colorAssign}
+            cellAssignments={cellAssign}
+            onColorAssign={(color, farmId) =>
+              setColorAssign((current) => ({ ...current, [color]: farmId }))
+            }
+            onCellAssign={(key, farmId) =>
+              setCellAssign((current) => ({ ...current, [key]: farmId }))
+            }
+          />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(1)}>
+              <ArrowLeft className="me-1.5 h-4 w-4 rtl:rotate-180" /> {t('rec.back')}
+            </Button>
+            <Button
+              type="button"
+              className="ms-auto rounded-xl"
+              onClick={() => setStep(3)}
+              disabled={colorsPending > 0}
+            >
+              {t('rec.continue')}
+              <ArrowRight className="ms-1.5 h-4 w-4 rtl:rotate-180" />
+            </Button>
+          </div>
+        </>
+      )}
+
+      {step === 3 && (
         <>
           <ReconcileNameStep
             names={names}
@@ -614,10 +705,10 @@ export default function AttendanceReconciliation() {
           )}
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(1)}>
+            <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(2)}>
               <ArrowLeft className="me-1.5 h-4 w-4 rtl:rotate-180" /> {t('rec.back')}
             </Button>
-            <Button type="button" className="ms-auto rounded-xl" onClick={() => setStep(3)} disabled={!lines.length}>
+            <Button type="button" className="ms-auto rounded-xl" onClick={() => setStep(4)} disabled={!lines.length}>
               {t('rec.continue')}
               <ArrowRight className="ms-1.5 h-4 w-4 rtl:rotate-180" />
             </Button>
@@ -625,7 +716,7 @@ export default function AttendanceReconciliation() {
         </>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <>
           <ReconcileReviewStep
             from={from}
@@ -644,7 +735,7 @@ export default function AttendanceReconciliation() {
             salaryDate={effectiveDate}
           />
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(2)}>
+            <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(3)}>
               <ArrowLeft className="me-1.5 h-4 w-4 rtl:rotate-180" /> {t('rec.back')}
             </Button>
             <Button type="button" className="ms-auto rounded-xl" onClick={save} disabled={saving || !ratedLines.length}>
@@ -654,7 +745,7 @@ export default function AttendanceReconciliation() {
         </>
       )}
 
-      {step === 4 && saved && (
+      {step === 5 && saved && (
         <>
           <section className="flex flex-col items-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 px-5 py-8 text-center">
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -683,7 +774,7 @@ export default function AttendanceReconciliation() {
         </>
       )}
 
-      {step !== 4 && (
+      {step !== 5 && (
         <ReconcileQueue items={queue} loading={queueLoading} onIntegrate={integrate} onDelete={remove} />
       )}
     </div>

@@ -221,7 +221,7 @@ function readNames({
       if (!days) return;
       const color = grid.columnColors?.[column] || cellColor;
       const farm = farmByColor.get(color) || null;
-      worked.push({ date, days, color, farm_id: farm?.id || '', farm_name: farm?.name || '' });
+      worked.push({ date, days, color, column, farm_id: farm?.id || '', farm_name: farm?.name || '' });
     });
 
     // Une ligne sans journée est un titre : si elle nomme une équipe, elle ouvre une
@@ -309,6 +309,26 @@ export function daysWithoutFarm({ names = [], resolution = {} }) {
     });
   });
   return count;
+}
+
+// Clé d'une présence dans le classeur : un nom, un jour et une colonne.
+export function cellKey(name, cell) {
+  return `${name}|${cell?.date || ''}|${cell?.column ?? ''}`;
+}
+
+// Fermes des présences : la couleur de la ferme, sinon l'association faite à l'écran
+// pour une couleur inconnue, sinon la ferme choisie pour cette présence sans couleur.
+export function resolveCells({ names = [], farms = [], colorAssignments = {}, cellAssignments = {} }) {
+  const farmById = new Map((farms || []).map((farm) => [farm.id, farm]));
+  return names.map((entry) => ({
+    ...entry,
+    cells: entry.cells.map((cell) => {
+      if (cell.farm_id) return cell;
+      const farmId = cellAssignments[cellKey(entry.name, cell)] || colorAssignments[cell.color] || '';
+      const farm = farmById.get(farmId);
+      return farm ? { ...cell, farm_id: farm.id, farm_name: farm.name } : cell;
+    }),
+  }));
 }
 
 // Une ligne par jour et par ferme, dans la forme lue par le module Pointage.

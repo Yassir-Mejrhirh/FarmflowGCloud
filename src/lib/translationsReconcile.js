@@ -6,6 +6,7 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.description':
       'Analysez un classeur Excel, rapprochez ses noms avec la liste de main-d’œuvre, puis déposez le pointage validé dans la liste d’attente d’import du module Pointage.',
     'rec.stepFile': 'Classeur',
+    'rec.stepColors': 'Couleurs',
     'rec.stepNames': 'Noms',
     'rec.stepReview': 'Validation',
     'rec.dropTitle': 'Classeur de pointage (.xlsx)',
@@ -41,7 +42,19 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.salaryFound': 'colonne reconnue',
     'rec.unmappedTitle': 'Couleurs sans ferme',
     'rec.unmappedHint':
-      'Ces couleurs ne correspondent à aucune ferme : leurs journées ne seront pas reprises. Renseignez la couleur de la ferme dans les paramètres.',
+      'Ces couleurs ne correspondent à aucune ferme. Vous pourrez les associer à une ferme à l’étape Couleurs.',
+    'rec.colorsTitle': 'Vérification des couleurs de ferme',
+    'rec.colorsHint':
+      'La couleur de chaque journée donne sa ferme. Associez les couleurs inconnues et rattachez les présences écrites sans couleur, sinon leurs journées ne peuvent pas être pointées.',
+    'rec.colorsAllOk': 'Toutes les couleurs et toutes les présences sont rattachées à une ferme.',
+    'rec.colorsSectionTitle': 'Couleurs sans ferme',
+    'rec.colorsSectionNone': 'Aucune couleur inconnue.',
+    'rec.noColorSectionTitle': 'Présences sans couleur',
+    'rec.noColorSectionNone': 'Aucune présence sans couleur.',
+    'rec.colorIssueDays': '{days} j · {cells} cellule(s)',
+    'rec.chooseFarm': 'Choisir une ferme',
+    'rec.colorsReady': 'Toutes les attributions sont résolues : vous pouvez poursuivre.',
+    'rec.colorsBlocked': '{n} attribution(s) restent à résoudre avant de poursuivre.',
     'rec.noNames': 'Aucun nom d’ouvrier n’a été reconnu dans ce classeur.',
     'rec.namesTitle': 'Rapprochement des noms',
     'rec.namesHint':
@@ -163,6 +176,7 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.description':
       'حلّل ملف إكسل، طابق الأسماء مع لائحة اليد العاملة، ثم ضع النقط المُصادق عليه في لائحة الانتظار الخاصة بوحدة الحضور.',
     'rec.stepFile': 'الملف',
+    'rec.stepColors': 'الألوان',
     'rec.stepNames': 'الأسماء',
     'rec.stepReview': 'المصادقة',
     'rec.dropTitle': 'ملف النقط (.xlsx)',
@@ -196,7 +210,19 @@ export const RECONCILE_TRANSLATIONS = {
     'rec.salaryFound': 'عمود معروف',
     'rec.unmappedTitle': 'ألوان بدون ضيعة',
     'rec.unmappedHint':
-      'هذه الألوان لا تطابق أي ضيعة، لذلك لن تُؤخذ أيامها. حدّد لون الضيعة في الإعدادات.',
+      'هذه الألوان لا تطابق أي ضيعة، لذلك لن تُؤخذ أيامها. يمكنك نسبها إلى ضيعة في خطوة الألوان.',
+    'rec.colorsTitle': 'التحقق من ألوان الضيعات',
+    'rec.colorsHint':
+      'لون كل يوم يحدد ضيعته. اربط الألوان غير المعروفة وأسند الحضور المكتوب بدون لون، وإلا تعذر تسجيل أيامه.',
+    'rec.colorsAllOk': 'جميع الألوان والحضور منسوبة إلى ضيعة.',
+    'rec.colorsSectionTitle': 'ألوان بدون ضيعة',
+    'rec.colorsSectionNone': 'لا يوجد لون غير معروف.',
+    'rec.noColorSectionTitle': 'حضور بدون لون',
+    'rec.noColorSectionNone': 'لا يوجد حضور بدون لون.',
+    'rec.colorIssueDays': '{days} ي · {cells} خلية',
+    'rec.chooseFarm': 'اختيار ضيعة',
+    'rec.colorsReady': 'تم تحديد جميع النسب: يمكنك المتابعة.',
+    'rec.colorsBlocked': 'تبقى {n} نسبة يجب تحديدها قبل المتابعة.',
     'rec.noNames': 'لم يتم التعرف على أي اسم عامل في هذا الملف.',
     'rec.namesTitle': 'مطابقة الأسماء',
     'rec.namesHint': 'كل اقتراح يحمل نسبة تشابه. راجع الأسماء غير المؤكدة: لا شيء يُعتمد بدون مصادقتك.',
