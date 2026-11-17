@@ -21,6 +21,7 @@ import { useI18n } from '@/lib/I18nContext';
 import { buildRateIndex } from '@/lib/wageRates';
 import { buildTransportCosts } from '@/lib/transportRates';
 import { buildLabourGroups, periodDays } from '@/lib/labourGrid';
+import { buildLabourExport } from '@/lib/labourExport';
 import { buildLabourEntries } from '@/lib/labourSource';
 import { buildSampleReports, SAMPLE_RANGE } from '@/lib/labourSample';
 import ExportMenu from '@/components/ExportMenu';
@@ -245,44 +246,34 @@ export default function LabourStatus() {
   const totalCost = rows.reduce((sum, row) => sum + row.cost, 0);
   const totalTransport = transport.total;
 
-  // Export of the whole period, not only the rows visible on screen.
+  // Export of the whole period, laid out like the grid: the groups in the order of the
+  // screen (farms, then teams, then workers without a team), each under its title, and
+  // the transporters listed apart, one line each, after the groups of workers.
   const exportBase = t('lab.title');
-  const pdfColumns = [
-    { key: 'name', label: t('common.worker'), width: 30 },
-    { key: 'job', label: t('exp.function'), width: 22 },
-    { key: 'days', label: t('lab.days'), digits: 1, align: 'end', width: 14 },
-    { key: 'rate', label: t('lab.rate'), money: true, align: 'end', width: 18 },
-    { key: 'cost', label: t('lab.cost'), money: true, align: 'end', width: 18 },
-    { key: 'transport', label: t('lab.transportCost'), money: true, align: 'end', width: 18 },
-  ];
-  // The Excel export is the payroll table only: name, daily rate, one 1/0 column per day, total days, amount.
-  const excelColumns = [
-    { key: 'name', label: t('lab.fullName'), width: 34 },
-    { key: 'rate', label: t('lab.salaryDay'), money: true, align: 'end', width: 18 },
-    ...days.map((day, index) => ({
-      key: `d${index}`,
-      label: `${day.slice(8)}/${day.slice(5, 7)}`,
-      digits: 0,
-      align: 'end',
-      width: 6,
-    })),
-    { key: 'days', label: t('lab.totalDays'), digits: 1, align: 'end', width: 16 },
-    { key: 'cost', label: t('lab.totalPay'), money: true, align: 'end', width: 20 },
-  ];
-  const excelRows = rows.map((row) => ({
-    name: row.name,
-    rate: row.rate,
-    days: row.days,
-    cost: row.cost,
-    ...Object.fromEntries(days.map((day, index) => [`d${index}`, (row.byDate.get(day) || 0) > 0 ? 1 : 0])),
-  }));
   const exportSubtitle = [
     t('exp.period', { from: from || '—', to: to || '—' }),
     selectedFarms.length ? selectedFarms.join(', ') : t('lab.allFarms'),
   ].join(' · ');
-  const runExcel = () => exportExcel({ base: exportBase, columns: excelColumns, rows: excelRows });
-  const runPdf = () =>
-    exportPdf({ base: exportBase, title: exportBase, subtitle: exportSubtitle, columns: pdfColumns, rows });
+  const runExcel = () => {
+    const layout = buildLabourExport({ groups, days, transporters: transport.transporters, t });
+    return exportExcel({ base: exportBase, columns: layout.columns, rows: layout.rows });
+  };
+  const runPdf = () => {
+    const layout = buildLabourExport({
+      groups,
+      days,
+      transporters: transport.transporters,
+      t,
+      marks: true,
+    });
+    return exportPdf({
+      base: exportBase,
+      title: exportBase,
+      subtitle: exportSubtitle,
+      columns: layout.columns,
+      rows: layout.rows,
+    });
+  };
 
   const dayGroups = useMemo(() => {
     const byDate = new Map();
