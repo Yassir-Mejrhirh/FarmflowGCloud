@@ -128,10 +128,19 @@ export default function AttendanceReconciliation() {
     [sheet, reference, farms, workers, period, terms],
   );
   const names = analysis?.names || [];
+  // Une lecture de dates douteuse (jours confondus) ou une période sans aucun jour
+  // bloque la suite : mieux vaut relire le classeur que rapprocher de mauvaises dates.
+  const datesBlocked = Boolean(analysis?.dates?.invalid);
+  const datesError = !datesBlocked
+    ? ''
+    : analysis.dates.duplicates.length
+      ? t('rec.datesDuplicate')
+      : t('rec.datesNoneRetained');
+
   const fileError =
     readError ||
     (sheet && !analysis ? t('rec.noGrid') : '') ||
-    (analysis && !analysis.grid.dayColumns.length ? t('rec.noQuinzaineDays') : '') ||
+    datesError ||
     (analysis && !analysis.names.length ? t('rec.noNames') : '');
 
   const proposals = useMemo(() => proposeMatches(names.map((entry) => entry.name), workers), [names, workers]);
@@ -599,6 +608,7 @@ export default function AttendanceReconciliation() {
             reading={reading}
             error={fileError}
             grid={analysis?.grid}
+            dates={analysis?.dates}
             namesCount={names.length}
             team={analysis?.titleTeam || ''}
             teams={analysis?.teams || []}
@@ -615,7 +625,7 @@ export default function AttendanceReconciliation() {
             <Button
               type="button"
               className="rounded-xl"
-              disabled={!names.length}
+              disabled={!names.length || datesBlocked}
               onClick={() => {
                 setError('');
                 setStep(2);
@@ -738,7 +748,12 @@ export default function AttendanceReconciliation() {
             <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setStep(3)}>
               <ArrowLeft className="me-1.5 h-4 w-4 rtl:rotate-180" /> {t('rec.back')}
             </Button>
-            <Button type="button" className="ms-auto rounded-xl" onClick={save} disabled={saving || !ratedLines.length}>
+            <Button
+              type="button"
+              className="ms-auto rounded-xl"
+              onClick={save}
+              disabled={saving || !ratedLines.length || datesBlocked}
+            >
               {saving ? t('rec.saving') : t('rec.save')}
             </Button>
           </div>

@@ -3,7 +3,7 @@
 // écriture des feuilles au moment de l'intégration.
 
 import { base44 } from '@/api/base44Client';
-import { cellDays, detectColors, detectGrid, findNameColumn, groupSheets } from '@/lib/attendanceImport';
+import { cellDays, detectColors, detectGrid, findNameColumn, groupSheets, reviewDates } from '@/lib/attendanceImport';
 import { fetchList } from '@/lib/data';
 import { todayISO } from '@/lib/format';
 import { buildRateIndex, rateFor } from '@/lib/wageRates';
@@ -145,6 +145,10 @@ function salaryColumnOf({ rows, grid, nameColumn, teamColumn, terms = {} }) {
 export function analyseSheet({ sheet, reference, farms = [], workers = [], period = null, terms = {} }) {
   const grid = detectGrid(sheet.rows, reference, sheet.fills, farms);
   if (!grid) return null;
+
+  // Les dates lues sont contrôlées avant tout filtrage : l'aperçu doit montrer ce que
+  // le classeur contient vraiment, et une lecture douteuse bloque la suite.
+  const dates = reviewDates({ dayColumns: grid.dayColumns, period });
   if (period?.start && period?.end) {
     grid.dayColumns = grid.dayColumns.filter(({ date }) => date >= period.start && date <= period.end);
   }
@@ -182,6 +186,7 @@ export function analyseSheet({ sheet, reference, farms = [], workers = [], perio
 
   return {
     grid,
+    dates,
     nameColumn,
     teamColumn,
     titleTeam,

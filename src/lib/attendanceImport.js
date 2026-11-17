@@ -108,34 +108,186 @@ export function findWorker(index, name) {
   return index.get(normalize(name)) || index.get(compact(name)) || null;
 }
 
-// Grille du classeur : la ligne des dates (en général la première), puis la ligne
-// d'attribution des fermes qui suit et colore les colonnes. Les pointages
-// commencent sous ces deux lignes.
+// Un nombre de jour seul (« 1 » … « 31 »), tel qu'écrit au-dessus d'une colonne.
+export function parseDayNumber(value) {
+  const text = String(value ?? '').trim();
+  if (!/^\d{1,2}$/.test(text)) return 0;
+  const number = Number(text);
+  return number >= 1 && number <= 31 ? number : 0;
+}
+
+// Une date complète : elle porte un mois, une année ou un numéro de série Excel.
+// Un simple nombre de jour ne compte pas, pour ne pas confondre les deux en-têtes.
+export function parseFullDate(value, reference = new Date()) {
+  const text = String(value ?? '').replace(WEEKDAY, '').trim();
+  if (!text) return '';
+  if (/^(\d{4})-(\d{1,2})-(\d{1,2})/.test(text)) return parseHeaderDate(text, reference);
+  if (/^\d{1,2}[/\-.\s]\d{1,2}(?:[/\-.\s]\d{2,4})?$/.test(text)) return parseHeaderDate(text, reference);
+  if (/^\d{1,2}[\s./-]*[a-z\u0600-\u06FF]{3,}[\s./-]*(\d{2,4})?$/i.test(text)) return parseHeaderDate(text, reference);
+  if (/^\d+(\.\d+)?$/.test(text)) {
+    const number = Number(text);
+    if (number >= 20000 && number <= 80000) return parseHeaderDate(text, reference);
+  }
+  return '';
+}
+
+const addMonths = (year, month, delta) => {
+  const total = year * 12 + (month - 1) + delta;
+  return { year: Math.floor(total / 12), month: (total % 12) + 1 };
+};
+
+// Dates reconstruites depuis les numéros de jour : le mois vient de la date d'ancrage
+// lue en haut du classeur, puis on avance quand les numéros repartent à 1 ou
+// dépassent la fin du mois. Chaque colonne garde ainsi une date distincte.
+function datesFromDayNumbers(numbers, anchorISO) {
+  const anchor = anchorISO ? new Date(`${anchorISO}T00:00:00Z`) : null;
+  const now = new Date();
+  const base = anchor
+    ? { year: anchor.getUTCFullYear(), month: anchor.getUTCMonth() + 1 }
+    : { year: now.getFullYear(), month: now.getMonth() + 1 };
+  let previous = '';
+
+  return numbers.map(({ day }) => {
+    // Un jour écrit avant la date d'ancrage appartient au mois suivant.
+    const start = anchor && day < anchor.getUTCDate() ? 1 : 0;
+    let found = '';
+    for (let step = start; step < start + 4 && !found; step += 1) {
+      const { year, month } = addMonths(base.year, base.month, step);
+      const value = iso(year, month, day);
+      if (!value) continue;
+      if (anchor && value < anchorISO) continue;
+      if (previous && value <= previous) continue;
+      found = value;
+    }
+    if (found) previous = found;
+    return found;
+  });
+}
+
+const eachDay = (start, end) => {
+  const days = [];
+  const cursor = new Date(`${start}T00:00:00Z`);
+  const last = new Date(`${end}T00:00:00Z`);
+  while (cursor <= last && days.length < 62) {
+    days.push(iso(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, cursor.getUTCDate()));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return days;
+};
+
+// Contrôle des dates lues : elles doivent être distinctes et tomber dans la période.
+export function reviewDates({ dayColumns = [], period = null }) {
+  const dates = dayColumns.map((column) => column.date).filter(Boolean);
+  const unique = [...new Set(dates)].sort();
+  const duplicates = unique.filter((date) => dates.indexOf(date) !== dates.lastIndexOf(date));
+  const expected = period?.start && period?.end ? eachDay(period.start, period.end) : [];
+  const retained = expected.length ? unique.filter((date) => expected.includes(date)) : unique;
+  const outside = expected.length ? unique.filter((date) => !expected.includes(date)) : [];
+  const missing = expected.filter((date) => !unique.includes(date));
+
+  return {
+    dates: unique,
+    retained,
+    missing,
+    duplicates,
+    outside,
+    // Bloquant : aucune date, des jours en double, ou aucun jour dans la période.
+    invalid: !unique.length || duplicates.length > 0 || !retained.length,
+  };
+}
+
+// Ligne de jours : les nombres se suivent (1, 2, 3…) et la ligne ne porte aucun nom.
+// Renvoie le nombre de colonnes de jours, ou 0 si la ligne n'est pas un en-tête.
+function daySequence(cells = []) {
+  if (cells.some((cell) => /[a-z\u0600-\u06FF]{3,}/i.test(String(cell ?? '').trim()))) return 0;
+  const numbers = [];
+  cells.forEach((cell) => {
+    const day = parseDayNumber(cell);
+    if (day) numbers.push(day);
+  });
+  if (numbers.length < 2) return 0;
+  const consecutive = numbers.every((value, position) => position === 0 || value === numbers[position - 1] + 1);
+  return consecutive ? numbers.length : 0;
+}
+
+// Grille du classeur : la ligne des colonnes de jours, puis la ligne d'attribution
+// des fermes qui colore les colonnes. Les pointages commencent sous ces lignes.
+// Les jours peuvent être écrits en dates complètes, ou en numéros sous une plage de
+// dates : dans ce cas les dates sont reconstruites depuis cette plage.
 export function detectGrid(rows, reference = new Date(), fills = [], farms = []) {
   const farmNames = new Set(farms.map((farm) => normalize(farm.name)).filter(Boolean));
-  let headerIndex = -1;
-  let best = 0;
-  const limit = Math.min(rows.length, 10);
+  const limit = Math.min(rows.length, 12);
+  let dateHeader = -1;
+  let dateCount = 0;
+  let dayHeader = -1;
+  let dayCount = 0;
+
   for (let row = 0; row < limit; row += 1) {
-    const count = (rows[row] || []).filter((cell) => parseHeaderDate(cell, reference)).length;
-    if (count > best) {
-      best = count;
-      headerIndex = row;
+    const cells = rows[row] || [];
+    const dates = cells.filter((cell) => parseFullDate(cell, reference)).length;
+    // Une ligne de jours s'écrit 1, 2, 3… sans nom d'ouvrier : un total à deux
+    // chiffres sur une ligne de présence ne doit pas être pris pour un en-tête.
+    const days = daySequence(cells);
+    if (dates > dateCount) {
+      dateCount = dates;
+      dateHeader = row;
+    }
+    if (days > dayCount) {
+      dayCount = days;
+      dayHeader = row;
     }
   }
-  if (headerIndex < 0 || best < 2) return null;
+
+  // La ligne des numéros de jour prime quand elle porte plus de colonnes que la ligne
+  // des dates : c'est elle qui donne le jour de chaque colonne.
+  const numberMode = dayHeader >= 0 && dayCount >= 2 && dayCount > dateCount;
+  const headerIndex = numberMode ? dayHeader : dateHeader;
+  if (headerIndex < 0 || (numberMode ? dayCount : dateCount) < 2) return null;
+
+  // Date d'ancrage : la première date complète écrite au-dessus des jours, sinon le
+  // début de la période choisie.
+  let anchor = '';
+  for (let row = 0; row < headerIndex; row += 1) {
+    (rows[row] || []).forEach((cell) => {
+      const date = parseFullDate(cell, reference);
+      if (date && (!anchor || date < anchor)) anchor = date;
+    });
+  }
+  if (!anchor) {
+    anchor = iso(reference.getFullYear(), reference.getMonth() + 1, reference.getDate());
+  }
 
   const dayColumns = [];
-  (rows[headerIndex] || []).forEach((cell, index) => {
-    const date = parseHeaderDate(cell, reference);
-    if (date) dayColumns.push({ index, date, label: String(cell ?? '').trim() });
-  });
+  if (numberMode) {
+    const numbers = [];
+    (rows[headerIndex] || []).forEach((cell, index) => {
+      const day = parseDayNumber(cell);
+      if (day) numbers.push({ index, day, label: String(cell ?? '').trim() });
+    });
+    const dates = datesFromDayNumbers(numbers, anchor);
+    numbers.forEach(({ index, day, label }, position) => {
+      const date = dates[position];
+      if (date) dayColumns.push({ index, date, label, day });
+    });
+  } else {
+    (rows[headerIndex] || []).forEach((cell, index) => {
+      const date = parseFullDate(cell, reference);
+      if (date) dayColumns.push({ index, date, label: String(cell ?? '').trim() });
+    });
+  }
+  if (dayColumns.length < 2) return null;
 
   // Ligne d'attribution : elle colore la plupart des colonnes de jours et ne
   // porte pas de valeur de présence, contrairement à une ligne d'ouvrier.
   const threshold = Math.max(2, Math.ceil(dayColumns.length * 0.6));
+  // Quand les jours sont des numéros, les fermes sont écrites juste au-dessus.
+  const candidates = numberMode
+    ? [headerIndex - 1, headerIndex - 2, headerIndex + 1, headerIndex + 2]
+    : [headerIndex + 1, headerIndex + 2, headerIndex - 1, headerIndex - 2];
   let colorRow = -1;
-  for (let row = headerIndex + 1; row <= Math.min(headerIndex + 2, rows.length - 1); row += 1) {
+  for (const candidate of candidates) {
+    const row = candidate;
+    if (row < 0 || row >= rows.length || row === headerIndex) continue;
     if (!rows[row]) continue;
     const colored = dayColumns.filter(({ index }) => String(fills?.[row]?.[index] || '')).length;
     const filled = dayColumns.filter(({ index }) => /^\d/.test(String(rows[row][index] ?? '').trim())).length;
@@ -158,8 +310,11 @@ export function detectGrid(rows, reference = new Date(), fills = [], farms = [])
     headerIndex,
     colorRow,
     columnColors,
-    dataStart: (colorRow >= 0 ? colorRow : headerIndex) + 1,
+    dataStart: Math.max(headerIndex, colorRow >= 0 ? colorRow : headerIndex) + 1,
     dayColumns,
+    // Origine des dates : « numbers » quand elles ont été reconstruites.
+    dateMode: numberMode ? 'numbers' : 'dates',
+    anchor,
   };
 }
 

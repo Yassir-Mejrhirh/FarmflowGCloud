@@ -7,7 +7,7 @@ import { useI18n } from '@/lib/I18nContext';
 
 // Premier temps du rapprochement : la quinzaine, puis le classeur de pointage et sa grille de jours.
 export default function ReconcileFileStep({
-  fileName, onFile, reading, error, grid, namesCount, quinzaine, onChangeQuinzaine, colors = [], farms = [],
+  fileName, onFile, reading, error, grid, dates, namesCount, quinzaine, onChangeQuinzaine, colors = [], farms = [],
   team = '', teams = [], hasSalary = false, noTeam = 0,
 }) {
   const { t, lang } = useI18n();
@@ -22,6 +22,10 @@ export default function ReconcileFileStep({
 
   const farmColors = new Set(farms.map((farm) => String(farm.color || '').toUpperCase()).filter(Boolean));
   const unmapped = colors.filter((item) => !farmColors.has(String(item.color || '').toUpperCase()));
+  const outside = dates?.outside || [];
+  const outsideLabel = `${outside.slice(0, 5).map(short).join(', ')}${
+    outside.length > 5 ? ` +${outside.length - 5}` : ''
+  }`;
 
   return (
     <div className="space-y-4">
@@ -93,6 +97,41 @@ export default function ReconcileFileStep({
               {t('rec.noTeamRead')} :{' '}
               <span className="ms-1 font-medium tabular-nums">{fmtNum(noTeam, 0)}</span>
             </span>
+          )}
+        </div>
+      )}
+
+      {dates && dates.dates.length > 0 && (
+        <div className="rounded-xl border border-border/70 bg-card px-3 py-2.5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {t('rec.datesTitle')}
+          </p>
+          <p className="mt-1.5 flex flex-wrap gap-1">
+            {dates.retained.map((date) => (
+              <span
+                key={date}
+                className="rounded-md bg-secondary px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-secondary-foreground"
+              >
+                {short(date)}
+              </span>
+            ))}
+            {!dates.retained.length && (
+              <span className="text-[11px] text-muted-foreground">{t('rec.datesNoneRetained')}</span>
+            )}
+          </p>
+          {grid?.dateMode === 'numbers' && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">{t('rec.datesRebuilt')}</p>
+          )}
+          {dates.duplicates.length > 0 && (
+            <p className="mt-1.5 text-[11px] font-medium text-destructive">{t('rec.datesDuplicate')}</p>
+          )}
+          {outside.length > 0 && (
+            <p className="mt-1.5 text-[11px] text-clay">{t('rec.datesOutside', { dates: outsideLabel })}</p>
+          )}
+          {dates.missing.length > 0 && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {t('rec.datesMissing', { n: dates.missing.length })}
+            </p>
           )}
         </div>
       )}
