@@ -15,12 +15,13 @@ import MonthCalendar from '@/components/labour/MonthCalendar';
 import DayField from '@/components/labour/DayField';
 import Segmented from '@/components/Segmented';
 import SelectField from '@/components/SelectField';
-import { fetchList } from '@/lib/data';
+import { fetchAll, fetchList } from '@/lib/data';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
-import { buildRateIndex, labourRate } from '@/lib/wageRates';
+import { buildRateIndex } from '@/lib/wageRates';
 import { buildTransportCosts } from '@/lib/transportRates';
 import { buildLabourGroups, periodDays } from '@/lib/labourGrid';
+import { buildLabourEntries } from '@/lib/labourSource';
 import { buildSampleReports, SAMPLE_RANGE } from '@/lib/labourSample';
 import ExportMenu from '@/components/ExportMenu';
 import { exportExcel, exportPdf } from '@/lib/reportExport';
@@ -113,12 +114,14 @@ export default function LabourStatus() {
       // A phone connection can drop during this burst of requests: one fresh attempt is made.
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
+          // Les pages sont enchaînées : au-delà de 300 fiches, les ouvriers et les taux
+          // manqueraient et l'état de la période serait incomplet.
           const [workerRows, reportRows, sheetRows, rateRows, transportRows] = await Promise.all([
-            fetchList(base44.entities.Worker, {}, { sort: 'name' }),
-            fetchList(base44.entities.DailyReport, query),
-            fetchList(base44.entities.AttendanceSheet, query),
-            fetchList(base44.entities.WageRate, {}),
-            fetchList(base44.entities.TransportRate, {}),
+            fetchAll(base44.entities.Worker, {}, { sort: 'name' }),
+            fetchAll(base44.entities.DailyReport, query),
+            fetchAll(base44.entities.AttendanceSheet, query),
+            fetchAll(base44.entities.WageRate, {}),
+            fetchAll(base44.entities.TransportRate, {}),
           ]);
           if (!active) return;
           setWorkers(workerRows);
@@ -146,6 +149,7 @@ export default function LabourStatus() {
   const blockMap = useMemo(() => new Map(blocks.map((block) => [block.id, block])), [blocks]);
   const workerMap = useMemo(() => new Map(workers.map((worker) => [worker.id, worker])), [workers]);
   const rateIndex = useMemo(() => buildRateIndex(wageRates), [wageRates]);
+  const blockById = useMemo(() => Object.fromEntries(blockMap), [blockMap]);
 
   const filteredReports = useMemo(() => {
     if (simulated) return buildSampleReports({ workers, blocks });
@@ -162,27 +166,45 @@ export default function LabourStatus() {
     return pointages.filter((sheet) => sheet.farm_name && selectedFarms.includes(sheet.farm_name));
   }, [pointages, selectedFarms]);
 
+  // Days of the period: the daily reports, plus the pointage days not carried into a
+  // report of the same day and farm yet, so nothing is counted twice.
+  const sourceSheets = simulated ? [] : filteredPointages;
+  const { entries, pointage } = useMemo(
+    () =>
+      buildLabourEntries({
+        reports: filteredReports,
+        sheets: sourceSheets,
+        workers,
+        rateIndex,
+        blockMap: blockById,
+      }),
+    [filteredReports, sourceSheets, workers, rateIndex, blockById],
+  );
+
   // Transport is valued apart from the wage: a per-person amount for each day worked,
   // or a fixed amount counted once for the transporter and the team of the day.
   const transport = useMemo(
-    () => buildTransportCosts({ reports: filteredReports, workers, rates: transportRates }),
-    [filteredReports, workers, transportRates],
+    () =>
+      buildTransportCosts({
+        reports: filteredReports,
+        entries: pointage,
+        workers,
+        rates: transportRates,
+      }),
+    [filteredReports, pointage, workers, transportRates],
   );
 
   const rowsByWorker = {};
-  filteredReports.forEach((report) => {
-    (report.labour || []).forEach((line) => {
-      const days = Number(line.days) || 0;
-      if (!line.worker_id || days <= 0) return;
-      const worker = workerMap.get(line.worker_id);
-      const current = rowsByWorker[line.worker_id] || { days: 0, cost: 0, byDate: new Map() };
-      current.byDate.set(report.date, (current.byDate.get(report.date) || 0) + days);
-      rowsByWorker[line.worker_id] = {
-        days: current.days + days,
-        cost: current.cost + days * labourRate(line, worker, rateIndex, report.date),
-        byDate: current.byDate,
-      };
-    });
+  entries.forEach((entry) => {
+    const days = Number(entry.days) || 0;
+    if (!entry.worker_id || days <= 0) return;
+    const current = rowsByWorker[entry.worker_id] || { days: 0, cost: 0, byDate: new Map() };
+    current.byDate.set(entry.date, (current.byDate.get(entry.date) || 0) + days);
+    rowsByWorker[entry.worker_id] = {
+      days: current.days + days,
+      cost: current.cost + (Number(entry.cost) || 0),
+      byDate: current.byDate,
+    };
   });
 
   const rows = Object.entries(rowsByWorker)
@@ -206,9 +228,8 @@ export default function LabourStatus() {
   const groups = useMemo(
     () =>
       buildLabourGroups({
-        reports: filteredReports,
+        entries,
         workers,
-        rateIndex,
         transport,
         options: {
           teamLabel: (name) => t('lab.teamLabel', { name }),
@@ -217,7 +238,7 @@ export default function LabourStatus() {
           unknownLabel: t('workers.unknown'),
         },
       }),
-    [filteredReports, workers, rateIndex, transport, t],
+    [entries, workers, transport, t],
   );
 
   const totalDays = rows.reduce((sum, row) => sum + row.days, 0);
@@ -265,30 +286,27 @@ export default function LabourStatus() {
 
   const dayGroups = useMemo(() => {
     const byDate = new Map();
-    filteredReports.forEach((report) => {
-      const block = blockMap.get(report.block_id);
-      (report.labour || []).forEach((line) => {
-        const days = Number(line.days) || 0;
-        if (!line.worker_id || days <= 0) return;
-        const worker = workerMap.get(line.worker_id);
-        if (!byDate.has(report.date)) {
-          byDate.set(report.date, { date: report.date, entries: new Map(), days: 0, cost: 0 });
-        }
-        const group = byDate.get(report.date);
-        const entry = group.entries.get(line.worker_id) || {
-          key: line.worker_id,
-          worker: worker?.name || t('workers.unknown'),
-          days: 0,
-          places: new Set(),
-          blocks: new Set(),
-        };
-        entry.days += days;
-        if (block?.farm) entry.places.add(block.farm);
-        if (block?.name) entry.blocks.add(block.name);
-        group.entries.set(line.worker_id, entry);
-        group.days += days;
-        group.cost += days * labourRate(line, worker, rateIndex, report.date);
-      });
+    entries.forEach((entry) => {
+      const days = Number(entry.days) || 0;
+      if (!entry.worker_id || days <= 0) return;
+      const worker = workerMap.get(entry.worker_id);
+      if (!byDate.has(entry.date)) {
+        byDate.set(entry.date, { date: entry.date, entries: new Map(), days: 0, cost: 0 });
+      }
+      const group = byDate.get(entry.date);
+      const line = group.entries.get(entry.worker_id) || {
+        key: entry.worker_id,
+        worker: worker?.name || t('workers.unknown'),
+        days: 0,
+        places: new Set(),
+        blocks: new Set(),
+      };
+      line.days += days;
+      if (entry.farm) line.places.add(entry.farm);
+      if (entry.block) line.blocks.add(entry.block);
+      group.entries.set(entry.worker_id, line);
+      group.days += days;
+      group.cost += Number(entry.cost) || 0;
     });
 
     return [...byDate.values()]
@@ -305,7 +323,7 @@ export default function LabourStatus() {
           .sort((a, b) => a.worker.localeCompare(b.worker)),
       }))
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [filteredReports, blockMap, workerMap, rateIndex, transport, t]);
+  }, [entries, workerMap, transport, t]);
 
   return (
     <div className="space-y-8">

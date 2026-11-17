@@ -90,17 +90,72 @@ export function transportLine(line, worker, index, date) {
 // Transport cost of every labour line of a set of daily reports.
 // A per-person transport is paid for every day worked; a fixed transport is paid
 // once per day for the transporter and the team, whatever the number of parcels
-// that team worked on that day.
-export function buildTransportCosts({ reports = [], workers = [], rates = [] }) {
+// that team worked on that day. The pointage days not carried into a report yet are
+// valued the same way, after the reports, so a fixed amount is never paid twice.
+export function buildTransportCosts({ reports = [], entries = [], workers = [], rates = [] }) {
   const index = buildTransportIndex(rates);
   const workerMap = new Map(workers.map((worker) => [worker.id, worker]));
   const paidFixed = new Set();
+  let transportTotal = 0;
   const lines = [];
   const byReport = new Map();
   const byWorker = new Map();
   const byDate = new Map();
   const byDateWorker = new Map();
   const transporters = new Map();
+
+  const addLine = ({ reportId, date, workerId, days, transport }) => {
+    const rate = transport.rate;
+    if (transport.mode === 'none' || rate <= 0) return;
+
+    let cost;
+    if (transport.mode === 'fixed') {
+      const scope = `${date}|${transport.transporter || workerId}|${transport.team}`;
+      cost = paidFixed.has(scope) ? 0 : rate;
+      paidFixed.add(scope);
+    } else {
+      cost = rate * days;
+    }
+
+    transportTotal += cost;
+    if (reportId) byReport.set(reportId, num(byReport.get(reportId)) + cost);
+    byWorker.set(workerId, num(byWorker.get(workerId)) + cost);
+    byDate.set(date, num(byDate.get(date)) + cost);
+    const dateKey = `${date}|${workerId}`;
+    byDateWorker.set(dateKey, num(byDateWorker.get(dateKey)) + cost);
+
+    const scopeKey =
+      transport.mode === 'fixed'
+        ? `${transport.transporter || `worker-${workerId}`}|${transport.team}|fixed`
+        : `${transport.transporter || `worker-${workerId}`}|per_person`;
+    const current = transporters.get(scopeKey) || {
+      key: scopeKey,
+      name: transport.transporter || '',
+      mode: transport.mode,
+      team: transport.mode === 'fixed' ? transport.team : '',
+      rate,
+      days: 0,
+      dates: new Set(),
+      total: 0,
+    };
+    current.rate = rate;
+    current.days += days;
+    current.dates.add(date);
+    current.total += cost;
+    transporters.set(scopeKey, current);
+
+    lines.push({
+      reportId: reportId || '',
+      date,
+      workerId,
+      workerName: workerMap.get(workerId)?.name || '',
+      transporter: transport.transporter,
+      mode: transport.mode,
+      rate,
+      days,
+      cost,
+    });
+  };
 
   [...reports]
     .sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)))
@@ -109,56 +164,26 @@ export function buildTransportCosts({ reports = [], workers = [], rates = [] }) 
         const days = num(line.days);
         if (!line.worker_id || days <= 0) return;
         const worker = workerMap.get(line.worker_id);
-        const transport = transportLine(line, worker, index, report.date);
-        const rate = transport.rate;
-        if (transport.mode === 'none' || rate <= 0) return;
-
-        let cost;
-        if (transport.mode === 'fixed') {
-          const scope = `${report.date}|${transport.transporter || line.worker_id}|${transport.team}`;
-          cost = paidFixed.has(scope) ? 0 : rate;
-          paidFixed.add(scope);
-        } else {
-          cost = rate * days;
-        }
-
-        byReport.set(report.id, num(byReport.get(report.id)) + cost);
-        byWorker.set(line.worker_id, num(byWorker.get(line.worker_id)) + cost);
-        byDate.set(report.date, num(byDate.get(report.date)) + cost);
-        const dateKey = `${report.date}|${line.worker_id}`;
-        byDateWorker.set(dateKey, num(byDateWorker.get(dateKey)) + cost);
-
-        const scopeKey =
-          transport.mode === 'fixed'
-            ? `${transport.transporter || `worker-${line.worker_id}`}|${transport.team}|fixed`
-            : `${transport.transporter || `worker-${line.worker_id}`}|per_person`;
-        const current = transporters.get(scopeKey) || {
-          key: scopeKey,
-          name: transport.transporter || '',
-          mode: transport.mode,
-          team: transport.mode === 'fixed' ? transport.team : '',
-          rate,
-          days: 0,
-          dates: new Set(),
-          total: 0,
-        };
-        current.rate = rate;
-        current.days += days;
-        current.dates.add(report.date);
-        current.total += cost;
-        transporters.set(scopeKey, current);
-
-        lines.push({
+        addLine({
           reportId: report.id,
           date: report.date,
           workerId: line.worker_id,
-          workerName: worker?.name || '',
-          transporter: transport.transporter,
-          mode: transport.mode,
-          rate,
           days,
-          cost,
+          transport: transportLine(line, worker, index, report.date),
         });
+      });
+    });
+
+  [...entries]
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .forEach((entry) => {
+      const days = num(entry.days);
+      if (!entry.workerId || days <= 0) return;
+      addLine({
+        date: entry.date,
+        workerId: entry.workerId,
+        days,
+        transport: transportFor(workerMap.get(entry.workerId), index, entry.date),
       });
     });
 
@@ -169,7 +194,7 @@ export function buildTransportCosts({ reports = [], workers = [], rates = [] }) 
     byWorker,
     byDate,
     byDateWorker,
-    total: [...byReport.values()].reduce((sum, value) => sum + value, 0),
+    total: transportTotal,
     transporters: [...transporters.values()]
       .map((entry) => ({ ...entry, dates: entry.dates.size }))
       .sort((a, b) => b.total - a.total),

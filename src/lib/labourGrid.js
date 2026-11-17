@@ -1,5 +1,3 @@
-import { labourRate } from '@/lib/wageRates';
-
 const num = (value) => Number(value) || 0;
 const CAPORAL = 'caporal';
 
@@ -52,7 +50,7 @@ function rowRank(worker) {
   return priorityOf(worker);
 }
 
-export function buildLabourGroups({ reports = [], workers = [], rateIndex, transport, options = {} }) {
+export function buildLabourGroups({ entries = [], workers = [], transport, options = {} }) {
   const workerMap = new Map(workers.map((worker) => [worker.id, worker]));
   const groups = new Map();
 
@@ -65,17 +63,14 @@ export function buildLabourGroups({ reports = [], workers = [], rateIndex, trans
   };
 
   const stats = new Map();
-  reports.forEach((report) => {
-    (report.labour || []).forEach((line) => {
-      const worked = num(line.days);
-      if (!line.worker_id || worked <= 0) return;
-      const worker = workerMap.get(line.worker_id);
-      const current = stats.get(line.worker_id) || { dates: new Map(), days: 0, cost: 0 };
-      current.dates.set(report.date, num(current.dates.get(report.date)) + worked);
-      current.days += worked;
-      current.cost += worked * labourRate(line, worker, rateIndex, report.date);
-      stats.set(line.worker_id, current);
-    });
+  entries.forEach((entry) => {
+    const worked = num(entry.days);
+    if (!entry.worker_id || worked <= 0) return;
+    const current = stats.get(entry.worker_id) || { dates: new Map(), days: 0, cost: 0 };
+    current.dates.set(entry.date, num(current.dates.get(entry.date)) + worked);
+    current.days += worked;
+    current.cost += num(entry.cost);
+    stats.set(entry.worker_id, current);
   });
 
   stats.forEach((entry, workerId) => {
