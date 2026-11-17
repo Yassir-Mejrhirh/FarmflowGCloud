@@ -45,6 +45,7 @@ export default function DailyReport() {
   const [reports, setReports] = useState([]);
   const [wageRates, setWageRates] = useState([]);
   const [transportRates, setTransportRates] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [pointageLines, setPointageLines] = useState([]);
   const [version, setVersion] = useState(0);
 
@@ -69,7 +70,7 @@ export default function DailyReport() {
   const detectedRef = useRef(new Set());
 
   const load = async () => {
-    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, countRows, storageRows, reportRows, taskRows, natureRows, wageRateRows, transportRateRows] = await Promise.all([
+    const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, countRows, storageRows, reportRows, taskRows, natureRows, wageRateRows, transportRateRows, supplierRows] = await Promise.all([
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
@@ -85,6 +86,7 @@ export default function DailyReport() {
       fetchList(base44.entities.TaskNature, {}, { sort: 'name' }),
       fetchList(base44.entities.WageRate, {}),
       fetchList(base44.entities.TransportRate, {}),
+      fetchList(base44.entities.Supplier, {}, { sort: 'name' }),
     ]);
     setBlocks(blockRows);
     setFarms(farmRows);
@@ -101,12 +103,29 @@ export default function DailyReport() {
     setNatures(natureRows);
     setWageRates(wageRateRows);
     setTransportRates(transportRateRows);
+    setSuppliers(supplierRows);
     setVersion((value) => value + 1);
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  // Après une facture d'achat ou un intrant créé, le stock et les choix de la ligne sont relus.
+  const reloadStock = async () => {
+    const [itemRows, invoiceRows, movementRows, countRows, supplierRows] = await Promise.all([
+      fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
+      fetchList(base44.entities.InputInvoice, {}),
+      fetchList(base44.entities.StockMovement, {}),
+      fetchList(base44.entities.InventoryCount, {}, { sort: '-date' }),
+      fetchList(base44.entities.Supplier, {}, { sort: 'name' }),
+    ]);
+    setItems(itemRows);
+    setInvoices(invoiceRows);
+    setMovements(movementRows);
+    setCounts(countRows);
+    setSuppliers(supplierRows);
+  };
 
   // Une tâche créée pendant la saisie entre aussitôt dans les choix du rapport.
   const reloadTasks = async () => {
@@ -347,6 +366,7 @@ export default function DailyReport() {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, date,
     storages, invoices, onHand: storageOnHand, farmName, pointageDays, pointageRemaining, reloadTasks,
+    suppliers, reloadStock,
   };
 
   const addLine = () => {

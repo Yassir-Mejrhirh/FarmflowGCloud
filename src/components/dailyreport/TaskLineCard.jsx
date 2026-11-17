@@ -13,6 +13,9 @@ import UsageField from '@/components/dailyreport/UsageField';
 import FuelLine from '@/components/dailyreport/FuelLine';
 import OtherInputsPanel from '@/components/dailyreport/OtherInputsPanel';
 import InputStockNote from '@/components/dailyreport/InputStockNote';
+import InputSupplyActions from '@/components/dailyreport/InputSupplyActions';
+import InputPurchaseDialog from '@/components/dailyreport/InputPurchaseDialog';
+import ItemDialog from '@/components/inventory/ItemDialog';
 import StockShortageAlert from '@/components/stock/StockShortageAlert';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -34,8 +37,11 @@ export default function TaskLineCard({
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, replaced, date,
     storages, invoices, onHand, farmName, pointageDays, pointageRemaining, reloadTasks,
+    suppliers, reloadStock,
   } = ctx;
   const [creatingTask, setCreatingTask] = useState(false);
+  const [creatingItem, setCreatingItem] = useState(false);
+  const [purchaseItemId, setPurchaseItemId] = useState('');
 
   const task = tasks.find((row) => row.id === line.task_id);
   const blockNames = line.block_ids.map((id) => blockMap[id]?.name).filter(Boolean);
@@ -46,6 +52,27 @@ export default function TaskLineCard({
   const shortages = lineShortages({ line, blockMap, storages, invoices, onHand, stockTotals, replaced });
   const irrigation = requiresPumpStation(task);
   const isEditing = line.key.startsWith('edit-');
+
+  // The missing input is put on the line right away, so the purchase only has to be written.
+  const putInputOnLine = (itemId) => {
+    const rows = line.inputs || [];
+    if (rows.some((row) => row.item_id === itemId)) return;
+    const emptyIndex = rows.findIndex((row) => !row.item_id);
+    onChange({
+      inputs:
+        emptyIndex >= 0
+          ? rows.map((row, i) => (i === emptyIndex ? { ...row, item_id: itemId } : row))
+          : [...rows, { item_id: itemId, quantity: '' }],
+    });
+  };
+
+  // A created input is supplied at once: its purchase invoice opens on its name.
+  const afterItemCreated = async (created) => {
+    if (!created?.id) return;
+    await reloadStock();
+    putInputOnLine(created.id);
+    setPurchaseItemId(created.id);
+  };
 
   return (
     <div
@@ -231,6 +258,13 @@ export default function TaskLineCard({
             )}
           />
 
+          <InputSupplyActions
+            shortages={shortages}
+            itemMap={itemMap}
+            onInvoice={setPurchaseItemId}
+            onCreateItem={() => setCreatingItem(true)}
+          />
+
           <Field label={t('report.descLabel')}>
             <Textarea
               rows={2}
@@ -249,6 +283,21 @@ export default function TaskLineCard({
             onCreated={async (created) => {
               await reloadTasks();
               onChange({ task_id: created.id });
+            }}
+          />
+
+          <ItemDialog open={creatingItem} onOpenChange={setCreatingItem} onSaved={afterItemCreated} />
+
+          <InputPurchaseDialog
+            open={!!purchaseItemId}
+            onOpenChange={(value) => !value && setPurchaseItemId('')}
+            seedItem={items.find((row) => row.id === purchaseItemId)}
+            suppliers={suppliers || []}
+            items={items}
+            storages={storages}
+            onSaved={async () => {
+              await reloadStock();
+              setPurchaseItemId('');
             }}
           />
 

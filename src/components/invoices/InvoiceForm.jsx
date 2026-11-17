@@ -9,15 +9,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { todayISO, fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { priceToPrimary, toPrimary, unitOptionsFor } from '@/lib/units';
+import { cn } from '@/lib/utils';
 
-const emptyLine = () => ({ item_id: '', quantity: '', unit: '', unit_price: '' });
+const emptyLine = (item) => ({
+  item_id: item?.id || '',
+  quantity: '',
+  unit: item?.unit || '',
+  unit_price: '',
+});
 
-const emptyForm = () => ({
+const emptyForm = (item) => ({
   date: todayISO(),
   invoice_number: '',
   supplier_id: '',
   storage_id: '',
-  lines: [emptyLine()],
+  lines: [emptyLine(item)],
   notes: '',
 });
 
@@ -40,15 +46,17 @@ const formFromInvoice = (invoice) => ({
   notes: invoice.notes || '',
 });
 
-export default function InvoiceForm({ suppliers, items, storages = [], invoice, onSaved, onCancel }) {
+export default function InvoiceForm({
+  suppliers, items, storages = [], invoice, seedItem, hideHeader, onSaved, onCancel,
+}) {
   const { t } = useI18n();
-  const [form, setForm] = useState(() => (invoice ? formFromInvoice(invoice) : emptyForm()));
+  const [form, setForm] = useState(() => (invoice ? formFromInvoice(invoice) : emptyForm(seedItem)));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setForm(invoice ? formFromInvoice(invoice) : emptyForm());
-  }, [invoice?.id]);
+    setForm(invoice ? formFromInvoice(invoice) : emptyForm(seedItem));
+  }, [invoice?.id, seedItem?.id]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -105,13 +113,13 @@ export default function InvoiceForm({ suppliers, items, storages = [], invoice, 
     if (invoice) await base44.entities.InputInvoice.update(invoice.id, payload);
     else await base44.entities.InputInvoice.create(payload);
     setSaving(false);
-    setForm(emptyForm());
+    setForm(emptyForm(seedItem));
     onSaved();
   };
 
   return (
     <form onSubmit={submit} className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
-      <div className="mb-4 flex items-start gap-2.5">
+      <div className={cn('mb-4 flex items-start gap-2.5', hideHeader && 'hidden')}>
         <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
           <Receipt className="h-3.5 w-3.5" strokeWidth={1.9} />
         </span>

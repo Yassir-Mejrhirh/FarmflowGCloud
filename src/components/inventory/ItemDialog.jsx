@@ -146,11 +146,18 @@ export default function ItemDialog({ open, onOpenChange, item, onSaved }) {
       min_stock: Number(form.min_stock) || 0,
       notes: form.notes.trim(),
     };
-    if (item?.id) await base44.entities.InputItem.update(item.id, payload);
-    else await base44.entities.InputItem.create(payload);
+    if (item?.id) {
+      await base44.entities.InputItem.update(item.id, payload);
+      setSaving(false);
+      onOpenChange(false);
+      onSaved({ ...item, ...payload });
+      return;
+    }
+    // The created input is handed back so it can be supplied and used right away.
+    const created = await base44.entities.InputItem.create(payload);
     setSaving(false);
     onOpenChange(false);
-    onSaved();
+    onSaved(created);
   };
 
   const remove = async () => {
