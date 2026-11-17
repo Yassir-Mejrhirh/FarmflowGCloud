@@ -25,6 +25,7 @@ import { commitLine } from '@/lib/reportCommit';
 import { applyReportHours, reportHoursByMachine } from '@/lib/machineCounter';
 import { demandByStorage, mergeDemand } from '@/lib/reportStock';
 import { isPumpingMachine } from '@/lib/machineInputs';
+import { detectFarm, stationsForFarm } from '@/lib/pumpStations';
 import { cn } from '@/lib/utils';
 
 export default function DailyReport() {
@@ -65,6 +66,7 @@ export default function DailyReport() {
   const draftKey = `${date}|${farmId}`;
   const loadedKeyRef = useRef('');
   const savedRef = useRef('');
+  const detectedRef = useRef(new Set());
 
   const load = async () => {
     const [blockRows, farmRows, cropRows, workerRows, machineRows, itemRows, invoiceRows, movementRows, countRows, storageRows, reportRows, taskRows, natureRows, wageRateRows, transportRateRows] = await Promise.all([
@@ -293,7 +295,11 @@ export default function DailyReport() {
     return groups;
   };
 
-  const pumpStations = useMemo(() => machines.filter(isPumpingMachine), [machines]);
+  // Seules les stations de la ferme du rapport sont proposées, irrigation comme fertigation.
+  const pumpStations = useMemo(
+    () => stationsForFarm({ machines, farms, farmName }),
+    [machines, farms, farmName],
+  );
   const machineOptions = useMemo(
     () => machines.map((machine) => ({ value: machine.id, label: machine.name })),
     [machines],
@@ -313,6 +319,30 @@ export default function DailyReport() {
     return totals;
   }, [editing, movements]);
 
+  // Une station encore sans ferme retient celle que son nom désigne : l'association
+  // est écrite une seule fois sur la fiche, les rapports suivants la retrouvent.
+  useEffect(() => {
+    if (!farms.length) return;
+    const found = machines
+      .filter((machine) => isPumpingMachine(machine) && !machine.farm && !detectedRef.current.has(machine.id))
+      .map((machine) => ({ machine, farm: detectFarm(machine.name, farms) }))
+      .filter((row) => row.farm);
+    if (!found.length) return;
+    const kept = new Map(found.map((row) => [row.machine.id, row.farm.name]));
+    kept.forEach((_, id) => detectedRef.current.add(id));
+    Promise.all([...kept.keys()].map((id) => base44.entities.Machine.update(id, { farm: kept.get(id) }))).then(() => {
+      setMachines((current) => current.map((machine) => (kept.has(machine.id) ? { ...machine, farm: kept.get(machine.id) } : machine)));
+    });
+  }, [machines, farms]);
+
+  // Station choisie pour une ferme : sa ferme est mémorisée sur la fiche.
+  const rememberStationFarm = (machineId) => {
+    const machine = machines.find((row) => row.id === machineId);
+    if (!machine || machine.farm || !farmName) return;
+    setMachines((current) => current.map((row) => (row.id === machineId ? { ...row, farm: farmName } : row)));
+    base44.entities.Machine.update(machineId, { farm: farmName });
+  };
+
   const ctx = {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
     machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, date,
@@ -329,6 +359,7 @@ export default function DailyReport() {
   const updateLine = (key, patch) => {
     setLines((prev) => prev.map((line) => (line.key === key ? { ...line, ...patch } : line)));
     setIssuesByLine((prev) => ({ ...prev, [key]: [] }));
+    if (patch.pump_station_id) rememberStationFarm(patch.pump_station_id);
   };
 
   const removeLine = (key) => {
@@ -338,6 +369,7 @@ export default function DailyReport() {
 
   const updateEditing = (patch) => {
     setEditing((prev) => (prev ? { ...prev, line: { ...prev.line, ...patch } } : prev));
+    if (patch.pump_station_id) rememberStationFarm(patch.pump_station_id);
   };
 
   const applyLine = async () => {

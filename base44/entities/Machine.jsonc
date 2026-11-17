@@ -18,6 +18,10 @@
       "description": "Machine type: tractor, harvester, sprayer, truck, implement, other, or a custom machine type name",
       "default": "tractor"
     },
+    "farm": {
+      "type": "string",
+      "description": "Farm the machine belongs to; for a pumping station, only the stations of the farm of the report are proposed. Detected from the name the first time, then kept here"
+    },
     "year": {
       "type": "number",
       "description": "Manufacturing year"
