@@ -9,7 +9,7 @@ import ItemOperationsDialog from '@/components/stock/ItemOperationsDialog';
 import StockFilters from '@/components/stock/StockFilters';
 import TransferDialog from '@/components/stock/TransferDialog';
 import { fetchList } from '@/lib/data';
-import { avgCostOf, buildCountTotals, buildInputTotals, buildOnHand, buildStorageOnHand, mergeTotals } from '@/lib/inventory';
+import { buildOnHand, buildStorageOnHand, stockPmpOf } from '@/lib/inventory';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
@@ -20,7 +20,6 @@ import { exportExcel, exportPdf } from '@/lib/reportExport';
 export default function StockStatus() {
   const { t } = useI18n();
   const [items, setItems] = useState([]);
-  const [purchases, setPurchases] = useState({});
   const [onHand, setOnHand] = useState({});
   const [storageOnHand, setStorageOnHand] = useState({});
   const [invoices, setInvoices] = useState([]);
@@ -58,7 +57,6 @@ export default function StockStatus() {
       setMachines(machineRows);
       setBlocks(blockRows);
       setReports(reportRows);
-      setPurchases(mergeTotals(buildInputTotals(invoiceRows), buildCountTotals(countRows)));
       setOnHand(buildOnHand(invoiceRows, movementRows, countRows));
       setStorageOnHand(buildStorageOnHand(invoiceRows, movementRows, countRows));
       setLoading(false);
@@ -79,7 +77,7 @@ export default function StockStatus() {
           const quantity = storageFilter
             ? Number(storageOnHand[storageFilter]?.[item.id]?.quantity) || 0
             : Number(onHand[item.id]?.quantity) || 0;
-          const price = avgCostOf(purchases, item.id);
+          const price = stockPmpOf(onHand, item.id);
           const minimum = Number(item.min_stock) || 0;
           return {
             id: item.id,
@@ -103,7 +101,7 @@ export default function StockStatus() {
           if (aEmpty !== bEmpty) return aEmpty ? 1 : -1;
           return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
         }),
-    [items, onHand, storageOnHand, purchases, storageFilter, categoryFilter],
+    [items, onHand, storageOnHand, storageFilter, categoryFilter],
   );
 
   const totalValue = rows.reduce((sum, row) => sum + row.value, 0);

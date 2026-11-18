@@ -44,8 +44,12 @@ export function mergeTotals(base = {}, extra = {}) {
   return merged;
 }
 
-// Le stock suit les événements dans l'ordre du temps : une facture ajoute, un mouvement
-// entre ou sort, et un inventaire validé fixe la quantité réellement constatée à sa date.
+// Le stock suit les événements dans l'ordre du temps : une facture ajoute la quantité et sa
+// valeur d'achat, un mouvement entre ou sort à la valeur du prix moyen du moment, et un
+// inventaire validé fixe la quantité réellement constatée, valorisée au prix de l'inventaire
+// ou, à défaut, au prix moyen du moment. La quantité restante, le prix moyen pondéré (PMP) et
+// la valeur du stock sortent de cette même chronologie, pour que toutes les pages affichent
+// exactement les mêmes chiffres.
 // Les ajustements écrits par les anciens inventaires sont ignorés : le constat les remplace.
 const eventKey = (row) => `${String(row.date || '').slice(0, 10)}|${String(row.created_date || '')}`;
 
@@ -56,10 +60,12 @@ export function buildStockTotals({ invoices = [], movements = [], counts = [] },
   invoices.filter(inScope).forEach((invoice) => {
     (invoice.lines || []).forEach((line) => {
       if (!line.item_id) return;
+      const quantity = Number(line.quantity) || 0;
       events.push({
         item_id: line.item_id,
         kind: 'in',
-        quantity: Number(line.quantity) || 0,
+        quantity,
+        value: quantity * (Number(line.unit_price) || 0),
         key: eventKey(invoice),
         rank: 1,
       });
@@ -74,6 +80,8 @@ export function buildStockTotals({ invoices = [], movements = [], counts = [] },
         item_id: movement.item_id,
         kind: movement.kind === 'out' ? 'out' : 'in',
         quantity: Number(movement.quantity) || 0,
+        // Un mouvement sans coût (transfert, sortie de stock) est valorisé au prix moyen du moment.
+        value: Number(movement.cost) > 0 ? Number(movement.cost) : null,
         key: eventKey(movement),
         rank: 1,
       });
@@ -82,10 +90,13 @@ export function buildStockTotals({ invoices = [], movements = [], counts = [] },
   counts.filter(inScope).forEach((count) => {
     (count.lines || []).forEach((line) => {
       if (!line.item_id) return;
+      const quantity = Number(line.quantity) || 0;
+      const unitPrice = Number(line.unit_price) || 0;
       events.push({
         item_id: line.item_id,
         kind: 'count',
-        quantity: Number(line.quantity) || 0,
+        quantity,
+        value: unitPrice > 0 ? quantity * unitPrice : null,
         key: eventKey(count),
         rank: 0,
       });
@@ -96,9 +107,19 @@ export function buildStockTotals({ invoices = [], movements = [], counts = [] },
 
   const totals = {};
   events.forEach((event) => {
-    const row = totals[event.item_id] || { quantity: 0 };
-    if (event.kind === 'count') row.quantity = event.quantity;
-    else row.quantity += (event.kind === 'out' ? -1 : 1) * event.quantity;
+    const row = totals[event.item_id] || { quantity: 0, value: 0 };
+    const pmp = row.quantity ? row.value / row.quantity : 0;
+    const movedValue = event.value != null ? event.value : event.quantity * pmp;
+    if (event.kind === 'count') {
+      row.quantity = event.quantity;
+      row.value = movedValue;
+    } else if (event.kind === 'out') {
+      row.quantity -= event.quantity;
+      row.value -= movedValue;
+    } else {
+      row.quantity += event.quantity;
+      row.value += movedValue;
+    }
     totals[event.item_id] = row;
   });
   return totals;
@@ -149,4 +170,17 @@ export function pickStorageFor(storages = [], invoices = [], itemId, onHand = nu
 export function avgCostOf(totals, itemId) {
   const row = totals[itemId];
   return row && row.quantity ? row.cost / row.quantity : 0;
+}
+
+// PMP du stock restant, tiré de la même chronologie que la quantité : achats, entrées,
+// sorties et inventaires. C'est le prix que les pages Intrants et État des stocks affichent.
+export function stockPmpOf(totals, itemId) {
+  const row = totals[itemId];
+  return row && row.quantity ? row.value / row.quantity : 0;
+}
+
+// Valeur du stock restant au PMP : le même montant dans toutes les pages.
+export function stockValueOf(totals, itemId) {
+  const row = totals[itemId];
+  return row ? (Number(row.quantity) || 0) * stockPmpOf(totals, itemId) : 0;
 }

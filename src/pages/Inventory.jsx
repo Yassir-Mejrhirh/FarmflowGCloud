@@ -10,7 +10,7 @@ import ItemDialog from '@/components/inventory/ItemDialog';
 import CategoryList from '@/components/inventory/CategoryList';
 import { Button } from '@/components/ui/button';
 import { fetchList, byId } from '@/lib/data';
-import { buildInputTotals, buildOnHand } from '@/lib/inventory';
+import { buildOnHand, stockPmpOf, stockValueOf } from '@/lib/inventory';
 import { fmtMoney, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -52,18 +52,13 @@ export default function Inventory() {
     load();
   }, []);
 
-  const totals = useMemo(() => buildInputTotals(invoices), [invoices]);
-
   const onHand = useMemo(() => buildOnHand(invoices, movements, counts), [invoices, movements, counts]);
   const quantityOf = (item) => onHand[item.id]?.quantity || 0;
-  const avgCostOf = (item) => {
-    const row = totals[item.id];
-    return row && row.quantity ? row.cost / row.quantity : 0;
-  };
+  const pmpOf = (item) => stockPmpOf(onHand, item.id);
   const isLow = (item) => item.min_stock_enabled && quantityOf(item) <= (Number(item.min_stock) || 0);
 
   const lowStock = items.filter(isLow);
-  const stockValue = items.reduce((sum, item) => sum + (totals[item.id]?.cost || 0), 0);
+  const stockValue = items.reduce((sum, item) => sum + stockValueOf(onHand, item.id), 0);
   const categoryLabel = (value) => {
     if (!value) return '';
     const key = `icat.${value}`;
@@ -126,7 +121,7 @@ export default function Inventory() {
             {items.map((item) => {
               const low = isLow(item);
               const quantity = quantityOf(item);
-              const avgCost = avgCostOf(item);
+              const avgCost = pmpOf(item);
               return (
                 <li key={item.id} className="flex flex-wrap items-center gap-3 px-4 py-3.5">
                   <div className="min-w-0 flex-1">
