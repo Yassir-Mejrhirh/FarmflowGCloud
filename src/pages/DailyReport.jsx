@@ -26,6 +26,7 @@ import { applyReportHours, reportHoursByMachine } from '@/lib/machineCounter';
 import { demandByStorage, mergeDemand } from '@/lib/reportStock';
 import { isPumpingMachine } from '@/lib/machineInputs';
 import { detectFarm, stationsForFarm } from '@/lib/pumpStations';
+import { readReportPrefs, saveReportPrefs } from '@/lib/reportPrefs';
 import { cn } from '@/lib/utils';
 
 export default function DailyReport() {
@@ -49,9 +50,10 @@ export default function DailyReport() {
   const [pointageLines, setPointageLines] = useState([]);
   const [version, setVersion] = useState(0);
 
-  // The report being written: one draft per day and per farm.
-  const [date, setDate] = useState(todayISO());
-  const [farmId, setFarmId] = useState('');
+  // The report being written: one draft per day and per farm. The day and the farm
+  // of the last entry are brought back when the page is opened again.
+  const [date, setDate] = useState(() => readReportPrefs().date || todayISO());
+  const [farmId, setFarmId] = useState(() => readReportPrefs().farm_id || '');
   const [draftId, setDraftId] = useState(null);
   const [lines, setLines] = useState([]);
   const [openKey, setOpenKey] = useState(null);
@@ -178,9 +180,20 @@ export default function DailyReport() {
     );
   }, [visibleBlocks, crops, t]);
 
+  // The farm of the last entry is taken again when it still exists, otherwise the first one.
   useEffect(() => {
-    if (!farmId && farms.length) setFarmId(farms[0].id);
+    if (!farms.length) return;
+    if (farmId && farms.some((farm) => farm.id === farmId)) return;
+    const stored = readReportPrefs().farm_id;
+    const known = farms.some((farm) => farm.id === stored);
+    setFarmId(known ? stored : farms[0].id);
   }, [farms, farmId]);
+
+  // Each change of day or farm is kept for the next visit.
+  useEffect(() => {
+    if (!farmId) return;
+    saveReportPrefs({ date, farm_id: farmId });
+  }, [date, farmId]);
 
   // The draft of the chosen day and farm is brought back, or started empty.
   useEffect(() => {
