@@ -24,3 +24,12 @@ export function requiresPumpStation(task) {
   const haystack = `${normalize(task.type)} ${normalize(task.title)}`;
   return IRRIGATION_WORDS.some((word) => haystack.includes(normalize(word)));
 }
+
+// Fertigation goes through the pumping station alone: no work machine is needed.
+const FERTIGATION_WORDS = ['fertigation', 'fertirrigation', 'تسميد بالري'];
+
+export function isFertigation(task) {
+  if (!task) return false;
+  const haystack = `${normalize(task.type)} ${normalize(task.title)}`;
+  return FERTIGATION_WORDS.some((word) => haystack.includes(normalize(word)));
+}

@@ -1,7 +1,7 @@
 import { buildReportOutflow, demandByStorage } from '@/lib/reportStock';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { fmtDate } from '@/lib/format';
-import { requiresPumpStation } from '@/lib/irrigation';
+import { isFertigation, requiresPumpStation } from '@/lib/irrigation';
 
 // One task of the day, entered on a single line of the daily report.
 export function newLine() {
@@ -104,7 +104,10 @@ export function lineIssues({ line, date, task, blockMap = {}, stockTotals = {}, 
     }
   });
 
-  if (task?.machine_required && !machineryLineReady(line, task)) issues.push(t('report.machineRequired'));
+  // Fertigation runs through the pumping station only, so its machine flag never blocks.
+  if (task?.machine_required && !isFertigation(task) && !machineryLineReady(line, task)) {
+    issues.push(t('report.machineRequired'));
+  }
 
   // Irrigation and fertigation always run through a pumping station: station, pump
   // hours and water volume are required before the line can be pre-validated.
