@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Wallet, Gauge, Leaf, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, Wallet, Gauge, Leaf, PanelLeftClose, PanelLeftOpen, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/I18nContext';
 
@@ -20,6 +20,10 @@ export default function Sidebar({ onNavigate, collapsed = false, onToggle }) {
     {
       label: t('nav.quality'),
       items: [{ to: '/load-test', label: t('nav.loadTest'), icon: Gauge }],
+    },
+    {
+      label: 'Mobile',
+      items: [{ to: '/pointage-prototype', label: 'Pointage (démo)', icon: Smartphone }],
     },
   ];
 

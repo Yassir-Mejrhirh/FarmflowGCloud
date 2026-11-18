@@ -38,6 +38,7 @@ import MachineMaintenance from '@/pages/MachineMaintenance';
 import ImportCsv from '@/pages/ImportCsv';
 import ReportImport from '@/pages/ReportImport';
 import LoadTestProtocol from '@/pages/LoadTestProtocol';
+import PointagePrototype from '@/pages/PointagePrototype';
 import { I18nProvider } from '@/lib/I18nContext';
 
 const AuthenticatedApp = () => {
@@ -99,6 +100,7 @@ const AuthenticatedApp = () => {
         <Route path="/import" element={<ImportCsv />} />
         <Route path="/load-test" element={<LoadTestProtocol />} />
       </Route>
+      <Route path="/pointage-prototype" element={<PointagePrototype />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
     </I18nProvider>
