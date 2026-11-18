@@ -13,7 +13,7 @@ import SheetPeriodValidation from '@/components/attendance/SheetPeriodValidation
 import ReconcileQueue from '@/components/reconcile/ReconcileQueue';
 import { integrateQueueItem } from '@/lib/attendanceReconcile';
 import { Button } from '@/components/ui/button';
-import { fetchList } from '@/lib/data';
+import { fetchAll, fetchList } from '@/lib/data';
 import { fmtNum, todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { attendanceGroups } from '@/lib/attendance';
@@ -42,7 +42,7 @@ export default function Attendance() {
   const loadLists = async () => {
     const [farmRows, workerRows] = await Promise.all([
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
-      fetchList(base44.entities.Worker, {}, { sort: 'name' }),
+      fetchAll(base44.entities.Worker, {}, { sort: 'name' }),
     ]);
     setFarms(farmRows);
     setWorkers(workerRows.filter((worker) => worker.active !== false));

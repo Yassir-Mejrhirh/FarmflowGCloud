@@ -9,7 +9,7 @@ import ReportHistory from '@/components/dailyreport/ReportHistory';
 import ReportEditDialog from '@/components/dailyreport/ReportEditDialog';
 import UnsoldDialog from '@/components/dailyreport/UnsoldDialog';
 import { Button } from '@/components/ui/button';
-import { fetchList, byId } from '@/lib/data';
+import { fetchAll, fetchList, byId } from '@/lib/data';
 import { todayISO } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { buildOnHand, buildStorageOnHand } from '@/lib/inventory';
@@ -74,7 +74,7 @@ export default function DailyReport() {
       fetchList(base44.entities.FarmBlock, {}, { sort: 'name' }),
       fetchList(base44.entities.Farm, {}, { sort: 'name' }),
       fetchList(base44.entities.Crop, {}, { sort: 'name' }),
-      fetchList(base44.entities.Worker, {}, { sort: 'name' }),
+      fetchAll(base44.entities.Worker, {}, { sort: 'name' }),
       fetchList(base44.entities.Machine, {}, { sort: 'name' }),
       fetchList(base44.entities.InputItem, {}, { sort: 'name' }),
       fetchList(base44.entities.InputInvoice, {}),
