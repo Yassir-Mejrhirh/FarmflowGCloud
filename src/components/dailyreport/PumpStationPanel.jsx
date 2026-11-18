@@ -14,7 +14,7 @@ export default function PumpStationPanel({ stations = [], value = {}, onChange }
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <Waves className="h-4 w-4" /> {t('report.irrigation')}
         </p>
-        <span className="text-[11px] text-muted-foreground">{t('report.pumpOptional')}</span>
+        <span className="text-[11px] font-medium text-clay">{t('report.pumpRequired')}</span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1.4fr_0.8fr_0.8fr]">

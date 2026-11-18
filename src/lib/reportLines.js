@@ -1,6 +1,7 @@
 import { buildReportOutflow, demandByStorage } from '@/lib/reportStock';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { fmtDate } from '@/lib/format';
+import { requiresPumpStation } from '@/lib/irrigation';
 
 // One task of the day, entered on a single line of the daily report.
 export function newLine() {
@@ -104,6 +105,10 @@ export function lineIssues({ line, date, task, blockMap = {}, stockTotals = {}, 
   });
 
   if (task?.machine_required && !machineryLineReady(line, task)) issues.push(t('report.machineRequired'));
+
+  // Irrigation and fertigation always run through a pumping station: station, pump
+  // hours and water volume are required before the line can be pre-validated.
+  if (requiresPumpStation(task) && !pumpLineReady(line)) issues.push(t('report.needPump'));
 
   const consumable = (line?.inputs || []).some(
     (row) => row.item_id && isMachineConsumableItem(itemMap[row.item_id]),
