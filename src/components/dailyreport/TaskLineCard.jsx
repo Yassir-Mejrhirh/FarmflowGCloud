@@ -6,7 +6,6 @@ import SelectField from '@/components/SelectField';
 import StatusPill from '@/components/StatusPill';
 import LineModule from '@/components/dailyreport/LineModule';
 import BlockPicker from '@/components/dailyreport/BlockPicker';
-import PumpStationPanel from '@/components/dailyreport/PumpStationPanel';
 import LabourField from '@/components/dailyreport/LabourField';
 import LabourRateNote from '@/components/dailyreport/LabourRateNote';
 import UsageField from '@/components/dailyreport/UsageField';
@@ -20,7 +19,6 @@ import StockShortageAlert from '@/components/stock/StockShortageAlert';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { natureLabel } from '@/lib/taskNature';
-import { requiresPumpStation } from '@/lib/irrigation';
 import { lineShortages } from '@/lib/reportLines';
 import { stockForFarm } from '@/lib/reportStock';
 import { storagesForFarm } from '@/lib/storageScope';
@@ -36,7 +34,7 @@ export default function TaskLineCard({
   const { t } = useI18n();
   const {
     tasks, natures, blockGroups, blockMap, workerMap, labourGroupsFor, rateIndex, transportIndex,
-    machineOptions, machineMap, pumpStations, availableInputs, items, itemMap, stockTotals, replaced, date,
+    machineOptions, machineMap, availableInputs, items, itemMap, stockTotals, replaced, date,
     storages, invoices, onHand, farmName, pointageDays, pointageRemaining, reloadTasks,
     suppliers, reloadStock,
   } = ctx;
@@ -60,7 +58,6 @@ export default function TaskLineCard({
   const shortages = lineShortages({ line, blockMap, storages, invoices, onHand, stockTotals, replaced });
   // The invoice opens on the input already written on the line, when there is one.
   const purchaseSeedId = (line.inputs || []).find((row) => row.item_id)?.item_id || '';
-  const irrigation = requiresPumpStation(task);
   const isEditing = line.key.startsWith('edit-');
 
   // The missing input is put on the line right away, so the purchase only has to be written.
@@ -169,20 +166,6 @@ export default function TaskLineCard({
               )}
             </Field>
           </div>
-
-          {irrigation && (
-            <PumpStationPanel
-              stations={pumpStations}
-              value={{ machine_id: line.pump_station_id, hours: line.pump_hours, m3: line.water_m3 }}
-              onChange={(value) =>
-                onChange({
-                  pump_station_id: value.machine_id,
-                  pump_hours: value.hours,
-                  water_m3: value.m3,
-                })
-              }
-            />
-          )}
 
           <div className="grid gap-3 lg:grid-cols-2">
             <LineModule
