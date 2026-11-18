@@ -117,12 +117,13 @@ export default function BlockItinerary() {
         machines,
         items,
         invoices,
+        movements,
         counts,
         wageRates,
         transportRates,
         machineCosts,
       }),
-    [scopedReports, blocks, workers, machines, items, invoices, counts, wageRates, transportRates, machineCosts],
+    [scopedReports, blocks, workers, machines, items, invoices, movements, counts, wageRates, transportRates, machineCosts],
   );
 
   const activeEntry = entries.find((entry) => entry.block.id === blockId) || entries[0];

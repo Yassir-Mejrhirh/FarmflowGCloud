@@ -53,7 +53,8 @@ export function mergeTotals(base = {}, extra = {}) {
 // Les ajustements écrits par les anciens inventaires sont ignorés : le constat les remplace.
 const eventKey = (row) => `${String(row.date || '').slice(0, 10)}|${String(row.created_date || '')}`;
 
-export function buildStockTotals({ invoices = [], movements = [], counts = [] }, storageId = '') {
+// Tous les événements de stock, dans l'ordre du temps, pour une chronologie unique.
+function collectStockEvents({ invoices = [], movements = [], counts = [] }, storageId = '') {
   const inScope = (row) => !storageId || (row.storage_id || '') === storageId;
   const events = [];
 
@@ -103,26 +104,52 @@ export function buildStockTotals({ invoices = [], movements = [], counts = [] },
     });
   });
 
-  events.sort((a, b) => a.key.localeCompare(b.key) || a.rank - b.rank);
+  return events
+    .map((event) => ({ ...event, day: event.key.slice(0, 10) }))
+    .sort((a, b) => a.key.localeCompare(b.key) || a.rank - b.rank);
+}
 
+// Applique un événement au stock de son intrant : la sortie part à la valeur du PMP du moment.
+function applyStockEvent(totals, event) {
+  const row = totals[event.item_id] || { quantity: 0, value: 0 };
+  const pmp = row.quantity ? row.value / row.quantity : 0;
+  const movedValue = event.value != null ? event.value : event.quantity * pmp;
+  if (event.kind === 'count') {
+    row.quantity = event.quantity;
+    row.value = movedValue;
+  } else if (event.kind === 'out') {
+    row.quantity -= event.quantity;
+    row.value -= movedValue;
+  } else {
+    row.quantity += event.quantity;
+    row.value += movedValue;
+  }
+  totals[event.item_id] = row;
+}
+
+export function buildStockTotals({ invoices = [], movements = [], counts = [] }, storageId = '') {
   const totals = {};
-  events.forEach((event) => {
-    const row = totals[event.item_id] || { quantity: 0, value: 0 };
-    const pmp = row.quantity ? row.value / row.quantity : 0;
-    const movedValue = event.value != null ? event.value : event.quantity * pmp;
-    if (event.kind === 'count') {
-      row.quantity = event.quantity;
-      row.value = movedValue;
-    } else if (event.kind === 'out') {
-      row.quantity -= event.quantity;
-      row.value -= movedValue;
-    } else {
-      row.quantity += event.quantity;
-      row.value += movedValue;
-    }
-    totals[event.item_id] = row;
-  });
+  collectStockEvents({ invoices, movements, counts }, storageId).forEach((event) =>
+    applyStockEvent(totals, event),
+  );
   return totals;
+}
+
+// PMP à une date passée : la chronologie est rejouée jusqu'à cette date seulement, si bien
+// qu'un achat ou un inventaire postérieur ne réécrit jamais le coût d'un rapport déjà écrit.
+export function buildStockPmpIndex({ invoices = [], movements = [], counts = [] }) {
+  const events = collectStockEvents({ invoices, movements, counts });
+  const snapshots = new Map();
+  return (itemId, date) => {
+    const day = String(date || '').slice(0, 10);
+    if (!snapshots.has(day)) {
+      const totals = {};
+      events.filter((event) => event.day <= day).forEach((event) => applyStockEvent(totals, event));
+      snapshots.set(day, totals);
+    }
+    const row = snapshots.get(day)[itemId];
+    return row && row.quantity ? row.value / row.quantity : 0;
+  };
 }
 
 // Quantité disponible par intrant, inventaires compris.

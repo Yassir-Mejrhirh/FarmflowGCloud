@@ -1,4 +1,4 @@
-import { avgCostOf, buildCountTotals, buildInputTotals, mergeTotals } from '@/lib/inventory';
+import { buildStockPmpIndex } from '@/lib/inventory';
 import { isMachineConsumableItem } from '@/lib/machineryCosts';
 import { buildRateIndex, labourRate } from '@/lib/wageRates';
 import { buildTransportCosts } from '@/lib/transportRates';
@@ -15,13 +15,15 @@ export function buildBlockItinerary({
   machines = [],
   items = [],
   invoices = [],
+  movements = [],
   counts = [],
   wageRates = [],
   transportRates = [],
   machineCosts = {},
 }) {
-  // Same weighted average price as the stock status: purchases plus validated counts.
-  const purchaseTotals = mergeTotals(buildInputTotals(invoices), buildCountTotals(counts));
+  // Le coût d'un intrant est valorisé au PMP en vigueur à la date du rapport : les achats,
+  // sorties et inventaires postérieurs ne modifient pas un rapport déjà écrit.
+  const pmpAt = buildStockPmpIndex({ invoices, movements, counts });
   const rateIndex = buildRateIndex(wageRates);
   // Transport of every operation: per-person for each day worked, or a fixed amount
   // once for the transporter and the team of the day.
@@ -86,7 +88,7 @@ export function buildBlockItinerary({
       .map((line) => {
         const item = itemMap.get(line.item_id);
         const quantity = num(line.quantity);
-        const unitCost = avgCostOf(purchaseTotals, line.item_id);
+        const unitCost = pmpAt(line.item_id, report.date);
         return {
           key: line.item_id,
           name: item?.name || '',
