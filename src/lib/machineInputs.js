@@ -30,7 +30,9 @@ export function machineConsumableItems(machine, items = []) {
   const lubricants = items.filter(isLubricantItem).sort(byName);
 
   if (isPumpingMachine(machine)) {
-    return { fuel: items.filter((item) => isButaneItem(item) && !isFuelItem(item)).sort(byName), lubricants };
+    // A pumping station runs on butane only, whatever category it was filed under
+    // (butane is often stored in the "Carburant" category).
+    return { fuel: items.filter(isButaneItem).sort(byName), lubricants };
   }
 
   if (normalize(machine?.type) === 'tractor') {
