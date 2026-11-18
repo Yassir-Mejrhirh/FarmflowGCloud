@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { natureLabel } from '@/lib/taskNature';
 import { requiresPumpStation } from '@/lib/irrigation';
-import { lineShortages, pumpLineReady } from '@/lib/reportLines';
+import { lineShortages } from '@/lib/reportLines';
 import { stockForFarm } from '@/lib/reportStock';
 import { storagesForFarm } from '@/lib/storageScope';
 import { fmtDayDate, fmtNum } from '@/lib/format';
@@ -181,7 +181,6 @@ export default function TaskLineCard({
                   water_m3: value.m3,
                 })
               }
-              missing={!pumpLineReady(line)}
             />
           )}
 

@@ -4,7 +4,7 @@ import SelectField from '@/components/SelectField';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/I18nContext';
 
-export default function PumpStationPanel({ stations = [], value = {}, onChange, missing }) {
+export default function PumpStationPanel({ stations = [], value = {}, onChange }) {
   const { t } = useI18n();
   const patch = (next) => onChange({ ...value, ...next });
 
@@ -14,9 +14,7 @@ export default function PumpStationPanel({ stations = [], value = {}, onChange, 
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <Waves className="h-4 w-4" /> {t('report.irrigation')}
         </p>
-        {missing && (
-          <span className="text-[11px] font-medium text-destructive">{t('report.pumpRequired')}</span>
-        )}
+        <span className="text-[11px] text-muted-foreground">{t('report.pumpOptional')}</span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1.4fr_0.8fr_0.8fr]">

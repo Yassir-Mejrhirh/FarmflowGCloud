@@ -676,7 +676,7 @@ export const TRANSLATIONS = {
     'report.pumpStation': 'Station de pompage',
     'report.pumpHours': 'Heures (H)',
     'report.waterM3': 'Volume d’eau (m³)',
-    'report.pumpRequired': 'Obligatoire pour irrigation ou fertigation : station, heures et m³.',
+    'report.pumpRequired': 'Facultatif pour irrigation ou fertigation : station, heures et m³.',
     'report.noPumpStation': 'Aucune station de pompage définie : ajoutez-la dans Paramétrage › Matériel.',
     'exp.colStation': 'Station',
     'exp.colPumpHours': 'H pompe',
