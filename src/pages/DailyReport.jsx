@@ -289,7 +289,18 @@ export default function DailyReport() {
   // farm's own workers first, then the teams, and the workers without a team last.
   const labourGroupsFor = (line) => {
     const own = new Set((line?.labour || []).map((row) => row.worker_id).filter(Boolean));
-    const proposed = workers.filter((worker) => pointageDays.has(worker.id) || own.has(worker.id));
+    // A worker already given to another task of the same day and farm is no longer
+    // proposed: he leaves the list as soon as he is picked.
+    const taken = new Set();
+    [...lines, ...(editing ? [editing.line] : [])].forEach((row) => {
+      if (!row || row.key === line?.key) return;
+      (row.labour || []).forEach((entry) => {
+        if (entry.worker_id) taken.add(entry.worker_id);
+      });
+    });
+    const proposed = workers.filter(
+      (worker) => (pointageDays.has(worker.id) || own.has(worker.id)) && !taken.has(worker.id),
+    );
     const fixed = farmName ? proposed.filter((worker) => assignedToFarm(worker, farmName)) : [];
     const rest = proposed.filter((worker) => !fixed.includes(worker));
     const groups = [];
