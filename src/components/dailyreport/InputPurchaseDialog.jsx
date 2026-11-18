@@ -4,7 +4,9 @@ import { useI18n } from '@/lib/I18nContext';
 
 // The purchase invoice of the report is written on the same form as the invoice page,
 // opened on the input that is missing from the depot.
-export default function InputPurchaseDialog({ open, onOpenChange, seedItem, suppliers, items, storages, onSaved }) {
+export default function InputPurchaseDialog({
+  open, onOpenChange, seedItem, suppliers, items, storages, defaultStorageId, onSaved,
+}) {
   const { t } = useI18n();
 
   return (
@@ -22,6 +24,7 @@ export default function InputPurchaseDialog({ open, onOpenChange, seedItem, supp
             items={items}
             storages={storages}
             seedItem={seedItem}
+            defaultStorageId={defaultStorageId}
             hideHeader
             onSaved={onSaved}
           />

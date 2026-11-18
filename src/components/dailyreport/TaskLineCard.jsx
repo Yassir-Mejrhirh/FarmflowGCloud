@@ -23,6 +23,7 @@ import { natureLabel } from '@/lib/taskNature';
 import { requiresPumpStation } from '@/lib/irrigation';
 import { lineShortages, pumpLineReady } from '@/lib/reportLines';
 import { stockForFarm } from '@/lib/reportStock';
+import { storagesForFarm } from '@/lib/storageScope';
 import { fmtDayDate, fmtNum } from '@/lib/format';
 import { useI18n } from '@/lib/I18nContext';
 import { cn } from '@/lib/utils';
@@ -42,6 +43,13 @@ export default function TaskLineCard({
   const [creatingTask, setCreatingTask] = useState(false);
   const [creatingItem, setCreatingItem] = useState(false);
   const [purchaseItemId, setPurchaseItemId] = useState('');
+  // The invoice dialog also opens without a chosen input: any purchase can be written.
+  const [purchaseOpen, setPurchaseOpen] = useState(false);
+
+  const openInvoice = (itemId) => {
+    setPurchaseItemId(itemId || '');
+    setPurchaseOpen(true);
+  };
 
   const task = tasks.find((row) => row.id === line.task_id);
   const blockNames = line.block_ids.map((id) => blockMap[id]?.name).filter(Boolean);
@@ -50,6 +58,8 @@ export default function TaskLineCard({
   const machineryCount = (line.machinery || []).length;
   const inputCount = (line.inputs || []).length;
   const shortages = lineShortages({ line, blockMap, storages, invoices, onHand, stockTotals, replaced });
+  // The invoice opens on the input already written on the line, when there is one.
+  const purchaseSeedId = (line.inputs || []).find((row) => row.item_id)?.item_id || '';
   const irrigation = requiresPumpStation(task);
   const isEditing = line.key.startsWith('edit-');
 
@@ -71,7 +81,7 @@ export default function TaskLineCard({
     if (!created?.id) return;
     await reloadStock();
     putInputOnLine(created.id);
-    setPurchaseItemId(created.id);
+    openInvoice(created.id);
   };
 
   return (
@@ -261,7 +271,8 @@ export default function TaskLineCard({
           <InputSupplyActions
             shortages={shortages}
             itemMap={itemMap}
-            onInvoice={setPurchaseItemId}
+            suggestedItemId={purchaseSeedId}
+            onInvoice={openInvoice}
             onCreateItem={() => setCreatingItem(true)}
           />
 
@@ -289,14 +300,19 @@ export default function TaskLineCard({
           <ItemDialog open={creatingItem} onOpenChange={setCreatingItem} onSaved={afterItemCreated} />
 
           <InputPurchaseDialog
-            open={!!purchaseItemId}
-            onOpenChange={(value) => !value && setPurchaseItemId('')}
+            open={purchaseOpen}
+            onOpenChange={(value) => {
+              setPurchaseOpen(value);
+              if (!value) setPurchaseItemId('');
+            }}
             seedItem={items.find((row) => row.id === purchaseItemId)}
             suppliers={suppliers || []}
             items={items}
             storages={storages}
+            defaultStorageId={storagesForFarm(storages, farmName)[0]?.id || ''}
             onSaved={async () => {
               await reloadStock();
+              setPurchaseOpen(false);
               setPurchaseItemId('');
             }}
           />

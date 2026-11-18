@@ -18,11 +18,11 @@ const emptyLine = (item) => ({
   unit_price: '',
 });
 
-const emptyForm = (item) => ({
+const emptyForm = (item, storageId = '') => ({
   date: todayISO(),
   invoice_number: '',
   supplier_id: '',
-  storage_id: '',
+  storage_id: storageId,
   lines: [emptyLine(item)],
   notes: '',
 });
@@ -47,16 +47,18 @@ const formFromInvoice = (invoice) => ({
 });
 
 export default function InvoiceForm({
-  suppliers, items, storages = [], invoice, seedItem, hideHeader, onSaved, onCancel,
+  suppliers, items, storages = [], invoice, seedItem, defaultStorageId = '', hideHeader, onSaved, onCancel,
 }) {
   const { t } = useI18n();
-  const [form, setForm] = useState(() => (invoice ? formFromInvoice(invoice) : emptyForm(seedItem)));
+  const [form, setForm] = useState(() =>
+    invoice ? formFromInvoice(invoice) : emptyForm(seedItem, defaultStorageId),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setForm(invoice ? formFromInvoice(invoice) : emptyForm(seedItem));
-  }, [invoice?.id, seedItem?.id]);
+    setForm(invoice ? formFromInvoice(invoice) : emptyForm(seedItem, defaultStorageId));
+  }, [invoice?.id, seedItem?.id, defaultStorageId]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -113,7 +115,7 @@ export default function InvoiceForm({
     if (invoice) await base44.entities.InputInvoice.update(invoice.id, payload);
     else await base44.entities.InputInvoice.create(payload);
     setSaving(false);
-    setForm(emptyForm(seedItem));
+    setForm(emptyForm(seedItem, defaultStorageId));
     onSaved();
   };
 
