@@ -75,6 +75,16 @@ module.exports = {
   			display: ['var(--font-display)'],
   			mono: ['var(--font-mono)']
   		},
+  		fontSize: {
+  			xs: ['clamp(0.7rem, 0.62rem + 0.35vw, 0.75rem)', { lineHeight: '1rem' }],
+  			sm: ['clamp(0.8125rem, 0.72rem + 0.4vw, 0.875rem)', { lineHeight: '1.25rem' }],
+  			base: ['clamp(0.9375rem, 0.85rem + 0.4vw, 1rem)', { lineHeight: '1.5rem' }],
+  			lg: ['clamp(1.0625rem, 0.97rem + 0.4vw, 1.125rem)', { lineHeight: '1.75rem' }],
+  			xl: ['clamp(1.125rem, 0.95rem + 0.78vw, 1.25rem)', { lineHeight: '1.75rem' }],
+  			'2xl': ['clamp(1.25rem, 0.94rem + 1.35vw, 1.5rem)', { lineHeight: '2rem' }],
+  			'3xl': ['clamp(1.5rem, 1.05rem + 2vw, 1.875rem)', { lineHeight: '2.25rem' }],
+  			'4xl': ['clamp(1.75rem, 1.1rem + 2.9vw, 2.25rem)', { lineHeight: '2.5rem' }]
+  		},
   		keyframes: {
   			'accordion-down': {
   				from: {
