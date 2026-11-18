@@ -272,29 +272,32 @@ export default function StockStatus() {
               <li
                 key={row.id}
                 onDoubleClick={() => setSelected(row)}
-                className="flex cursor-pointer flex-wrap items-center gap-3 px-4 py-3.5 transition-colors hover:bg-accent/30"
+                className="flex cursor-pointer flex-col gap-1.5 px-4 py-3.5 transition-colors hover:bg-accent/30 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{row.name}</p>
+                {/* Mobile : le nom occupe toute la largeur, les montants passent dessous. */}
+                <div className="min-w-0 sm:flex-1">
+                  <p className="text-sm font-medium leading-snug sm:truncate">{row.name}</p>
                   {row.low && (
                     <p className="mt-0.5 text-[11px] text-clay">
                       {t('dash.minimum')} {fmtNum(row.minimum, 0)} {row.unit}
                     </p>
                   )}
                 </div>
-                <span
-                  className={cn(
-                    'w-28 text-end text-sm tabular-nums',
-                    row.negative && 'font-medium text-destructive',
-                  )}
-                >
-                  {fmtNum(row.quantity, 1)}{' '}
-                  <span className="text-xs text-muted-foreground">{row.unit}</span>
-                </span>
-                <span className="hidden w-28 text-end text-xs tabular-nums text-muted-foreground sm:block">
-                  {row.price ? fmtMoney(row.price) : '—'}
-                </span>
-                <span className="w-32 text-end text-sm tabular-nums">{fmtMoney(row.value)}</span>
+                <div className="flex items-baseline justify-between gap-3 sm:contents">
+                  <span
+                    className={cn(
+                      'text-sm tabular-nums sm:w-28 sm:text-end',
+                      row.negative && 'font-medium text-destructive',
+                    )}
+                  >
+                    {fmtNum(row.quantity, 1)}{' '}
+                    <span className="text-xs text-muted-foreground">{row.unit}</span>
+                  </span>
+                  <span className="hidden w-28 text-end text-xs tabular-nums text-muted-foreground sm:block">
+                    {row.price ? fmtMoney(row.price) : '—'}
+                  </span>
+                  <span className="text-sm tabular-nums sm:w-32 sm:text-end">{fmtMoney(row.value)}</span>
+                </div>
               </li>
             ))}
           </ul>
